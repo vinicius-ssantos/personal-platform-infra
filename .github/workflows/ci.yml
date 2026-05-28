@@ -29,7 +29,7 @@ jobs:
           )
           for path in paths:
               with path.open('r', encoding='utf-8') as fh:
-                  yaml.safe_load(fh)
+                  list(yaml.safe_load_all(fh))
               print(f'OK {path}')
           PY
 
