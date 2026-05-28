@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate infra scaffold
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate YAML files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          paths = sorted(
+              p for p in Path('.').rglob('*')
+              if p.suffix in {'.yml', '.yaml'} and '.git' not in p.parts
+          )
+          for path in paths:
+              with path.open('r', encoding='utf-8') as fh:
+                  list(yaml.safe_load_all(fh))
+              print(f'OK {path}')
+          PY
+
+      - name: Validate Docker Compose config
+        run: docker compose -f compose/docker-compose.yml config --quiet
+
+      - name: Validate shell scripts parse
+        run: |
+          find scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform fmt check
+        run: terraform -chdir=terraform/cloudflare fmt -check -recursive
+
+      - name: Terraform init without backend
+        run: terraform -chdir=terraform/cloudflare init -backend=false
+
+      - name: Terraform validate
+        run: terraform -chdir=terraform/cloudflare validate
