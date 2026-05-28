@@ -1,0 +1,33 @@
+---
+- name: Bootstrap VPS for personal platform
+  hosts: vps
+  become: true
+
+  tasks:
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - git
+          - gnupg
+          - jq
+          - ufw
+          - fail2ban
+        state: present
+        update_cache: true
+
+    - name: Create platform directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /opt/personal-platform
+        - /opt/personal-platform/data
+        - /opt/personal-platform/backups
+        - /opt/personal-platform/logs
+
+    - name: Placeholder for k3s install
+      ansible.builtin.debug:
+        msg: "Install k3s here once the VPS target is configured."

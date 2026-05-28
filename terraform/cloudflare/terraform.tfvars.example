@@ -1,0 +1,5 @@
+cloudflare_account_id = "change-me"
+cloudflare_zone_id    = "change-me"
+domain                = "example.com"
+target_mode           = "local-tunnel"
+vps_ipv4              = null

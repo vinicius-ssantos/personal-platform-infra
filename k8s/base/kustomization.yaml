@@ -1,0 +1,8 @@
+resources:
+  - namespaces.yaml
+  - apps/github-unified-mcp
+  - apps/deploy-orchestrator-mcp
+  - apps/mcp-social
+  - apps/github-unified-mcp-bff
+  - apps/vos-studio-mcp
+  - apps/vos-studio-bff

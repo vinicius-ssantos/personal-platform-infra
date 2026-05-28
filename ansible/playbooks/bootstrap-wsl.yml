@@ -1,0 +1,38 @@
+---
+- name: Bootstrap WSL2 environment for personal platform
+  hosts: local
+  connection: local
+  become: true
+
+  tasks:
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - git
+          - gnupg
+          - jq
+          - make
+          - python3-pip
+          - unzip
+        state: present
+        update_cache: true
+
+    - name: Create platform directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ ansible_env.HOME }}/platform-data"
+        - "{{ ansible_env.HOME }}/platform-data/redis"
+        - "{{ ansible_env.HOME }}/platform-data/sqlite"
+        - "{{ ansible_env.HOME }}/platform-data/audit"
+        - "{{ ansible_env.HOME }}/platform-data/logs"
+
+    - name: Print next steps
+      ansible.builtin.debug:
+        msg:
+          - "Install Docker Desktop with WSL integration if not already installed."
+          - "Install Terraform, k3d, kubectl, helm, cloudflared and just in the next playbook iteration."

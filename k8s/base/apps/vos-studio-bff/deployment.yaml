@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vos-studio-bff
+  namespace: bff
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: vos-studio-bff
+  template:
+    metadata:
+      labels:
+        app: vos-studio-bff
+    spec:
+      containers:
+        - name: vos-studio-bff
+          image: ghcr.io/vinicius-ssantos/vos-studio-bff:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

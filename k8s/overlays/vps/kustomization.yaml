@@ -1,0 +1,5 @@
+resources:
+  - ../../base
+
+# VPS overlay keeps workloads sleeping by default with replicas=0.
+# Add ingress, secrets and resource patches incrementally.

@@ -1,0 +1,79 @@
+services:
+  github-unified-mcp:
+    image: ${GITHUB_UNIFIED_MCP_IMAGE}
+    profiles: ["github", "all"]
+    ports:
+      - "8765:8765"
+    environment:
+      FASTMCP_HOST: 0.0.0.0
+      FASTMCP_PORT: 8765
+      MCP_AUTH_ENABLED: "true"
+      MCP_AUTH_MODE: bearer
+      MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_READ_ONLY: "true"
+    restart: unless-stopped
+
+  deploy-orchestrator-mcp:
+    image: ${DEPLOY_ORCHESTRATOR_MCP_IMAGE}
+    profiles: ["deploy", "all"]
+    ports:
+      - "8001:8000"
+    environment:
+      MCP_TRANSPORT: http
+      PORT: 8000
+      MCP_SERVER_API_KEY: ${MCP_SERVER_API_KEY}
+      MCP_READ_ONLY: "true"
+      MCP_REQUIRE_CONFIRMATION: "true"
+    restart: unless-stopped
+
+  mcp-social:
+    image: ${MCP_SOCIAL_IMAGE}
+    profiles: ["social", "all"]
+    ports:
+      - "8080:8080"
+    environment:
+      SOCIAL_MCP_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN}
+      SOCIAL_DB_URL: sqlite+aiosqlite:////data/social.db
+    volumes:
+      - social-data:/data
+    restart: unless-stopped
+
+  github-unified-mcp-bff:
+    image: ${GITHUB_UNIFIED_MCP_BFF_IMAGE}
+    profiles: ["github-bff", "all"]
+    ports:
+      - "8010:8000"
+    environment:
+      BFF_ENV: development
+      FRONTEND_URL: http://localhost:5173
+      MCP_URL: http://github-unified-mcp:8765
+      MCP_TOKEN: ${MCP_BEARER_TOKEN}
+      COOKIE_SECURE: "false"
+    restart: unless-stopped
+
+  vos-studio-mcp:
+    image: ${VOS_STUDIO_MCP_IMAGE}
+    profiles: ["vos", "all"]
+    ports:
+      - "8020:8000"
+    environment:
+      APP_ENV: development
+      MCP_SERVER_HOST: 0.0.0.0
+      MCP_SERVER_PORT: 8000
+    restart: unless-stopped
+
+  vos-studio-bff:
+    image: ${VOS_STUDIO_BFF_IMAGE}
+    profiles: ["vos", "all"]
+    ports:
+      - "8030:8000"
+    environment:
+      BFF_ENV: development
+      FRONTEND_URL: http://localhost:5174
+      MCP_URL: http://vos-studio-mcp:8000
+      COOKIE_SECURE: "false"
+    restart: unless-stopped
+
+volumes:
+  social-data:

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-orchestrator-mcp
+  namespace: mcp
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: deploy-orchestrator-mcp
+  template:
+    metadata:
+      labels:
+        app: deploy-orchestrator-mcp
+    spec:
+      containers:
+        - name: deploy-orchestrator-mcp
+          image: ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

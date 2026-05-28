@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: deploy-orchestrator-mcp
+  namespace: mcp
+spec:
+  selector:
+    app: deploy-orchestrator-mcp
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

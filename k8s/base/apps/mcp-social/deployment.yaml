@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-social
+  namespace: mcp
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: mcp-social
+  template:
+    metadata:
+      labels:
+        app: mcp-social
+    spec:
+      containers:
+        - name: mcp-social
+          image: ghcr.io/vinicius-ssantos/mcp-social:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

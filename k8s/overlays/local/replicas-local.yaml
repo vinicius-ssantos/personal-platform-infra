@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-unified-mcp
+  namespace: mcp
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-orchestrator-mcp
+  namespace: mcp
+spec:
+  replicas: 1

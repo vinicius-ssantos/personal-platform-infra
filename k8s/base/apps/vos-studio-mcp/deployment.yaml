@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vos-studio-mcp
+  namespace: vos
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: vos-studio-mcp
+  template:
+    metadata:
+      labels:
+        app: vos-studio-mcp
+    spec:
+      containers:
+        - name: vos-studio-mcp
+          image: ghcr.io/vinicius-ssantos/vos-studio-mcp:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

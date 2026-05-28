@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-unified-mcp-bff
+  namespace: bff
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: github-unified-mcp-bff
+  template:
+    metadata:
+      labels:
+        app: github-unified-mcp-bff
+    spec:
+      containers:
+        - name: github-unified-mcp-bff
+          image: ghcr.io/vinicius-ssantos/github-unified-mcp-bff:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

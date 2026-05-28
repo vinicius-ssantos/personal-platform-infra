@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vos-studio-bff
+  namespace: bff
+spec:
+  selector:
+    app: vos-studio-bff
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

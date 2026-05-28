@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vos-studio-mcp
+  namespace: vos
+spec:
+  selector:
+    app: vos-studio-mcp
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

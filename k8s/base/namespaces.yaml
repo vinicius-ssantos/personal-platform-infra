@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bff
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vos

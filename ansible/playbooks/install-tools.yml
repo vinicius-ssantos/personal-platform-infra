@@ -1,0 +1,21 @@
+---
+- name: Install local tooling
+  hosts: local
+  connection: local
+  become: true
+
+  tasks:
+    - name: Install common CLI dependencies
+      ansible.builtin.apt:
+        name:
+          - curl
+          - git
+          - jq
+          - unzip
+          - gnupg
+        state: present
+        update_cache: true
+
+    - name: Placeholder
+      ansible.builtin.debug:
+        msg: "Add installation steps for Terraform, kubectl, helm, k3d, just and cloudflared here."
