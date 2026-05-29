@@ -3,3 +3,4 @@ resources:
 
 patches:
   - path: replicas-local.yaml
+  - path: bff-env-local.yaml
