@@ -13,7 +13,7 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GITHUB_READ_ONLY: "true"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8765/healthz"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8765/healthz', timeout=3).read()\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
       MCP_READ_ONLY: "true"
       MCP_REQUIRE_CONFIRMATION: "true"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3).read()\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +50,7 @@ services:
     volumes:
       - social-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3).read()\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -69,7 +69,7 @@ services:
       MCP_TOKEN: ${MCP_BEARER_TOKEN}
       COOKIE_SECURE: "false"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3).read()\""]
       interval: 10s
       timeout: 5s
       retries: 5
