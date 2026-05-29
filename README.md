@@ -24,6 +24,8 @@ Centralizar a automação de:
 - `vos-studio-mcp`
 - `vos-studio-bff`
 
+Veja a [matriz de integracao de servicos](docs/service-integration-matrix.md) para o status de cada servico.
+
 ## Princípios
 
 - Frontends ficam fora da VPS, preferencialmente em Cloudflare Pages/Vercel/Netlify.
