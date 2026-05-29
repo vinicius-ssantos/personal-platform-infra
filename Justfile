@@ -1,4 +1,5 @@
 set dotenv-load := true
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 bootstrap-local:
 	ansible-playbook -i ansible/inventory/local.ini ansible/playbooks/bootstrap-wsl.yml
@@ -23,6 +24,9 @@ compose-down:
 
 compose-logs:
 	docker compose -f compose/docker-compose.yml --env-file .env logs -f --tail=200
+
+smoke-github:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp.ps1
 
 k8s-local-up:
 	k3d cluster create personal-platform --config k8s/overlays/local/k3d-config.yaml || true
