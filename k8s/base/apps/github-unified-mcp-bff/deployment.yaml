@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: github-unified-mcp-bff
-          image: ghcr.io/vinicius-ssantos/github-unified-mcp-bff:latest
+          image: ghcr.io/vinicius-ssantos/github-unified-mcp-bff:main
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
