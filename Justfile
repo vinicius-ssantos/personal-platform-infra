@@ -70,3 +70,9 @@ sleep-all:
 
 logs:
 	./scripts/logs.sh
+
+secrets-edit-local:
+	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/local.enc.yaml
+
+secrets-edit-vps:
+	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/vps.enc.yaml
