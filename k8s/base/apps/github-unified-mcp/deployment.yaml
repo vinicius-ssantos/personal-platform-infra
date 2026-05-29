@@ -18,6 +18,21 @@ spec:
         - name: github-unified-mcp
           image: ghcr.io/vinicius-ssantos/github-unified-mcp:main
           imagePullPolicy: IfNotPresent
+          env:
+            - name: FASTMCP_HOST
+              value: 0.0.0.0
+            - name: FASTMCP_PORT
+              value: "8765"
+            - name: MCP_AUTH_ENABLED
+              value: "true"
+            - name: MCP_AUTH_MODE
+              value: bearer
+            - name: MCP_BEARER_TOKEN
+              value: local-dev-token
+            - name: GITHUB_TOKEN
+              value: local-dev-token
+            - name: GITHUB_READ_ONLY
+              value: "true"
           ports:
             - containerPort: 8765
           livenessProbe:
