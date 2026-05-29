@@ -29,3 +29,19 @@ metadata:
   namespace: bff
 spec:
   replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vos-studio-mcp
+  namespace: vos
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vos-studio-bff
+  namespace: bff
+spec:
+  replicas: 1

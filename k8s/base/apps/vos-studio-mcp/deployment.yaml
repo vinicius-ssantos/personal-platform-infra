@@ -16,10 +16,29 @@ spec:
       serviceAccountName: platform-puller
       containers:
         - name: vos-studio-mcp
-          image: ghcr.io/vinicius-ssantos/vos-studio-mcp:latest
+          image: ghcr.io/vinicius-ssantos/vos-studio-mcp:main
           imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: vos-studio-mcp-config
           ports:
             - containerPort: 8000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
           resources:
             requests:
               cpu: 25m
