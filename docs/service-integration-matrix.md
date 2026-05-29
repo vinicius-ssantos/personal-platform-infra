@@ -16,7 +16,7 @@ operator scripts.
 | service | repository | role | Dockerfile | GHCR image | Compose wired | .env.example wired | local smoke check | k8s/k3d manifests | status | next issue | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github-unified-mcp` | `vinicius-ssantos/github-unified-mcp` | GitHub MCP server | upstream | `ghcr.io/vinicius-ssantos/github-unified-mcp:main` configured | yes, profile `github` | yes, `GITHUB_UNIFIED_MCP_IMAGE` | `just smoke-github` | yes | ready | none | Compose is image-driven and read-only by default. |
-| `deploy-orchestrator-mcp` | `vinicius-ssantos/deploy-orchestrator-mcp` | Deployment orchestration MCP server | upstream | `ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp:main` configured; GHCR access not confirmed | yes, profile `deploy` | yes, `DEPLOY_ORCHESTRATOR_MCP_IMAGE` | missing | yes | blocked | `#6` | Compose is image-driven with read-only and confirmation flags enabled. Confirm package visibility or tag availability before closing. |
+| `deploy-orchestrator-mcp` | `vinicius-ssantos/deploy-orchestrator-mcp` | Deployment orchestration MCP server | upstream | `ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp:main` configured and verified | yes, profile `deploy` | yes, `DEPLOY_ORCHESTRATOR_MCP_IMAGE` | `just smoke-deploy` | yes | ready | none | Compose is image-driven with read-only and confirmation flags enabled; exposes `/healthz` on host port `8001`. |
 | `mcp-social` | `vinicius-ssantos/mcp-social` | Social integration MCP server | upstream | `ghcr.io/vinicius-ssantos/mcp-social:main` configured and verified | yes, profile `social` | yes, `MCP_SOCIAL_IMAGE` | `just smoke-social` | yes | ready | none | Uses a local Compose volume for SQLite data and exposes `/health` on port `8080`. |
 | `github-unified-mcp-bff` | `vinicius-ssantos/-github-unified-mcp-bff` | BFF for GitHub MCP flows | upstream | `ghcr.io/vinicius-ssantos/github-unified-mcp-bff:main` configured and verified | yes, profile `github-bff` | yes, `GITHUB_UNIFIED_MCP_BFF_IMAGE` | `just smoke-github-bff` | yes | ready | none | Depends on `github-unified-mcp` at `http://github-unified-mcp:8765`; GHCR package uses normalized name without the repository's leading hyphen. |
 | `vos-studio-mcp` | `vinicius-ssantos/vos-studio-mcp` | VOS Studio MCP server | unknown | `ghcr.io/vinicius-ssantos/vos-studio-mcp:latest` configured | yes, profile `vos` | yes, `VOS_STUDIO_MCP_IMAGE` | missing | yes | wired | none | Exposes MCP runtime on port `8000` inside the container. |
@@ -33,6 +33,4 @@ operator scripts.
 
 ## Current blockers
 
-- `deploy-orchestrator-mcp:main` is configured, but GHCR access still needs to
-  be confirmed with Docker auth or upstream package visibility before `#6` is
-  closed.
+No current blockers for services marked `ready`.
