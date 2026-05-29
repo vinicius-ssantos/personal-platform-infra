@@ -18,6 +18,17 @@ spec:
         - name: deploy-orchestrator-mcp
           image: ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp:main
           imagePullPolicy: IfNotPresent
+          env:
+            - name: MCP_TRANSPORT
+              value: http
+            - name: PORT
+              value: "8000"
+            - name: MCP_SERVER_API_KEY
+              value: local-dev-token
+            - name: MCP_READ_ONLY
+              value: "true"
+            - name: MCP_REQUIRE_CONFIRMATION
+              value: "true"
           ports:
             - containerPort: 8000
           livenessProbe:

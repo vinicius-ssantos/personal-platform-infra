@@ -18,6 +18,11 @@ spec:
         - name: mcp-social
           image: ghcr.io/vinicius-ssantos/mcp-social:main
           imagePullPolicy: IfNotPresent
+          env:
+            - name: SOCIAL_MCP_ACCESS_TOKEN
+              value: local-dev-token
+            - name: SOCIAL_DB_URL
+              value: sqlite+aiosqlite:////data/social.db
           ports:
             - containerPort: 8080
           livenessProbe:
