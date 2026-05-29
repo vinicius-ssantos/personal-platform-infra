@@ -44,13 +44,19 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform fmt check
-        run: terraform -chdir=terraform/cloudflare fmt -check -recursive
+        run: |
+          terraform -chdir=terraform/cloudflare fmt -check -recursive
+          terraform -chdir=terraform/vps fmt -check -recursive
 
       - name: Terraform init without backend
-        run: terraform -chdir=terraform/cloudflare init -backend=false
+        run: |
+          terraform -chdir=terraform/cloudflare init -backend=false
+          terraform -chdir=terraform/vps init -backend=false
 
       - name: Terraform validate
-        run: terraform -chdir=terraform/cloudflare validate
+        run: |
+          terraform -chdir=terraform/cloudflare validate
+          terraform -chdir=terraform/vps validate
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v4

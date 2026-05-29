@@ -1,0 +1,13 @@
+hcloud_token = "paste-token-or-use-TF_VAR_hcloud_token"
+
+server_name  = "personal-platform"
+server_type  = "cx22"
+server_image = "ubuntu-24.04"
+location     = "fsn1"
+
+ssh_key_name   = "personal-platform-operator"
+ssh_public_key = "ssh-ed25519 AAAA... vinicius@desktop"
+
+admin_cidr_blocks = [
+  "203.0.113.10/32",
+]
