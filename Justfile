@@ -82,3 +82,13 @@ status:
 
 hooks-install:
 	pre-commit install
+
+k3s-upgrade:
+	bash scripts/k3s-upgrade.sh
+
+secrets-backup:
+	@echo "=== age public key ==="
+	@grep "^# public key:" ~/.age/personal-platform.txt 2>/dev/null || age-keygen -y ~/.age/personal-platform.txt 2>/dev/null || echo "(key not found at ~/.age/personal-platform.txt)"
+	@echo ""
+	@echo "Back up the PRIVATE key at: ~/.age/personal-platform.txt"
+	@echo "See docs/secrets.md for backup options."

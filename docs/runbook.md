@@ -77,3 +77,49 @@ just wake-vos
 ```bash
 just logs
 ```
+
+## Platform status
+
+```bash
+just status
+```
+
+Prints k3d cluster state, all pods, Compose container health, and VPS cluster
+reachability. Set `KUBECONFIG_VPS=/path/to/vps-kubeconfig` to include the VPS
+section.
+
+## Upgrade k3s (VPS)
+
+Run on the VPS as root:
+
+```bash
+just k3s-upgrade
+```
+
+The script:
+1. Scales all workloads to 0 (safe drain)
+2. Drains the node
+3. Installs the latest stable k3s
+4. Waits for the node to be `Ready`
+5. Uncordons the node
+
+After upgrade, restore workloads:
+
+```bash
+kubectl apply -k k8s/overlays/vps
+just wake-github
+```
+
+**Rollback:** install a specific version with:
+```bash
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.29.4+k3s1 sh -
+```
+
+## Reset local environment
+
+```bash
+just clean
+```
+
+Stops Compose (with volumes), deletes the k3d cluster, and prunes orphaned
+Docker volumes. Use when something is stuck or you need a clean slate.
