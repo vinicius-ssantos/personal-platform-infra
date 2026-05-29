@@ -1,0 +1,34 @@
+apiVersion: http.keda.sh/v1beta1
+kind: InterceptorRoute
+metadata:
+  name: github-unified-mcp-bff
+  namespace: bff
+spec:
+  target:
+    service: github-unified-mcp-bff
+    port: 8000
+  rules:
+    - hosts:
+        - github-bff.example.com
+  scalingMetric:
+    requestRate:
+      targetValue: 5
+      window: 1m
+      granularity: 1s
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: github-unified-mcp-bff
+  namespace: bff
+spec:
+  scaleTargetRef:
+    name: github-unified-mcp-bff
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  cooldownPeriod: 600
+  triggers:
+    - type: external-push
+      metadata:
+        scalerAddress: keda-add-ons-http-external-scaler.keda:9090
+        interceptorRoute: github-unified-mcp-bff

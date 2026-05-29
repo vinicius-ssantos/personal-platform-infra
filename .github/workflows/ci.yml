@@ -67,3 +67,5 @@ jobs:
           echo "OK k8s/overlays/local"
           kubectl kustomize k8s/overlays/vps > /dev/null
           echo "OK k8s/overlays/vps"
+          kubectl kustomize k8s/addons/keda-http/pilot > /dev/null
+          echo "OK k8s/addons/keda-http/pilot"

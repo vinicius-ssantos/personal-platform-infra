@@ -137,6 +137,12 @@ hooks-install:
 k3s-upgrade:
 	bash scripts/k3s-upgrade.sh
 
+keda-http-install:
+	bash scripts/keda-http-install.sh
+
+smoke-keda-http:
+	bash scripts/smoke-keda-http.sh
+
 create-ghcr-secret:
 	@echo "Run the following for each namespace (mcp, bff, vos):"
 	@echo "  kubectl create secret docker-registry ghcr-pull-secret \\"
