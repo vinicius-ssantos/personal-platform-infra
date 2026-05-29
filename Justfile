@@ -16,6 +16,21 @@ terraform-plan:
 terraform-apply:
 	cd terraform/cloudflare && terraform apply
 
+terraform-vps-init:
+	cd terraform/vps && terraform init
+
+terraform-vps-plan:
+	cd terraform/vps && terraform plan
+
+terraform-vps-apply:
+	cd terraform/vps && terraform apply
+
+status-page-dev:
+	npx wrangler dev --config cloudflare/workers/status-page/wrangler.toml
+
+status-page-deploy:
+	npx wrangler deploy --config cloudflare/workers/status-page/wrangler.toml
+
 compose-up:
 	docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
 
@@ -70,6 +85,9 @@ sleep-all:
 
 logs:
 	./scripts/logs.sh
+
+logs-ui:
+	kubectl port-forward svc/grafana 3000:3000 -n monitoring
 
 secrets-edit-local:
 	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/local.enc.yaml

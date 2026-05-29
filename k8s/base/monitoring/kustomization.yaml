@@ -1,0 +1,11 @@
+resources:
+  - namespace.yaml
+  - loki-config.yaml
+  - loki-deployment.yaml
+  - loki-service.yaml
+  - alloy-rbac.yaml
+  - alloy-config.yaml
+  - alloy-deployment.yaml
+  - grafana-datasources.yaml
+  - grafana-deployment.yaml
+  - grafana-service.yaml

@@ -1,6 +1,7 @@
 resources:
   - namespaces.yaml
   - serviceaccounts.yaml
+  - monitoring
   - apps/github-unified-mcp
   - apps/deploy-orchestrator-mcp
   - apps/mcp-social

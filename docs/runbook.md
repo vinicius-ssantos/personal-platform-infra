@@ -78,6 +78,16 @@ just wake-vos
 just logs
 ```
 
+## Centralized Logs
+
+```bash
+just logs-ui
+```
+
+Open `http://localhost:3000` and sign in with the local bootstrap credentials
+`admin` / `admin`. The Grafana deployment is wired to the in-cluster Loki
+service.
+
 ## Platform status
 
 ```bash
