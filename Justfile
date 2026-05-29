@@ -58,11 +58,15 @@ smoke-social:
 smoke-github-bff:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp-bff.ps1
 
+smoke-vos:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-vos.ps1
+
 smoke-all:
 	just smoke-github
 	just smoke-deploy
 	just smoke-social
 	just smoke-github-bff
+	just smoke-vos
 
 smoke-github-sh:
 	bash scripts/smoke-github-unified-mcp.sh
@@ -76,11 +80,15 @@ smoke-social-sh:
 smoke-github-bff-sh:
 	bash scripts/smoke-github-unified-mcp-bff.sh
 
+smoke-vos-sh:
+	bash scripts/smoke-vos.sh
+
 smoke-all-sh:
 	just smoke-github-sh
 	just smoke-deploy-sh
 	just smoke-social-sh
 	just smoke-github-bff-sh
+	just smoke-vos-sh
 
 smoke-k3d:
 	bash scripts/smoke-k3d.sh

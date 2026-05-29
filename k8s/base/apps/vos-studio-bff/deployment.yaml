@@ -16,10 +16,27 @@ spec:
       serviceAccountName: platform-puller
       containers:
         - name: vos-studio-bff
-          image: ghcr.io/vinicius-ssantos/vos-studio-bff:latest
+          image: ghcr.io/vinicius-ssantos/vos-studio-bff:main
           imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: vos-studio-bff-config
           ports:
             - containerPort: 8000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
           resources:
             requests:
               cpu: 25m

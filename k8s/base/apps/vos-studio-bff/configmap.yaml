@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vos-studio-bff-config
+  namespace: bff
+data:
+  BFF_ENV: development
+  FRONTEND_URL: http://localhost:5174
+  ALLOWED_ORIGINS: http://localhost:5174
+  MCP_URL: http://vos-studio-mcp.vos.svc.cluster.local:8000
+  COOKIE_SECURE: "false"
+  PORT: "8000"
