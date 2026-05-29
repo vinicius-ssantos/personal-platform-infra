@@ -17,7 +17,7 @@ terraform-apply:
 	cd terraform/cloudflare && terraform apply
 
 compose-up:
-	docker compose -f compose/docker-compose.yml --env-file .env up -d
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
 
 compose-down:
 	docker compose -f compose/docker-compose.yml --env-file .env down
@@ -76,3 +76,9 @@ secrets-edit-local:
 
 secrets-edit-vps:
 	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/vps.enc.yaml
+
+status:
+	bash scripts/status.sh
+
+hooks-install:
+	pre-commit install
