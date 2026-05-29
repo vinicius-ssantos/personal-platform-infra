@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: mcp-social
-          image: ghcr.io/vinicius-ssantos/mcp-social:latest
+          image: ghcr.io/vinicius-ssantos/mcp-social:main
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
