@@ -18,17 +18,12 @@ spec:
         - name: github-unified-mcp-bff
           image: ghcr.io/vinicius-ssantos/github-unified-mcp-bff:main
           imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: github-unified-mcp-bff-config
           env:
-            - name: BFF_ENV
-              value: development
-            - name: FRONTEND_URL
-              value: http://localhost:5173
-            - name: MCP_URL
-              value: http://github-unified-mcp.mcp.svc.cluster.local:8765
             - name: MCP_TOKEN
               value: local-dev-token
-            - name: COOKIE_SECURE
-              value: "false"
           ports:
             - containerPort: 8000
           livenessProbe:

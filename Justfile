@@ -31,7 +31,13 @@ status-page-dev:
 status-page-deploy:
 	npx wrangler deploy --config cloudflare/workers/status-page/wrangler.toml
 
-compose-up:
+env-init:
+	bash scripts/env-init.sh
+
+check-env:
+	bash scripts/check-env.sh
+
+compose-up: check-env
 	docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
 
 compose-down:
@@ -57,6 +63,24 @@ smoke-all:
 	just smoke-deploy
 	just smoke-social
 	just smoke-github-bff
+
+smoke-github-sh:
+	bash scripts/smoke-github-unified-mcp.sh
+
+smoke-deploy-sh:
+	bash scripts/smoke-deploy-orchestrator-mcp.sh
+
+smoke-social-sh:
+	bash scripts/smoke-mcp-social.sh
+
+smoke-github-bff-sh:
+	bash scripts/smoke-github-unified-mcp-bff.sh
+
+smoke-all-sh:
+	just smoke-github-sh
+	just smoke-deploy-sh
+	just smoke-social-sh
+	just smoke-github-bff-sh
 
 smoke-k3d:
 	bash scripts/smoke-k3d.sh
@@ -88,6 +112,15 @@ logs:
 
 logs-ui:
 	kubectl port-forward svc/grafana 3000:3000 -n monitoring
+
+clean:
+	bash scripts/clean-local.sh
+
+clean-compose:
+	docker compose -f compose/docker-compose.yml --env-file .env down -v
+
+clean-k3d:
+	k3d cluster delete personal-platform
 
 secrets-edit-local:
 	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/local.enc.yaml

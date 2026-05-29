@@ -20,6 +20,15 @@ override the relevant image variable in `.env` instead of editing
 just compose-down
 ```
 
+## Reset Local Environment
+
+```bash
+just clean
+```
+
+This stops Compose with volumes and deletes the local `personal-platform` k3d
+cluster. Use `just clean-compose` or `just clean-k3d` for narrower cleanup.
+
 ## Start local Kubernetes
 
 ```bash

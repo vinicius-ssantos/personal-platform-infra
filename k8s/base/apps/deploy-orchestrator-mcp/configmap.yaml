@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deploy-orchestrator-mcp-config
+  namespace: mcp
+data:
+  MCP_TRANSPORT: http
+  PORT: "8000"
+  MCP_READ_ONLY: "true"
+  MCP_REQUIRE_CONFIRMATION: "true"
