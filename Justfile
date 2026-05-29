@@ -16,7 +16,17 @@ terraform-plan:
 terraform-apply:
 	cd terraform/cloudflare && terraform apply
 
+env-init:
+	bash scripts/env-init.sh
+
+check-env:
+	bash scripts/check-env.sh
+
+clean:
+	bash scripts/clean-local.sh
+
 compose-up:
+	bash scripts/check-env.sh
 	docker compose -f compose/docker-compose.yml --env-file .env up -d
 
 compose-down:
@@ -42,6 +52,24 @@ smoke-all:
 	just smoke-deploy
 	just smoke-social
 	just smoke-github-bff
+
+smoke-github-sh:
+	bash scripts/smoke-github-unified-mcp.sh
+
+smoke-deploy-sh:
+	bash scripts/smoke-deploy-orchestrator-mcp.sh
+
+smoke-social-sh:
+	bash scripts/smoke-mcp-social.sh
+
+smoke-github-bff-sh:
+	bash scripts/smoke-github-unified-mcp-bff.sh
+
+smoke-all-sh:
+	just smoke-github-sh
+	just smoke-deploy-sh
+	just smoke-social-sh
+	just smoke-github-bff-sh
 
 smoke-k3d:
 	bash scripts/smoke-k3d.sh
