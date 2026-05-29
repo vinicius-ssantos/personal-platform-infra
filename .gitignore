@@ -19,3 +19,10 @@ secrets/*.yaml
 
 .kube/
 .k3d/
+
+*.age
+age.key
+kubeconfig
+*.pem
+*.key
+*.crt

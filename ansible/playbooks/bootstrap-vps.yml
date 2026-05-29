@@ -89,3 +89,32 @@
         - "80"
         - "443"
         - "6443"
+
+    - name: Harden SSH configuration
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config.d/99-hardening.conf
+        create: true
+        mode: "0644"
+        block: |
+          PermitRootLogin no
+          PasswordAuthentication no
+          ChallengeResponseAuthentication no
+          X11Forwarding no
+          AllowAgentForwarding no
+          MaxAuthTries 3
+          LoginGraceTime 30
+          ClientAliveInterval 300
+          ClientAliveCountMax 2
+      notify: Restart sshd
+
+    - name: Enable fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
