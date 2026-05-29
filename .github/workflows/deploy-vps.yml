@@ -34,5 +34,17 @@ jobs:
       - name: Apply VPS overlay
         run: kubectl apply -k k8s/overlays/vps
 
+      - name: Wait for rollouts to complete
+        run: |
+          kubectl get deployments -A --no-headers \
+            -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,REPLICAS:.spec.replicas' \
+            | awk '$3 > 0 {print $1 "/" $2}' \
+            | while read ns_name; do
+                ns="${ns_name%/*}"
+                name="${ns_name#*/}"
+                echo "Waiting for rollout: $name in $ns"
+                kubectl rollout status deployment/"$name" -n "$ns" --timeout=120s
+              done
+
       - name: Show workload status
         run: kubectl get deployments -A

@@ -13,6 +13,7 @@ spec:
       labels:
         app: deploy-orchestrator-mcp
     spec:
+      serviceAccountName: platform-puller
       containers:
         - name: deploy-orchestrator-mcp
           image: ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp:main

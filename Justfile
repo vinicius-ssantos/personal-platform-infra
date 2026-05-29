@@ -17,7 +17,7 @@ terraform-apply:
 	cd terraform/cloudflare && terraform apply
 
 compose-up:
-	docker compose -f compose/docker-compose.yml --env-file .env up -d
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
 
 compose-down:
 	docker compose -f compose/docker-compose.yml --env-file .env down
@@ -76,3 +76,27 @@ secrets-edit-local:
 
 secrets-edit-vps:
 	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/vps.enc.yaml
+
+status:
+	bash scripts/status.sh
+
+hooks-install:
+	pre-commit install
+
+k3s-upgrade:
+	bash scripts/k3s-upgrade.sh
+
+create-ghcr-secret:
+	@echo "Run the following for each namespace (mcp, bff, vos):"
+	@echo "  kubectl create secret docker-registry ghcr-pull-secret \\"
+	@echo "    --docker-server=ghcr.io \\"
+	@echo "    --docker-username=<github-username> \\"
+	@echo "    --docker-password=<github-pat-read-packages> \\"
+	@echo "    -n <namespace>"
+
+secrets-backup:
+	@echo "=== age public key ==="
+	@grep "^# public key:" ~/.age/personal-platform.txt 2>/dev/null || age-keygen -y ~/.age/personal-platform.txt 2>/dev/null || echo "(key not found at ~/.age/personal-platform.txt)"
+	@echo ""
+	@echo "Back up the PRIVATE key at: ~/.age/personal-platform.txt"
+	@echo "See docs/secrets.md for backup options."

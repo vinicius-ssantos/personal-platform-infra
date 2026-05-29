@@ -51,3 +51,13 @@ jobs:
 
       - name: Terraform validate
         run: terraform -chdir=terraform/cloudflare validate
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Validate kustomize overlays
+        run: |
+          kubectl kustomize k8s/overlays/local > /dev/null
+          echo "OK k8s/overlays/local"
+          kubectl kustomize k8s/overlays/vps > /dev/null
+          echo "OK k8s/overlays/vps"
