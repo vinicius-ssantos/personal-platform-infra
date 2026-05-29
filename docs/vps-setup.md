@@ -25,6 +25,7 @@ the Cloudflare Terraform workspace when `target_mode = "vps-ip"`.
 Then bootstrap the host:
 
 ```bash
+ansible-galaxy collection install -r ansible/requirements.yml
 ansible-playbook -i ansible/inventory/vps.ini ansible/playbooks/bootstrap-vps.yml
 ```
 

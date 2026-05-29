@@ -16,13 +16,15 @@ Expected local stack:
 ## Bootstrap
 
 ```bash
+ansible-galaxy collection install -r ansible/requirements.yml
 just bootstrap-local
 ```
 
 ## Compose mode
 
 ```bash
-cp .env.example .env
+just env-init
+just check-env
 just compose-up
 just compose-logs
 just compose-down

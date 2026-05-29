@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-social-config
+  namespace: mcp
+data:
+  SOCIAL_DB_URL: sqlite+aiosqlite:////data/social.db
