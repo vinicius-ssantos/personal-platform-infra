@@ -1,0 +1,3 @@
+resources:
+  - github-unified-mcp.yaml
+  - github-unified-mcp-bff.yaml

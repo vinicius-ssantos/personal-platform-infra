@@ -97,6 +97,24 @@ Open `http://localhost:3000` and sign in with the local bootstrap credentials
 `admin` / `admin`. The Grafana deployment is wired to the in-cluster Loki
 service.
 
+## KEDA HTTP Pilot
+
+Install KEDA and the HTTP Add-on, then apply the GitHub MCP pilot routes:
+
+```bash
+just keda-http-install
+```
+
+Run the smoke through the interceptor proxy:
+
+```bash
+just smoke-keda-http
+```
+
+The pilot covers `github-unified-mcp` and `github-unified-mcp-bff`. Production
+ingress must route `mcp-github.example.com` and `github-bff.example.com` to the
+KEDA interceptor proxy service for scale-from-zero to work.
+
 ## Platform status
 
 ```bash
