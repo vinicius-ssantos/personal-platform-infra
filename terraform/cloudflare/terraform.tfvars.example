@@ -3,3 +3,7 @@ cloudflare_zone_id    = "change-me"
 domain                = "example.com"
 target_mode           = "local-tunnel"
 vps_ipv4              = null
+
+# Sensitive — set via environment variable instead of committing here:
+#   export TF_VAR_cloudflare_api_token="your-token"
+#   export TF_VAR_tunnel_secret="$(openssl rand -hex 32 | base64)"

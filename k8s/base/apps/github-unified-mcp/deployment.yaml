@@ -13,6 +13,7 @@ spec:
       labels:
         app: github-unified-mcp
     spec:
+      serviceAccountName: platform-puller
       containers:
         - name: github-unified-mcp
           image: ghcr.io/vinicius-ssantos/github-unified-mcp:main

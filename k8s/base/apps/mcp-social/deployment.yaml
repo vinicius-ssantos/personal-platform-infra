@@ -13,6 +13,7 @@ spec:
       labels:
         app: mcp-social
     spec:
+      serviceAccountName: platform-puller
       containers:
         - name: mcp-social
           image: ghcr.io/vinicius-ssantos/mcp-social:main

@@ -13,6 +13,7 @@ spec:
       labels:
         app: vos-studio-mcp
     spec:
+      serviceAccountName: platform-puller
       containers:
         - name: vos-studio-mcp
           image: ghcr.io/vinicius-ssantos/vos-studio-mcp:latest

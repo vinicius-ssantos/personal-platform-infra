@@ -86,6 +86,14 @@ hooks-install:
 k3s-upgrade:
 	bash scripts/k3s-upgrade.sh
 
+create-ghcr-secret:
+	@echo "Run the following for each namespace (mcp, bff, vos):"
+	@echo "  kubectl create secret docker-registry ghcr-pull-secret \\"
+	@echo "    --docker-server=ghcr.io \\"
+	@echo "    --docker-username=<github-username> \\"
+	@echo "    --docker-password=<github-pat-read-packages> \\"
+	@echo "    -n <namespace>"
+
 secrets-backup:
 	@echo "=== age public key ==="
 	@grep "^# public key:" ~/.age/personal-platform.txt 2>/dev/null || age-keygen -y ~/.age/personal-platform.txt 2>/dev/null || echo "(key not found at ~/.age/personal-platform.txt)"

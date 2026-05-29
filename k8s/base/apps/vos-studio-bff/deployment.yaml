@@ -13,6 +13,7 @@ spec:
       labels:
         app: vos-studio-bff
     spec:
+      serviceAccountName: platform-puller
       containers:
         - name: vos-studio-bff
           image: ghcr.io/vinicius-ssantos/vos-studio-bff:latest
