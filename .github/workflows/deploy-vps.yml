@@ -22,19 +22,37 @@ jobs:
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
 
+      - name: Check VPS kubeconfig secret
+        id: kubeconfig
+        env:
+          VPS_KUBECONFIG: ${{ secrets.VPS_KUBECONFIG }}
+        run: |
+          if [ -z "$VPS_KUBECONFIG" ]; then
+            echo "::notice::VPS_KUBECONFIG is not configured; skipping VPS deploy."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure kubeconfig
+        if: steps.kubeconfig.outputs.configured == 'true'
+        env:
+          VPS_KUBECONFIG: ${{ secrets.VPS_KUBECONFIG }}
         run: |
           mkdir -p ~/.kube
-          echo "${{ secrets.VPS_KUBECONFIG }}" | base64 -d > ~/.kube/config
+          echo "$VPS_KUBECONFIG" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
       - name: Verify cluster connectivity
+        if: steps.kubeconfig.outputs.configured == 'true'
         run: kubectl cluster-info --request-timeout=10s
 
       - name: Apply VPS overlay
+        if: steps.kubeconfig.outputs.configured == 'true'
         run: kubectl apply -k k8s/overlays/vps
 
       - name: Wait for rollouts to complete
+        if: steps.kubeconfig.outputs.configured == 'true'
         run: |
           kubectl get deployments -A --no-headers \
             -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,REPLICAS:.spec.replicas' \
@@ -47,4 +65,5 @@ jobs:
               done
 
       - name: Show workload status
+        if: steps.kubeconfig.outputs.configured == 'true'
         run: kubectl get deployments -A
