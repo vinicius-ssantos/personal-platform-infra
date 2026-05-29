@@ -28,11 +28,20 @@ compose-logs:
 smoke-github:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp.ps1
 
+smoke-deploy:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-deploy-orchestrator-mcp.ps1
+
 smoke-social:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-mcp-social.ps1
 
 smoke-github-bff:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp-bff.ps1
+
+smoke-all:
+	just smoke-github
+	just smoke-deploy
+	just smoke-social
+	just smoke-github-bff
 
 k8s-local-up:
 	k3d cluster create personal-platform --config k8s/overlays/local/k3d-config.yaml || true
