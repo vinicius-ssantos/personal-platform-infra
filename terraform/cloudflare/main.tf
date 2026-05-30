@@ -52,9 +52,10 @@ locals {
       subdomain = "mcp-github"
       backend   = "http://localhost:8765"
     }
+    # Local tunnel backends target Compose host ports, not container-internal ports.
     deploy_mcp = {
       subdomain = "deploy-mcp"
-      backend   = "http://localhost:8000"
+      backend   = "http://localhost:8001"
     }
     social_mcp = {
       subdomain = "social-mcp"
