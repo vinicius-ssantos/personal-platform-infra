@@ -38,13 +38,13 @@ check-env:
 	bash scripts/check-env.sh
 
 compose-up: check-env
-	docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all up -d --wait
 
 compose-down:
-	docker compose -f compose/docker-compose.yml --env-file .env down
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all down
 
 compose-logs:
-	docker compose -f compose/docker-compose.yml --env-file .env logs -f --tail=200
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all logs -f --tail=200
 
 smoke-github:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp.ps1
@@ -139,7 +139,7 @@ clean:
 	bash scripts/clean-local.sh
 
 clean-compose:
-	docker compose -f compose/docker-compose.yml --env-file .env down -v
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all down -v
 
 clean-k3d:
 	k3d cluster delete personal-platform
