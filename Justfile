@@ -96,6 +96,11 @@ smoke-k3d:
 k8s-local-up:
 	k3d cluster create personal-platform --config k8s/overlays/local/k3d-config.yaml || true
 	kubectl apply -k k8s/overlays/local
+	@echo ""
+	@echo "Cluster ready. Run 'just k3d-secrets' to inject real API tokens from .env."
+
+k3d-secrets:
+	bash scripts/k3d-secrets.sh
 
 k8s-local-down:
 	k3d cluster delete personal-platform
