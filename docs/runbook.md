@@ -4,6 +4,10 @@
 
 Before changing runtime wiring, check the [service integration matrix](service-integration-matrix.md).
 
+## Recovery and rebuild
+
+For VPS rebuilds or local workstation resets, use the [recovery and bootstrap runbook](disaster-recovery.md).
+
 ## Start local compose
 
 ```bash
