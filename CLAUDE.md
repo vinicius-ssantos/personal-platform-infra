@@ -1,61 +1,67 @@
-# CLAUDE.md â€” personal-platform-infra
+# CLAUDE.md — personal-platform-infra
 
-Guia de contexto para AI assistants que trabalham neste repositÃ³rio.
+Guia de contexto para AI assistants que trabalham neste repositório.
 
-## O que Ã© este repo
+## O que é este repo
 
 Infraestrutura centralizada para uma plataforma pessoal de MCP servers e BFFs.
 Gerencia dois ambientes: **local** (Windows 11 + WSL2) e **VPS** (Ubuntu + k3s).
-NÃ£o contÃ©m cÃ³digo de aplicaÃ§Ã£o nem Dockerfiles â€” apenas configuraÃ§Ã£o e automaÃ§Ã£o.
+Não contém código de aplicação nem Dockerfiles — apenas configuração e automação.
 
-## Estrutura de diretÃ³rios
+## Estrutura de diretórios
 
-```
-ansible/          Bootstrap de mÃ¡quinas (WSL2 e VPS)
+```text
+ansible/          Bootstrap de máquinas (WSL2 e VPS)
   inventory/      local.ini e vps.ini
   playbooks/      bootstrap-wsl.yml, bootstrap-vps.yml, install-tools.yml
+  requirements.yml Ansible collection requirements
 
 compose/          Docker Compose para desenvolvimento local
   docker-compose.yml
 
 k8s/
   base/           Manifestos Kubernetes compartilhados entre ambientes
-    apps/         Um diretÃ³rio por serviÃ§o (deployment.yaml + service.yaml + kustomization.yaml)
+    apps/         Um diretório por serviço (deployment.yaml + service.yaml + kustomization.yaml)
+    monitoring/   Loki, Alloy e Grafana
     namespaces.yaml
+    serviceaccounts.yaml
   overlays/
-    local/        Patches para k3d local (replicas-local.yaml, k3d-config.yaml)
-    vps/          Patches para VPS k3s (vazio por ora â€” workloads dormem em replicas=0)
+    local/        Patches para k3d local (replicas-local.yaml, env local, monitoring local)
+    vps/          Patches para VPS k3s (workloads dormem em replicas=0)
+  addons/         Add-ons opcionais, como KEDA HTTP Add-on pilot
 
 terraform/
-  cloudflare/     DNS records e Tunnel (provider declarado, recursos a completar â€” issue #27)
+  cloudflare/     DNS records e Tunnel Cloudflare
+  vps/            Provisionamento da VPS e firewall
 
 scripts/          Scripts operacionais e de smoke test
   smoke-k3d.sh        Smoke completo via Kubernetes local
   smoke-*.sh          Smokes individuais via Compose
-  wake-github.sh      Acorda serviÃ§os GitHub no cluster
-  wake-vos.sh         Acorda serviÃ§os VOS no cluster
-  sleep-all.sh        Coloca todos os serviÃ§os para dormir
+  wake-github.sh      Acorda serviços GitHub no cluster
+  wake-vos.sh         Acorda serviços VOS no cluster
+  sleep-all.sh        Coloca todos os serviços para dormir
+  k3d-secrets.sh      Injeta secrets locais do .env no cluster k3d
 
 secrets/
   *.enc.yaml.example  Templates de secrets (commitados)
-  *.enc.yaml          Arquivos reais encriptados com SOPS (NÃƒO commitados)
+  *.enc.yaml          Arquivos reais encriptados com SOPS (NÃO commitados)
 
 docs/
-  adr/            Architecture Decision Records (ADR 0001â€“0013)
+  adr/            Architecture Decision Records (ADR 0001–0016)
   local-setup.md  Setup do ambiente local
   vps-setup.md    Setup do VPS
   secrets.md      Guia SOPS + age
-  runbook.md      OperaÃ§Ãµes do dia a dia
+  runbook.md      Operações do dia a dia
 
 .github/workflows/
-  ci.yml          ValidaÃ§Ã£o de YAML, Compose, Terraform, shell
-  deploy-vps.yml  Aplica k8s/overlays/vps no merge para main
+  ci.yml          Validação de YAML, Compose, Terraform, shell e Kustomize
+  deploy-vps.yml  Aplica k8s/overlays/vps no merge para main quando k8s/** muda
 ```
 
-## ServiÃ§os gerenciados
+## Serviços gerenciados
 
-| ServiÃ§o | Namespace k8s | Porta container | Health path | Status |
-|---|---|---|---|---|
+| Serviço | Namespace k8s | Porta container | Health path | Status |
+|---|---|---:|---|---|
 | `github-unified-mcp` | mcp | 8765 | `/healthz` | ready |
 | `deploy-orchestrator-mcp` | mcp | 8000 | `/healthz` | ready |
 | `mcp-social` | mcp | 8080 | `/health` | ready |
@@ -63,100 +69,118 @@ docs/
 | `vos-studio-mcp` | vos | 8000 | `/health` | ready |
 | `vos-studio-bff` | bff | 8000 | `/healthz` | ready |
 
-**Portas Compose (host):** github-mcp=8765, deploy-mcp=8001, social=8080, github-bff=8010, vos-mcp=8020, vos-bff=8030
+**Portas Compose (host):** github-mcp=8765, deploy-mcp=8001, social=8080, github-bff=8010, vos-mcp=8020, vos-bff=8030.
 
-**Portas port-forward k3d (smoke):** github-mcp=19765, deploy-mcp=18000, social=18080, github-bff=18010, vos-mcp=18020, vos-bff=18030
+**Portas port-forward k3d (smoke):** github-mcp=19765, deploy-mcp=18000, social=18080, github-bff=18010, vos-mcp=18020, vos-bff=18030.
 
 ## Comandos essenciais
 
 ```bash
-# Desenvolvimento local â€” Compose
-just compose-up          # sobe todos os serviÃ§os
+# Desenvolvimento local — Compose
+just env-init
+just check-env
+just compose-up
 just compose-down
 just compose-logs
-just smoke-all           # smoke em todos os serviÃ§os ready via Compose (PowerShell)
+just smoke-all
 
-# Desenvolvimento local â€” Kubernetes
-just k8s-local-up        # cria cluster k3d e aplica overlay local
-just k8s-local-down      # destroi o cluster
-just smoke-k3d           # smoke completo via k3d (bash)
+# Desenvolvimento local — Kubernetes
+just k8s-local-up
+just k3d-secrets
+just smoke-k3d
+just k8s-local-down
 
 # VPS
-just wake-github         # escala github-mcp + bff para 1 rÃ©plica
-just wake-vos            # escala vos-studio-mcp + bff para 1 rÃ©plica
-just sleep-all           # escala todos para 0
-just logs                # kubectl get pods -A
+just wake-github
+just wake-vos
+just sleep-all
+just logs
+just status
 
 # Secrets (SOPS + age)
-just secrets-edit-local  # edita secrets/local.enc.yaml
-just secrets-edit-vps    # edita secrets/vps.enc.yaml
+just secrets-edit-local
+just secrets-edit-vps
 
 # Infra
-just bootstrap-local     # roda ansible bootstrap-wsl.yml
-just bootstrap-vps       # roda ansible bootstrap-vps.yml
-just terraform-plan      # plan Cloudflare
-just tunnel              # inicia cloudflared tunnel
+just bootstrap-local
+just bootstrap-vps
+just terraform-plan
+just terraform-vps-plan
+just tunnel
 ```
 
 ## Fluxo de desenvolvimento
 
-### MudanÃ§a em manifestos k8s
-1. Editar `k8s/base/apps/<serviÃ§o>/` ou os overlays
-2. `just k8s-local-up` + `just smoke-k3d` para validar localmente
-3. Abrir PR â†’ CI valida YAML e Terraform
-4. Merge â†’ `deploy-vps.yml` aplica automaticamente no VPS
+### Mudança em manifestos k8s
 
-### MudanÃ§a em scripts ou Ansible
-1. Editar o arquivo
-2. `bash -n scripts/<arquivo>.sh` para checar sintaxe
-3. Abrir PR â†’ CI valida automaticamente
+1. Editar `k8s/base/apps/<serviço>/` ou os overlays.
+2. Rodar `just k8s-local-up` e `just smoke-k3d` para validar localmente.
+3. Abrir PR; CI valida YAML, Compose, Terraform, shell e Kustomize.
+4. Merge em `main`; `deploy-vps.yml` aplica `k8s/overlays/vps` somente quando `k8s/**` muda e `VPS_KUBECONFIG` está configurado.
 
-### Adicionar um novo serviÃ§o
-1. Criar `k8s/base/apps/<nome>/` com `deployment.yaml`, `service.yaml`, `kustomization.yaml`
-2. Adicionar em `k8s/base/kustomization.yaml`
-3. Adicionar serviÃ§o em `compose/docker-compose.yml` com profile
-4. Adicionar variÃ¡veis em `.env.example`
-5. Criar smoke script em `scripts/smoke-<nome>.sh`
-6. Adicionar recipe em `Justfile`
-7. Atualizar `docs/service-integration-matrix.md`
+### Mudança em scripts ou Ansible
 
-## ConvenÃ§Ãµes importantes
+1. Editar o arquivo.
+2. Rodar `bash -n scripts/<arquivo>.sh` quando aplicável.
+3. Abrir PR; CI valida sintaxe de scripts automaticamente.
 
-- **Todos os deployments nascem com `replicas: 0`** â€” sobem via overlay ou `kubectl scale` (ADR 0001)
-- **Sem storage no cluster** â€” SQLite, PostgreSQL, Redis ficam fora (ADR 0002). ExceÃ§Ã£o: `mcp-social` vai receber PVC (issue #16)
-- **Sem Dockerfiles aqui** â€” imagens vÃªm de repos upstream via GHCR
-- **CI valida, nÃ£o deploya imagens** â€” o CI Ã© sÃ³ validaÃ§Ã£o de config (ADR 0006)
-- **Kustomize, nÃ£o Helm** â€” base+overlays, sem template engine (ADR 0007)
-- **`just`, nÃ£o `make`** â€” compatibilidade Windows/WSL2 (ADR 0008)
-- **Namespaces:** `mcp` para MCP servers, `bff` para BFFs, `vos` para VOS Studio (ADR 0010)
+### Adicionar um novo serviço
+
+1. Criar `k8s/base/apps/<nome>/` com `deployment.yaml`, `service.yaml`, `configmap.yaml` se necessário e `kustomization.yaml`.
+2. Adicionar em `k8s/base/kustomization.yaml`.
+3. Adicionar serviço em `compose/docker-compose.yml` com profile/ports/healthcheck.
+4. Adicionar variáveis em `.env.example`.
+5. Criar smoke script em `scripts/smoke-<nome>.sh`.
+6. Adicionar recipe em `Justfile`.
+7. Atualizar `docs/service-integration-matrix.md` e docs de setup/runbook.
+
+## Convenções importantes
+
+- **Todos os deployments de app nascem com `replicas: 0`** — sobem via overlay local ou `kubectl scale`/wake scripts (ADR 0001).
+- **Storage persistente é exceção** — bancos/cache devem ficar fora do cluster (ADR 0002); `mcp-social` possui PVC próprio para dados SQLite.
+- **Sem Dockerfiles aqui** — imagens vêm de repos upstream via GHCR.
+- **CI valida, não builda imagens** — o CI é só validação de config (ADR 0006).
+- **Kustomize, não Helm** — base+overlays, sem template engine (ADR 0007).
+- **`just`, não `make`** — compatibilidade Windows/WSL2 (ADR 0008).
+- **Namespaces:** `mcp` para MCP servers, `bff` para BFFs, `vos` para VOS Studio e `monitoring` para observabilidade (ADR 0010/0015).
+- **Cloudflare é a camada de rede** — DNS, Tunnel, TLS e Pages ficam centralizados no Cloudflare (ADR 0009).
+- **Observabilidade leve:** Loki, Alloy e Grafana rodam no namespace `monitoring` com storage inicialmente efêmero (ADR 0015).
+- **Scale-to-zero automático é piloto:** KEDA HTTP Add-on cobre inicialmente `github-unified-mcp` e `github-unified-mcp-bff` (ADR 0016).
 
 ## Armadilhas conhecidas
 
-- **`smoke-all` usa PowerShell** (`.ps1`) â€” no Linux/CI, usar os scripts `.sh` diretamente
-- **`community.general` nÃ£o instalado por padrÃ£o** â€” rodar `ansible-galaxy collection install -r ansible/requirements.yml` antes do bootstrap (issue #17, arquivo ainda nÃ£o existe)
-- **`mcp-social` perde dados no k8s** â€” PVC ainda nÃ£o declarado (issue #16)
-- **`deploy-vps.yml` precisa do secret `VPS_KUBECONFIG`** â€” base64 do kubeconfig k3s do VPS; sem ele o workflow falha silenciosamente
-- **SOPS precisa da chave age em `~/.age/personal-platform.txt`** â€” sem a chave, `just secrets-edit-*` nÃ£o funciona
+- **`smoke-all` usa PowerShell** (`.ps1`) — no Linux/CI, usar os scripts `.sh` diretamente.
+- **`community.general` precisa ser instalado antes do bootstrap** — rodar `ansible-galaxy collection install -r ansible/requirements.yml`.
+- **`mcp-social` tem PVC no k8s** — validar storage class/backup antes de tratar como produção durável.
+- **`deploy-vps.yml` precisa do secret `VPS_KUBECONFIG`** — base64 do kubeconfig k3s do VPS; sem ele o workflow registra notice e pula o deploy real.
+- **SOPS precisa da chave age em `~/.age/personal-platform.txt`** — sem a chave, `just secrets-edit-*` não funciona.
+- **Grafana inicial usa credenciais dev** — trocar para Secret antes de expor em VPS.
+- **Alguns ConfigMaps ainda têm placeholders** — valores como `REPLACE_WITH_FRONTEND_URL` devem ser substituídos em overlay/secret de VPS antes de produção.
+- **`vos-studio-mcp` ainda usa `/health` como liveness/readiness** — idealmente o app upstream deve expor `/live` separado de checks pesados de dependência.
 
-## DecisÃµes arquiteturais
+## Decisões arquiteturais relevantes
 
-Todas as decisÃµes estÃ£o em `docs/adr/`. As mais relevantes para entender o projeto:
+Todas as decisões estão em `docs/adr/`.
 
-- [ADR 0001](docs/adr/0001-sleep-pattern-replicas-zero.md) â€” Sleep pattern
-- [ADR 0004](docs/adr/0004-sops-age-para-secrets.md) â€” SOPS + age
-- [ADR 0005](docs/adr/0005-k3d-local-k3s-vps.md) â€” k3d local / k3s VPS
-- [ADR 0007](docs/adr/0007-kustomize-em-vez-de-helm.md) â€” Kustomize vs Helm
-- [ADR 0009](docs/adr/0009-cloudflare-como-camada-de-rede.md) â€” Cloudflare networking
+- [ADR 0001](docs/adr/0001-sleep-pattern-replicas-zero.md) — Sleep pattern
+- [ADR 0002](docs/adr/0002-storage-fora-do-cluster.md) — Storage fora do cluster
+- [ADR 0004](docs/adr/0004-sops-age-para-secrets.md) — SOPS + age
+- [ADR 0005](docs/adr/0005-k3d-local-k3s-vps.md) — k3d local / k3s VPS
+- [ADR 0007](docs/adr/0007-kustomize-em-vez-de-helm.md) — Kustomize vs Helm
+- [ADR 0009](docs/adr/0009-cloudflare-como-camada-de-rede.md) — Cloudflare networking
+- [ADR 0012](docs/adr/0012-deploy-vps-via-github-actions.md) — Deploy VPS via GitHub Actions
+- [ADR 0014](docs/adr/0014-status-page-via-cloudflare-worker.md) — Status page via Cloudflare Worker
+- [ADR 0015](docs/adr/0015-logs-centralizados-com-loki-alloy.md) — Logs centralizados com Loki e Alloy
+- [ADR 0016](docs/adr/0016-scale-to-zero-via-keda-http-add-on.md) — Scale-to-zero via KEDA HTTP Add-on
 
-## Backlog aberto (issues relevantes)
+## Backlog atual sugerido
 
-| # | Prioridade | DescriÃ§Ã£o |
-|---|---|---|
-| #16 | alta | `mcp-social` sem PVC no k8s (bug de dados) |
-| #17 | alta | Ansible sem `requirements.yml` |
-| #18 | mÃ©dia | CI validar `kustomize build` |
-| #23 | alta | Auditar `.gitignore` |
-| #26 | mÃ©dia | `deploy-vps.yml` verificar rollout |
-| #27 | mÃ©dia | Completar Terraform Cloudflare |
-| #28 | baixa | `just status` |
-| #29 | baixa | Renovate para image tags |
+| Prioridade | Descrição |
+|---|---|
+| alta | Configurar `VPS_KUBECONFIG` e validar deploy real no cluster VPS |
+| alta | Padronizar base/overlays para separar config local e config VPS |
+| alta | Declarar secrets de runtime via Kubernetes Secrets/SOPS em vez de placeholders nos manifests base |
+| média | Adicionar ingress/rotas VPS e alinhar com Cloudflare DNS |
+| média | Trocar credenciais dev do Grafana por Secret antes de expor observabilidade |
+| média | Documentar retenção/backup para PVC do `mcp-social` e logs Loki |
+| baixa | Adotar Renovate ou rotina equivalente para image tags |
