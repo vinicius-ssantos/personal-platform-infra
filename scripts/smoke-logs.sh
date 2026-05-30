@@ -38,6 +38,9 @@ trap cleanup EXIT
 require_command kubectl
 require_command curl
 
+[[ "$SINCE_SECONDS" =~ ^[0-9]+$ ]] || fail "LOKI_SINCE_SECONDS must be numeric"
+[[ "$LIMIT" =~ ^[0-9]+$ ]] || fail "LOKI_QUERY_LIMIT must be numeric"
+
 kubectl cluster-info --request-timeout=5s >/dev/null 2>&1 || fail "kubectl cannot reach a cluster"
 
 kubectl get namespace "$NAMESPACE" >/dev/null 2>&1 || fail "namespace '$NAMESPACE' not found"
