@@ -193,6 +193,10 @@ just terraform-apply
 just status-public
 ```
 
+## Image versions after recovery
+
+After a VPS rebuild, confirm whether the VPS overlay should keep the previous immutable image references or move to a newer release. See `docs/image-pinning.md` before changing image tags or digests during recovery.
+
 ## Post-recovery validation
 
 Minimum validation after any rebuild:
