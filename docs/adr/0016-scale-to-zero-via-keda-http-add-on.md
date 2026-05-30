@@ -25,5 +25,11 @@ KEDA scales the backing deployment.
 - The cooldown period is 600 seconds, matching the 10 minute inactivity target.
 - Ingress/DNS must route pilot hostnames to the interceptor proxy instead of
   directly to the services.
+- KEDA becomes the replica lifecycle owner for pilot workloads during normal
+  operation. Manual wake/sleep scripts should not scale those workloads except
+  during break-glass recovery.
 - VOS and other services remain outside the pilot until their runtime contracts
   are confirmed.
+
+See `docs/lifecycle.md` for the operator rules that define when replicas are
+manual-managed, overlay-managed, or KEDA-managed.
