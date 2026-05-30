@@ -8,6 +8,10 @@ Before changing runtime wiring, check the [service integration matrix](service-i
 
 For VPS rebuilds or local workstation resets, use the [recovery and bootstrap runbook](disaster-recovery.md).
 
+## VPS image releases
+
+For immutable image versions, rollback guidance, and mutable tag policy, use the [image pinning strategy](image-pinning.md).
+
 ## Start local compose
 
 ```bash
