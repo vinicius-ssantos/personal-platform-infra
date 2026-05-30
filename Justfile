@@ -117,6 +117,12 @@ wake-github:
 wake-vos:
 	./scripts/wake-vos.sh
 
+wake-deploy:
+	./scripts/wake-deploy.sh
+
+wake-social:
+	./scripts/wake-social.sh
+
 sleep-all:
 	./scripts/sleep-all.sh
 
