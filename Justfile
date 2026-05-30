@@ -129,8 +129,8 @@ wake-all:
 sleep-all:
 	./scripts/sleep-all.sh
 
-logs:
-	./scripts/logs.sh
+logs target="all":
+	./scripts/logs.sh {{target}}
 
 logs-ui:
 	kubectl port-forward svc/grafana 3000:3000 -n monitoring
