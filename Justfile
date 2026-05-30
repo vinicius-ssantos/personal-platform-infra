@@ -135,6 +135,9 @@ logs target="all":
 logs-ui:
 	kubectl port-forward svc/grafana 3000:3000 -n monitoring
 
+grafana-secret:
+	bash scripts/create-grafana-admin-secret.sh
+
 clean:
 	bash scripts/clean-local.sh
 
