@@ -1,0 +1,34 @@
+# Example only. Do not apply this file directly.
+#
+# Copy the relevant entries into k8s/overlays/vps/kustomization.yaml when a
+# service has an immutable release tag or digest ready for VPS deployment.
+#
+# Prefer digest pinning for production-like VPS deployments:
+#
+# images:
+#   - name: ghcr.io/vinicius-ssantos/github-unified-mcp
+#     newName: ghcr.io/vinicius-ssantos/github-unified-mcp
+#     digest: sha256:<digest>
+#
+# Commit SHA tag pinning is acceptable when upstream image publishing does not
+# expose digests in the release workflow:
+#
+# images:
+#   - name: ghcr.io/vinicius-ssantos/github-unified-mcp
+#     newTag: <git-sha>
+#
+# Candidate services:
+#
+# images:
+#   - name: ghcr.io/vinicius-ssantos/github-unified-mcp
+#     newTag: <immutable-tag-or-digest>
+#   - name: ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp
+#     newTag: <immutable-tag-or-digest>
+#   - name: ghcr.io/vinicius-ssantos/mcp-social
+#     newTag: <immutable-tag-or-digest>
+#   - name: ghcr.io/vinicius-ssantos/github-unified-mcp-bff
+#     newTag: <immutable-tag-or-digest>
+#   - name: ghcr.io/vinicius-ssantos/vos-studio-mcp
+#     newTag: <immutable-tag-or-digest>
+#   - name: ghcr.io/vinicius-ssantos/vos-studio-bff
+#     newTag: <immutable-tag-or-digest>
