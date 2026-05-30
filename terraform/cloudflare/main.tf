@@ -88,4 +88,11 @@ resource "cloudflare_record" "services" {
   type    = local.use_tunnel ? "CNAME" : "A"
   content = local.use_tunnel ? "${cloudflare_zero_trust_tunnel_cloudflared.platform.id}.cfargotunnel.com" : var.vps_ipv4
   proxied = true
+
+  lifecycle {
+    precondition {
+      condition     = local.use_tunnel || var.vps_ipv4 != null
+      error_message = "vps_ipv4 is required when target_mode is vps-ip."
+    }
+  }
 }
