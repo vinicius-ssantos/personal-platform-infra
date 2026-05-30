@@ -14,3 +14,19 @@ repos:
     rev: v8.18.4
     hooks:
       - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: terraform-fmt
+        name: terraform fmt
+        entry: bash -c 'terraform -chdir=terraform/cloudflare fmt -check -recursive && terraform -chdir=terraform/vps fmt -check -recursive'
+        language: system
+        files: ^terraform/
+        pass_filenames: false
+
+      - id: docker-compose-config
+        name: docker compose config
+        entry: docker compose -f compose/docker-compose.yml config --quiet
+        language: system
+        files: ^compose/docker-compose\.yml$
+        pass_filenames: false
