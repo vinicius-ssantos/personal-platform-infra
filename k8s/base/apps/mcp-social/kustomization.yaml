@@ -3,5 +3,3 @@ resources:
   - deployment.yaml
   - pvc.yaml
   - service.yaml
-  - configmap.yaml
-  - pvc.yaml
