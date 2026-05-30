@@ -153,6 +153,9 @@ secrets-edit-vps:
 status:
 	bash scripts/status.sh
 
+status-public:
+	bash scripts/status-public.sh
+
 hooks-install:
 	pre-commit install
 
