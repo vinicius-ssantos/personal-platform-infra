@@ -93,6 +93,9 @@ smoke-all-sh:
 smoke-k3d:
 	bash scripts/smoke-k3d.sh
 
+smoke-logs:
+	bash scripts/smoke-logs.sh
+
 k8s-local-up:
 	k3d cluster create personal-platform --config k8s/overlays/local/k3d-config.yaml || true
 	kubectl apply -k k8s/overlays/local
