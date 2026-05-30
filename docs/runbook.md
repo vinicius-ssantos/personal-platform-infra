@@ -93,9 +93,15 @@ just logs
 just logs-ui
 ```
 
-Open `http://localhost:3000` and sign in with the local bootstrap credentials
-`admin` / `admin`. The Grafana deployment is wired to the in-cluster Loki
-service.
+Create the Grafana admin Secret before first access:
+
+```bash
+GRAFANA_ADMIN_PASSWORD='change-me-local-only' just grafana-secret
+```
+
+Open `http://localhost:3000` and sign in with the credentials from the
+`monitoring/grafana-admin` Secret. The Grafana deployment is wired to the
+in-cluster Loki service.
 
 ## KEDA HTTP Pilot
 
@@ -114,6 +120,11 @@ just smoke-keda-http
 The pilot covers `github-unified-mcp` and `github-unified-mcp-bff`. Production
 ingress must route `mcp-github.example.com` and `github-bff.example.com` to the
 KEDA interceptor proxy service for scale-from-zero to work.
+
+When the pilot is enabled for a workload, KEDA owns its replica lifecycle during
+normal operation. Do not use manual `wake-*` or `sleep-all` for that workload
+except as break-glass recovery. See `docs/lifecycle.md` for the full ownership
+rules.
 
 ## Platform status
 
