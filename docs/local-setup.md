@@ -16,7 +16,10 @@ Expected local stack:
 ## Bootstrap
 
 ```bash
+# Instalar Ansible collections necessárias primeiro
 ansible-galaxy collection install -r ansible/requirements.yml
+
+# Executar bootstrap completo
 just bootstrap-local
 ```
 
