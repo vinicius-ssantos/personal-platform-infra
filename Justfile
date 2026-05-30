@@ -123,6 +123,9 @@ wake-deploy:
 wake-social:
 	./scripts/wake-social.sh
 
+wake-all:
+	./scripts/wake-all.sh
+
 sleep-all:
 	./scripts/sleep-all.sh
 
