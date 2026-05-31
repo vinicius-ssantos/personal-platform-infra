@@ -21,6 +21,8 @@ const DEFAULT_SERVICES: Service[] = [
   { name: "deploy-orchestrator-mcp", url: "https://deploy-mcp.example.com/healthz" },
   { name: "mcp-social", url: "https://social-mcp.example.com/health" },
   { name: "github-unified-mcp-bff", url: "https://github-bff.example.com/healthz" },
+  { name: "vos-studio-mcp", url: "https://vos-mcp.example.com/health" },
+  { name: "vos-studio-bff", url: "https://vos-bff.example.com/healthz" },
 ];
 
 export default {

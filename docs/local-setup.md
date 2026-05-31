@@ -63,6 +63,7 @@ starts the six ready services automatically.
 
 ```bash
 just k8s-local-up
+GHCR_USERNAME="<github-username>" GHCR_TOKEN="<token-with-read-packages>" just create-ghcr-secret
 kubectl get pods -A
 just k8s-local-down
 ```
@@ -119,3 +120,14 @@ just k8s-local-down
 ```bash
 just tunnel
 ```
+
+## Status page
+
+```bash
+just status-page-init
+just status-page-dev
+```
+
+`status-page-init` creates a local `cloudflare/workers/status-page/wrangler.toml`
+from the tracked example if it does not already exist. Edit domains and routes
+before deploying it.

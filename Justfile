@@ -25,10 +25,16 @@ terraform-vps-plan:
 terraform-vps-apply:
 	cd terraform/vps && terraform apply
 
-status-page-dev:
+status-page-init:
+	bash scripts/status-page-config.sh init
+
+status-page-check:
+	bash scripts/status-page-config.sh check
+
+status-page-dev: status-page-check
 	npx wrangler dev --config cloudflare/workers/status-page/wrangler.toml
 
-status-page-deploy:
+status-page-deploy: status-page-check
 	npx wrangler deploy --config cloudflare/workers/status-page/wrangler.toml
 
 env-init:
@@ -150,10 +156,13 @@ clean-compose:
 clean-k3d:
 	k3d cluster delete personal-platform
 
-secrets-edit-local:
+secrets-check:
+	bash scripts/secrets-check.sh
+
+secrets-edit-local: secrets-check
 	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/local.enc.yaml
 
-secrets-edit-vps:
+secrets-edit-vps: secrets-check
 	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/vps.enc.yaml
 
 status:
