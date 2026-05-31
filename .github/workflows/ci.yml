@@ -40,6 +40,9 @@ jobs:
         run: |
           find scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
+      - name: Run semantic policy checks
+        run: bash scripts/check-policy.sh
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
