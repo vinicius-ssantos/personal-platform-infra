@@ -4,6 +4,7 @@ resources:
 
 patches:
   - path: loki-volume-patch.yaml
+  - path: runtime-env-vps.yaml
 
 # VPS overlay keeps workloads sleeping by default with replicas=0.
 # Add ingress, secrets and resource patches incrementally.

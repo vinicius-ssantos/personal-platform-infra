@@ -23,7 +23,10 @@ spec:
                 name: github-unified-mcp-bff-config
           env:
             - name: MCP_TOKEN
-              value: local-dev-token
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MCP_TOKEN
           ports:
             - containerPort: 8000
           livenessProbe:
