@@ -61,6 +61,9 @@ quick-tunnel-up:
 quick-tunnel-refresh:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1 -ForceRefresh
 
+ngrok-up:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-up.ps1
+
 smoke-github:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp.ps1
 

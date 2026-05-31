@@ -1,0 +1,28 @@
+:8080 {
+	handle_path /github-mcp/* {
+		reverse_proxy github-unified-mcp:8765
+	}
+
+	handle_path /deploy-mcp/* {
+		reverse_proxy deploy-orchestrator-mcp:8000
+	}
+
+	handle_path /social-mcp/* {
+		reverse_proxy mcp-social:8080
+	}
+
+	handle_path /github-bff/* {
+		reverse_proxy github-unified-mcp-bff:8000
+	}
+
+	handle_path /vos-mcp/* {
+		reverse_proxy vos-studio-mcp:8000
+	}
+
+	handle_path /vos-bff/* {
+		reverse_proxy vos-studio-bff:8000
+	}
+
+	respond /healthz 200
+	respond 404
+}

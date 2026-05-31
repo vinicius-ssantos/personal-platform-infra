@@ -197,6 +197,40 @@ Use `.env.quick-tunnel.example` as the template for this mode. Use
 `terraform/cloudflare/terraform.tfvars.local-tunnel.example` only after you own
 a domain and want stable Cloudflare-managed DNS.
 
+## Ngrok Static Domain
+
+Ngrok is the preferred no-owned-domain option when you need one stable public
+URL. Authenticate ngrok once on the workstation:
+
+```bash
+ngrok config add-authtoken <your-token>
+```
+
+If your free ngrok account has a reserved static domain, set it in `.env`:
+
+```env
+NGROK_STATIC_DOMAIN=your-domain.ngrok-free.app
+```
+
+Then run:
+
+```bash
+just ngrok-up
+```
+
+This starts Compose, pulls the latest images, starts the local path proxy on
+`localhost:8088`, starts ngrok, writes the public path-routed URLs into `.env`,
+and runs public smoke checks. The exposed paths are:
+
+```text
+/github-mcp
+/deploy-mcp
+/social-mcp
+/github-bff
+/vos-mcp
+/vos-bff
+```
+
 ## Upgrade k3s (VPS)
 
 Run on the VPS as root:
