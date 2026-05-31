@@ -41,3 +41,45 @@ variable "tunnel_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "cloudflare_access_enabled" {
+  description = "Whether Terraform should manage Cloudflare Access applications and policies for public service hostnames."
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_access_allowed_emails" {
+  description = "Human user email addresses allowed through Cloudflare Access."
+  type        = list(string)
+  default     = []
+}
+
+variable "cloudflare_access_allowed_email_domains" {
+  description = "Human email domains allowed through Cloudflare Access."
+  type        = list(string)
+  default     = []
+}
+
+variable "cloudflare_access_allowed_idps" {
+  description = "Optional Cloudflare Access identity provider IDs allowed for these applications."
+  type        = list(string)
+  default     = []
+}
+
+variable "cloudflare_access_service_token_enabled" {
+  description = "Whether to create an Access service token and allow it through each application for automation."
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_access_service_token_duration" {
+  description = "Lifetime for the optional Access service token."
+  type        = string
+  default     = "8760h"
+}
+
+variable "cloudflare_access_session_duration" {
+  description = "How long a human Access login session is valid."
+  type        = string
+  default     = "8h"
+}
