@@ -58,6 +58,9 @@ compose-logs:
 quick-tunnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1
 
+quick-tunnel-refresh:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1 -ForceRefresh
+
 smoke-github:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp.ps1
 

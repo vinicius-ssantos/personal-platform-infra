@@ -182,6 +182,17 @@ This starts Compose, restarts one quick tunnel per service, writes the generated
 public URLs into `.env`, preserves existing tokens, generates missing local
 tokens, and runs local/public smoke checks.
 
+By default, the command keeps existing `trycloudflare.com` URLs when they are
+still healthy. This avoids Cloudflare Quick Tunnel rate limits. To force new
+temporary URLs, run:
+
+```bash
+just quick-tunnel-refresh
+```
+
+Quick Tunnel creation can return Cloudflare `429 Too Many Requests` if tunnels
+are recreated repeatedly in a short window. Wait a few minutes and retry.
+
 Use `.env.quick-tunnel.example` as the template for this mode. Use
 `terraform/cloudflare/terraform.tfvars.local-tunnel.example` only after you own
 a domain and want stable Cloudflare-managed DNS.

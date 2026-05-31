@@ -1,5 +1,6 @@
 param(
-    [string]$EnvFile = ".env"
+    [string]$EnvFile = ".env",
+    [switch]$ForceRefresh
 )
 
 $ErrorActionPreference = "Stop"
@@ -135,6 +136,10 @@ function Start-QuickTunnel([string]$Cloudflared, [hashtable]$Service, [string]$L
         if (Test-Path $err) {
             $text = Get-Content $err -Raw
             if (-not [string]::IsNullOrWhiteSpace($text)) {
+                if ($text -match "429 Too Many Requests|error code: 1015") {
+                    throw "Cloudflare Quick Tunnel rate limit reached while creating $($Service.Name). Wait a few minutes before retrying, or keep existing healthy URLs by running quick-tunnel-up instead of quick-tunnel-refresh."
+                }
+
                 $match = [regex]::Match($text, "https://[-a-z0-9]+\.trycloudflare\.com")
                 if ($match.Success) {
                     return $match.Value
@@ -178,8 +183,26 @@ foreach ($key in @("MCP_BEARER_TOKEN", "MCP_SERVER_API_KEY", "SOCIAL_MCP_ACCESS_
 
 Set-EnvValues $EnvFile $initialValues
 
+Write-Host "Pulling latest Compose images..."
+docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all pull
+
 Write-Host "Starting local Compose services..."
 docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --wait
+
+Write-Host "Validating local health checks..."
+just smoke-all
+
+if (-not $ForceRefresh) {
+    Write-Host "Checking existing public URLs..."
+    & bash scripts/status-public.sh
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host ""
+        Write-Host "Existing quick tunnel URLs are healthy; keeping them."
+        exit 0
+    }
+
+    Write-Host "Existing public URLs are missing or unhealthy; creating fresh quick tunnels..."
+}
 
 Write-Host "Restarting quick tunnels..."
 $LogDir = Join-Path $Root ".tmp-cloudflared"
@@ -196,8 +219,7 @@ foreach ($service in $Services) {
 
 Set-EnvValues $EnvFile $publicUrls
 
-Write-Host "Validating local and public health checks..."
-just smoke-all
+Write-Host "Validating public health checks..."
 just status-public
 
 Write-Host ""
