@@ -112,10 +112,12 @@ just k8s-vps-apply
 7. Recreate GHCR pull secrets in the required namespaces:
 
 ```bash
+GHCR_USERNAME='<github-username>' \
+GHCR_TOKEN='<token-with-read-packages>' \
 just create-ghcr-secret
 ```
 
-Then run the printed `kubectl create secret docker-registry ...` command for each namespace that pulls private GHCR images.
+The command creates or updates `ghcr-pull-secret` in `mcp`, `bff`, and `vos` by default without printing the token.
 
 8. Recreate the Grafana admin Secret without committing credentials:
 
@@ -171,10 +173,12 @@ just secrets-backup
 The Kubernetes pull secret can be recreated from a GitHub token with package read access.
 
 ```bash
+GHCR_USERNAME='<github-username>' \
+GHCR_TOKEN='<token-with-read-packages>' \
 just create-ghcr-secret
 ```
 
-Apply the printed command for each namespace. Then restart failed deployments or let Kubernetes retry image pulls.
+By default this updates `mcp`, `bff`, and `vos`. Override `GHCR_PULL_SECRET_NAMESPACES` with a space-separated namespace list when needed. Then restart failed deployments or let Kubernetes retry image pulls.
 
 ## Lost Cloudflare tunnel or DNS state
 
