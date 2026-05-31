@@ -231,6 +231,19 @@ and runs public smoke checks. The exposed paths are:
 /vos-bff
 ```
 
+The ngrok path proxy requires a private edge header before forwarding any
+request to the services:
+
+```http
+X-Platform-Token: <PUBLIC_EDGE_TOKEN>
+```
+
+`just ngrok-up` generates `PUBLIC_EDGE_TOKEN` in `.env` when it is missing.
+This blocks anonymous use before traffic reaches the MCP/BFF containers. Ngrok
+may still count rejected requests against free-tier request limits because they
+already reached the ngrok edge, so keep the public URL private and stop ngrok
+when it is not needed.
+
 ## Upgrade k3s (VPS)
 
 Run on the VPS as root:

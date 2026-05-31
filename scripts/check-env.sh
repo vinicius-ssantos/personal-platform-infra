@@ -16,6 +16,7 @@ required_keys=(
   MCP_BEARER_TOKEN
   MCP_SERVER_API_KEY
   SOCIAL_MCP_ACCESS_TOKEN
+  PUBLIC_EDGE_TOKEN
 )
 
 if [[ ! -f "$ENV_FILE" ]]; then

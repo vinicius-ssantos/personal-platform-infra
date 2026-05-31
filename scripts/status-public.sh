@@ -52,10 +52,16 @@ probe() {
   fi
 
   local response http_code curl_status
+  local headers=()
+  if [[ -n "${PUBLIC_EDGE_TOKEN:-}" ]]; then
+    headers+=(--header "X-Platform-Token: ${PUBLIC_EDGE_TOKEN}")
+  fi
+
   response="$(curl \
     --silent \
     --show-error \
     --location \
+    "${headers[@]}" \
     --max-time "$TIMEOUT_SECONDS" \
     --write-out '\n%{http_code}' \
     "$url" 2>&1)"

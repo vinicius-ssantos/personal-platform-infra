@@ -167,7 +167,7 @@ if (Test-Placeholder $currentEnv["GITHUB_TOKEN"]) {
     $initialValues["GITHUB_TOKEN"] = $ghToken
 }
 
-foreach ($key in @("MCP_BEARER_TOKEN", "MCP_SERVER_API_KEY", "SOCIAL_MCP_ACCESS_TOKEN")) {
+foreach ($key in @("MCP_BEARER_TOKEN", "MCP_SERVER_API_KEY", "SOCIAL_MCP_ACCESS_TOKEN", "PUBLIC_EDGE_TOKEN")) {
     if (Test-Placeholder $currentEnv[$key]) {
         $initialValues[$key] = New-HexToken
     }
@@ -178,6 +178,11 @@ if ($initialValues.Count -gt 0) {
     $currentEnv = Read-EnvMap $EnvFile
 }
 
+$edgeToken = $currentEnv["PUBLIC_EDGE_TOKEN"]
+if (Test-Placeholder $edgeToken) {
+    throw "PUBLIC_EDGE_TOKEN is missing. Re-run just ngrok-up so it can generate one, or set it manually in .env."
+}
+
 Write-Host "Pulling latest Compose images..."
 docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all pull
 
@@ -185,13 +190,14 @@ Write-Host "Starting local Compose services and path proxy..."
 docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --wait
 
 Write-Host "Validating local proxy routes..."
-Invoke-RestMethod -Uri "http://localhost:8088/healthz" -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/github-mcp/healthz" -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/deploy-mcp/healthz" -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/social-mcp/health" -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/github-bff/healthz" -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/vos-mcp/health" -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/vos-bff/healthz" -TimeoutSec 10 | Out-Null
+$edgeHeaders = @{ "X-Platform-Token" = $edgeToken }
+Invoke-RestMethod -Uri "http://localhost:8088/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
+Invoke-RestMethod -Uri "http://localhost:8088/github-mcp/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
+Invoke-RestMethod -Uri "http://localhost:8088/deploy-mcp/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
+Invoke-RestMethod -Uri "http://localhost:8088/social-mcp/health" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
+Invoke-RestMethod -Uri "http://localhost:8088/github-bff/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
+Invoke-RestMethod -Uri "http://localhost:8088/vos-mcp/health" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
+Invoke-RestMethod -Uri "http://localhost:8088/vos-bff/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
 
 $staticDomain = $currentEnv["NGROK_STATIC_DOMAIN"]
 $ngrokArgs = @("http", "http://localhost:8088", "--log", "stdout")
