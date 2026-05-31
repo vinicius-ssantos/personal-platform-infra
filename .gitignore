@@ -30,3 +30,4 @@ kubeconfig
 node_modules/
 dist/
 .wrangler/
+cloudflare/workers/status-page/wrangler.toml

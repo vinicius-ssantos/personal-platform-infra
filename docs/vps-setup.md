@@ -36,6 +36,14 @@ Export the kubeconfig from the VPS, base64-encode it, and save it as the
 GitHub Actions secret `VPS_KUBECONFIG` when automated deploys should start
 applying `k8s/overlays/vps`.
 
+Create or update GHCR pull secrets before waking workloads:
+
+```bash
+GHCR_USERNAME="<github-username>" \
+GHCR_TOKEN="<token-with-read-packages>" \
+just create-ghcr-secret
+```
+
 ## Apply Kubernetes overlay
 
 ```bash
@@ -44,11 +52,11 @@ kubectl apply -k k8s/overlays/vps
 
 ## Status page
 
-Copy `cloudflare/workers/status-page/wrangler.toml.example` to
-`cloudflare/workers/status-page/wrangler.toml`, replace the example domain, and
-protect the route with Cloudflare Access before deploying:
+Initialize the local Wrangler config, replace the example domain, and protect
+the route with Cloudflare Access before deploying:
 
 ```bash
+just status-page-init
 just status-page-deploy
 ```
 

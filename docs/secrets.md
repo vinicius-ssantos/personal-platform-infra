@@ -42,17 +42,24 @@ age-keygen -o ~/.age/personal-platform.txt
 # 2. Register the public key in .sops.yaml (replace placeholder)
 # Edit .sops.yaml and replace age1REPLACE_WITH_YOUR_LOCAL_AGE_PUBLIC_KEY
 
-# 3. Create an encrypted file from the example
+# 3. Verify SOPS/age is ready before creating encrypted files
+just secrets-check
+
+# 4. Create an encrypted file from the example
 cp secrets/local.enc.yaml.example secrets/local.enc.yaml
 SOPS_AGE_KEY_FILE=~/.age/personal-platform.txt sops -e -i secrets/local.enc.yaml
 
 cp secrets/vps.enc.yaml.example secrets/vps.enc.yaml
 SOPS_AGE_KEY_FILE=~/.age/personal-platform.txt sops -e -i secrets/vps.enc.yaml
 
-# 4. Edit secrets
+# 5. Edit secrets
 just secrets-edit-local
 just secrets-edit-vps
 ```
+
+`just secrets-check` fails early when `.sops.yaml` still contains placeholder
+age recipients or when the configured age private key file is missing. It does
+not decrypt or print secret values.
 
 ### Editing an encrypted file
 
@@ -121,3 +128,18 @@ just hooks-install
 ```
 
 This runs `gitleaks` on every `git commit` to detect token patterns in the diff.
+
+## GHCR pull secrets
+
+Kubernetes workloads use `platform-puller` service accounts with the
+`ghcr-pull-secret` image pull secret in `mcp`, `bff` and `vos`. Create or update
+that secret idempotently with:
+
+```bash
+GHCR_USERNAME="<github-username>" \
+GHCR_TOKEN="<token-with-read-packages>" \
+just create-ghcr-secret
+```
+
+The helper creates namespaces when missing, applies the Docker registry secret
+with `kubectl apply`, and does not echo the token.
