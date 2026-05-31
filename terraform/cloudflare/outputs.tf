@@ -23,3 +23,27 @@ output "service_hostnames" {
     k => "${v.subdomain}.${var.domain}"
   }
 }
+
+output "cloudflare_access_applications" {
+  description = "Cloudflare Access application IDs and hostnames when Access is enabled."
+  value = {
+    for key, app in cloudflare_zero_trust_access_application.services :
+    key => {
+      id     = app.id
+      domain = app.domain
+      aud    = app.aud
+    }
+  }
+}
+
+output "cloudflare_access_service_token_client_id" {
+  description = "Access service token client ID for automation when service token support is enabled."
+  value       = try(cloudflare_zero_trust_access_service_token.automation[0].client_id, null)
+  sensitive   = true
+}
+
+output "cloudflare_access_service_token_client_secret" {
+  description = "Access service token client secret for automation. Store it in a secret manager immediately after creation."
+  value       = try(cloudflare_zero_trust_access_service_token.automation[0].client_secret, null)
+  sensitive   = true
+}

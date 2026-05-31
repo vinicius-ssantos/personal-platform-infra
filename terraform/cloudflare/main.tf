@@ -96,3 +96,79 @@ resource "cloudflare_record" "services" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------
+# Cloudflare Access
+# ---------------------------------------------------------------------------
+
+resource "cloudflare_zero_trust_access_application" "services" {
+  for_each = var.cloudflare_access_enabled ? local.services : {}
+
+  account_id                   = var.cloudflare_account_id
+  name                         = "personal-platform-${each.key}"
+  domain                       = "${each.value.subdomain}.${var.domain}"
+  type                         = "self_hosted"
+  session_duration             = var.cloudflare_access_session_duration
+  allowed_idps                 = var.cloudflare_access_allowed_idps
+  auto_redirect_to_identity    = length(var.cloudflare_access_allowed_idps) == 1
+  service_auth_401_redirect    = true
+  http_only_cookie_attribute   = true
+  same_site_cookie_attribute   = "lax"
+  options_preflight_bypass     = true
+  app_launcher_visible         = false
+  skip_interstitial            = true
+  allow_authenticate_via_warp  = false
+  enable_binding_cookie        = true
+  skip_app_launcher_login_page = false
+
+  lifecycle {
+    precondition {
+      condition = (
+        length(var.cloudflare_access_allowed_emails) > 0 ||
+        length(var.cloudflare_access_allowed_email_domains) > 0 ||
+        var.cloudflare_access_service_token_enabled
+      )
+      error_message = "Cloudflare Access requires at least one allowed email, allowed email domain, or enabled service token."
+    }
+  }
+}
+
+resource "cloudflare_zero_trust_access_policy" "human_allow" {
+  for_each = (
+    var.cloudflare_access_enabled &&
+    (length(var.cloudflare_access_allowed_emails) > 0 || length(var.cloudflare_access_allowed_email_domains) > 0)
+  ) ? local.services : {}
+
+  account_id     = var.cloudflare_account_id
+  application_id = cloudflare_zero_trust_access_application.services[each.key].id
+  name           = "allow-human-identities"
+  decision       = "allow"
+  precedence     = 1
+
+  include {
+    email        = var.cloudflare_access_allowed_emails
+    email_domain = var.cloudflare_access_allowed_email_domains
+  }
+}
+
+resource "cloudflare_zero_trust_access_service_token" "automation" {
+  count = var.cloudflare_access_enabled && var.cloudflare_access_service_token_enabled ? 1 : 0
+
+  account_id = var.cloudflare_account_id
+  name       = "personal-platform-automation"
+  duration   = var.cloudflare_access_service_token_duration
+}
+
+resource "cloudflare_zero_trust_access_policy" "service_token_allow" {
+  for_each = var.cloudflare_access_enabled && var.cloudflare_access_service_token_enabled ? local.services : {}
+
+  account_id     = var.cloudflare_account_id
+  application_id = cloudflare_zero_trust_access_application.services[each.key].id
+  name           = "allow-service-token"
+  decision       = "allow"
+  precedence     = 2
+
+  include {
+    service_token = [cloudflare_zero_trust_access_service_token.automation[0].id]
+  }
+}

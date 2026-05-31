@@ -157,6 +157,12 @@ Prints k3d cluster state, all pods, Compose container health, and VPS cluster
 reachability. Set `KUBECONFIG_VPS=/path/to/vps-kubeconfig` to include the VPS
 section.
 
+## Public access
+
+Use Cloudflare Access before exposing MCP/BFF hostnames publicly. See
+`docs/cloudflare-access.md` for Terraform variables, human identity policy and
+service token request headers.
+
 ## Upgrade k3s (VPS)
 
 Run on the VPS as root:
