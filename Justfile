@@ -175,12 +175,7 @@ smoke-keda-http:
 	bash scripts/smoke-keda-http.sh
 
 create-ghcr-secret:
-	@echo "Run the following for each namespace (mcp, bff, vos):"
-	@echo "  kubectl create secret docker-registry ghcr-pull-secret \\"
-	@echo "    --docker-server=ghcr.io \\"
-	@echo "    --docker-username=<github-username> \\"
-	@echo "    --docker-password=<github-pat-read-packages> \\"
-	@echo "    -n <namespace>"
+	bash scripts/create-ghcr-pull-secret.sh
 
 secrets-backup:
 	@echo "=== age public key ==="
