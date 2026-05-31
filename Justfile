@@ -43,6 +43,9 @@ env-init:
 check-env:
 	bash scripts/check-env.sh
 
+check-policy:
+	bash scripts/check-policy.sh
+
 compose-up: check-env
 	docker compose -f compose/docker-compose.yml --env-file .env --profile all up -d --wait
 

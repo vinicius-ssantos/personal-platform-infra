@@ -2,6 +2,11 @@
 - name: Bootstrap VPS for personal platform
   hosts: vps
   become: true
+  vars:
+    ufw_public_tcp_ports:
+      - "80"
+      - "443"
+    k3s_api_allowed_cidrs: []
 
   tasks:
     - name: Install base packages
@@ -80,15 +85,20 @@
         rule: allow
         name: OpenSSH
 
-    - name: Allow HTTPS through UFW
+    - name: Allow public HTTP/HTTPS through UFW
       community.general.ufw:
         rule: allow
         port: "{{ item }}"
         proto: tcp
-      loop:
-        - "80"
-        - "443"
-        - "6443"
+      loop: "{{ ufw_public_tcp_ports }}"
+
+    - name: Allow k3s API only from configured admin CIDRs
+      community.general.ufw:
+        rule: allow
+        port: "6443"
+        proto: tcp
+        from_ip: "{{ item }}"
+      loop: "{{ k3s_api_allowed_cidrs }}"
 
     - name: Harden SSH configuration
       ansible.builtin.blockinfile:

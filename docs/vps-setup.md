@@ -32,6 +32,15 @@ ansible-galaxy collection install -r ansible/requirements.yml
 ansible-playbook -i ansible/inventory/vps.ini ansible/playbooks/bootstrap-vps.yml
 ```
 
+The VPS bootstrap opens only `80/tcp` and `443/tcp` publicly in UFW. The k3s API
+port `6443/tcp` is opened only for explicit `k3s_api_allowed_cidrs` values in
+the Ansible inventory or extra vars. Example:
+
+```bash
+ansible-playbook -i ansible/inventory/vps.ini ansible/playbooks/bootstrap-vps.yml \
+  -e 'k3s_api_allowed_cidrs=["198.51.100.25/32"]'
+```
+
 Export the kubeconfig from the VPS, base64-encode it, and save it as the
 GitHub Actions secret `VPS_KUBECONFIG` when automated deploys should start
 applying `k8s/overlays/vps`.

@@ -129,6 +129,19 @@ The pilot covers `github-unified-mcp` and `github-unified-mcp-bff`. Production
 ingress must route `mcp-github.example.com` and `github-bff.example.com` to the
 KEDA interceptor proxy service for scale-from-zero to work.
 
+The checked-in hostnames are placeholders. Use the same names managed by the
+Cloudflare layer for each environment:
+
+| Environment | GitHub MCP hostname | GitHub BFF hostname |
+|---|---|---|
+| Local tunnel | `mcp-github.<domain>` | `github-bff.<domain>` |
+| VPS | `mcp-github.<domain>` | `github-bff.<domain>` |
+
+For local tunnel mode, Cloudflare Tunnel routes those hostnames to local Compose
+ports. For VPS mode, DNS points at the VPS and ingress must forward those
+hostnames to the KEDA HTTP interceptor proxy. Keep the pilot limited to these
+two services until the ownership and routing model is proven.
+
 When the pilot is enabled for a workload, KEDA owns its replica lifecycle during
 normal operation. Do not use manual `wake-*` or `sleep-all` for that workload
 except as break-glass recovery. See `docs/lifecycle.md` for the full ownership
