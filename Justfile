@@ -55,6 +55,9 @@ compose-down:
 compose-logs:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile all logs -f --tail=200
 
+quick-tunnel-up:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1
+
 smoke-github:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp.ps1
 

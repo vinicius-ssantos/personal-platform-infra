@@ -163,6 +163,29 @@ Use Cloudflare Access before exposing MCP/BFF hostnames publicly. See
 `docs/cloudflare-access.md` for Terraform variables, human identity policy and
 service token request headers.
 
+For account-less temporary Cloudflare URLs, Terraform is not involved. Start one
+quick tunnel per local service with `cloudflared tunnel --url
+http://localhost:<port>`, copy the generated `trycloudflare.com` URLs into
+`.env`, and validate them with:
+
+```bash
+just status-public
+```
+
+On Windows, the full local quick-tunnel workflow is automated:
+
+```bash
+just quick-tunnel-up
+```
+
+This starts Compose, restarts one quick tunnel per service, writes the generated
+public URLs into `.env`, preserves existing tokens, generates missing local
+tokens, and runs local/public smoke checks.
+
+Use `.env.quick-tunnel.example` as the template for this mode. Use
+`terraform/cloudflare/terraform.tfvars.local-tunnel.example` only after you own
+a domain and want stable Cloudflare-managed DNS.
+
 ## Upgrade k3s (VPS)
 
 Run on the VPS as root:

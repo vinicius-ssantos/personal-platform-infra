@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.quick-tunnel.example
 
 *.tfstate
 *.tfstate.*
@@ -19,6 +20,7 @@ secrets/*.yaml
 
 .kube/
 .k3d/
+.tmp-cloudflared/
 
 *.age
 age.key

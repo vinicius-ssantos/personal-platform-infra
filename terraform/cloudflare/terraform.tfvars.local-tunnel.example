@@ -1,0 +1,27 @@
+# Local named Cloudflare Tunnel example
+#
+# Use this only when you own a domain and the zone is managed by Cloudflare.
+# This creates stable DNS records like mcp-github.<domain> pointing to a named
+# Cloudflare Tunnel. It is not used for account-less trycloudflare.com URLs.
+
+cloudflare_account_id = "change-me"
+cloudflare_zone_id    = "change-me"
+domain                = "example.com"
+target_mode           = "local-tunnel"
+vps_ipv4              = null
+
+cloudflare_access_enabled = true
+
+cloudflare_access_allowed_emails = [
+  "you@example.com",
+]
+
+cloudflare_access_allowed_email_domains = []
+cloudflare_access_allowed_idps          = []
+
+# Optional for automation/non-browser clients.
+cloudflare_access_service_token_enabled = true
+
+# Sensitive - set via environment variables instead of committing here:
+#   TF_VAR_cloudflare_api_token="your-token"
+#   TF_VAR_tunnel_secret="<32-byte-base64-secret>"

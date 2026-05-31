@@ -13,9 +13,19 @@ fail() { echo -e "  ${RED}✗${NC} $*"; }
 warn() { echo -e "  ${YELLOW}~${NC} $*"; }
 
 TIMEOUT_SECONDS="${PUBLIC_STATUS_TIMEOUT_SECONDS:-10}"
+ENV_FILE="${ENV_FILE:-.env}"
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # The local .env is often edited from Windows, so strip CRLF when sourcing.
+  # shellcheck disable=SC1090
+  source <(tr -d '\r' < "$ENV_FILE")
+  set +a
+fi
 
 trim_trailing_slash() {
   local value="$1"
+  value="${value//$'\r'/}"
   echo "${value%/}"
 }
 
@@ -75,12 +85,12 @@ main() {
 
   local failures=0
 
-  probe "GitHub Unified MCP" "GITHUB_MCP_PUBLIC_URL" || failures=$((failures + 1))
-  probe "Deploy Orchestrator MCP" "DEPLOY_MCP_PUBLIC_URL" || failures=$((failures + 1))
+  probe "GitHub Unified MCP" "GITHUB_MCP_PUBLIC_URL" "/healthz" || failures=$((failures + 1))
+  probe "Deploy Orchestrator MCP" "DEPLOY_MCP_PUBLIC_URL" "/healthz" || failures=$((failures + 1))
   probe "Social MCP" "SOCIAL_MCP_PUBLIC_URL" || failures=$((failures + 1))
-  probe "GitHub Unified MCP BFF" "GITHUB_BFF_PUBLIC_URL" || failures=$((failures + 1))
+  probe "GitHub Unified MCP BFF" "GITHUB_BFF_PUBLIC_URL" "/healthz" || failures=$((failures + 1))
   probe "VOS Studio MCP" "VOS_MCP_PUBLIC_URL" || failures=$((failures + 1))
-  probe "VOS Studio BFF" "VOS_BFF_PUBLIC_URL" || failures=$((failures + 1))
+  probe "VOS Studio BFF" "VOS_BFF_PUBLIC_URL" "/healthz" || failures=$((failures + 1))
 
   echo ""
   echo "=== summary ==="
