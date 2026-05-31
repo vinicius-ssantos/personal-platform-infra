@@ -23,7 +23,10 @@ spec:
                 name: mcp-social-config
           env:
             - name: SOCIAL_MCP_ACCESS_TOKEN
-              value: local-dev-token
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: SOCIAL_MCP_ACCESS_TOKEN
           ports:
             - containerPort: 8080
           volumeMounts:

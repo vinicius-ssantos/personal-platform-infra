@@ -143,3 +143,27 @@ just create-ghcr-secret
 
 The helper creates namespaces when missing, applies the Docker registry secret
 with `kubectl apply`, and does not echo the token.
+
+## Kubernetes runtime secrets
+
+Deployments reference a `platform-secrets` Secret instead of carrying token
+values directly in `k8s/base`.
+
+Expected keys:
+
+| Namespace | Secret | Keys |
+|---|---|---|
+| `mcp` | `platform-secrets` | `GITHUB_TOKEN`, `MCP_BEARER_TOKEN`, `MCP_SERVER_API_KEY`, `SOCIAL_MCP_ACCESS_TOKEN` |
+| `bff` | `platform-secrets` | `MCP_TOKEN` |
+| `vos` | `platform-secrets` | reserved for future VOS sensitive values |
+
+For local/k3d smoke tests, `k8s/overlays/local/platform-secrets-local.yaml`
+provides placeholder values so pods can start. To replace them with real local
+values from `.env`, run:
+
+```bash
+just k3d-secrets
+```
+
+For VPS, create equivalent `platform-secrets` objects from the encrypted
+secrets flow before waking workloads. Do not commit decrypted Secret manifests.

@@ -23,9 +23,15 @@ spec:
                 name: github-unified-mcp-config
           env:
             - name: MCP_BEARER_TOKEN
-              value: local-dev-token
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MCP_BEARER_TOKEN
             - name: GITHUB_TOKEN
-              value: local-dev-token
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: GITHUB_TOKEN
           ports:
             - containerPort: 8765
           livenessProbe:

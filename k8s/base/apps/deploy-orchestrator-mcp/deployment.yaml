@@ -23,7 +23,10 @@ spec:
                 name: deploy-orchestrator-mcp-config
           env:
             - name: MCP_SERVER_API_KEY
-              value: local-dev-token
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MCP_SERVER_API_KEY
           ports:
             - containerPort: 8000
           livenessProbe:

@@ -4,7 +4,4 @@ metadata:
   name: github-unified-mcp-bff-config
   namespace: bff
 data:
-  BFF_ENV: "production"
   MCP_URL: "http://github-unified-mcp.mcp.svc.cluster.local:8765"
-  COOKIE_SECURE: "true"
-  FRONTEND_URL: "https://REPLACE_WITH_FRONTEND_URL"

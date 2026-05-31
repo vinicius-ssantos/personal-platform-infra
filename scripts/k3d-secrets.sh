@@ -70,30 +70,18 @@ upsert_secret platform-secrets vos \
   "PLACEHOLDER=none"
 
 echo ""
-echo "=== Patching deployments to use real secrets ==="
+echo "=== Restarting deployments to read updated secrets ==="
 
-# github-unified-mcp
-kubectl set env deployment/github-unified-mcp -n mcp \
-  --from=secret/platform-secrets \
-  --keys=GITHUB_TOKEN,MCP_BEARER_TOKEN
+kubectl rollout restart deployment/github-unified-mcp -n mcp
 echo "  OK: github-unified-mcp"
 
-# deploy-orchestrator-mcp
-kubectl set env deployment/deploy-orchestrator-mcp -n mcp \
-  --from=secret/platform-secrets \
-  --keys=MCP_SERVER_API_KEY
+kubectl rollout restart deployment/deploy-orchestrator-mcp -n mcp
 echo "  OK: deploy-orchestrator-mcp"
 
-# mcp-social
-kubectl set env deployment/mcp-social -n mcp \
-  --from=secret/platform-secrets \
-  --keys=SOCIAL_MCP_ACCESS_TOKEN
+kubectl rollout restart deployment/mcp-social -n mcp
 echo "  OK: mcp-social"
 
-# github-unified-mcp-bff
-kubectl set env deployment/github-unified-mcp-bff -n bff \
-  --from=secret/platform-secrets \
-  --keys=MCP_TOKEN
+kubectl rollout restart deployment/github-unified-mcp-bff -n bff
 echo "  OK: github-unified-mcp-bff"
 
 echo ""

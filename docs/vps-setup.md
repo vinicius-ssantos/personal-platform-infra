@@ -53,6 +53,10 @@ GHCR_TOKEN="<token-with-read-packages>" \
 just create-ghcr-secret
 ```
 
+Create the runtime `platform-secrets` objects from the encrypted secrets flow
+before waking workloads. The deployments reference those Secrets directly; the
+base manifests do not contain final token values.
+
 ## Apply Kubernetes overlay
 
 ```bash

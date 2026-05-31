@@ -93,10 +93,13 @@ The smoke uses high local ports (18000â€“19765) so it does not clash with t
 Compose mode ports (8765, 8001, 8080, 8010, 8020, 8030).
 
 **Secrets in k3d**: the base k8s manifests do not inject env-var secrets.
-Services start without tokens and should respond to health probes. For full
-end-to-end testing with auth, create a local `Secret` or `ConfigMap` from
-`.env` values and reference it in the deployment. This is outside the scope of
-the smoke test.
+The local overlay creates non-production `platform-secrets` placeholder values
+so services can start and respond to health probes. For full end-to-end testing
+with real auth, inject local values from `.env`:
+
+```bash
+just k3d-secrets
+```
 
 **Teardown**:
 
