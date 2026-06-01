@@ -39,7 +39,7 @@ if grep -q "REPLACE_WITH" .sops.yaml; then
 fi
 
 if grep -RInE 'local-dev-token|localhost|APP_ENV: development|BFF_ENV: development|COOKIE_SECURE: "false"' k8s/base >/tmp/personal-platform-policy-local-values.txt; then
-  warn "k8s/base still contains local-only values; see /tmp/personal-platform-policy-local-values.txt"
+  fail "k8s/base contains local-only values that must live in overlays only; see /tmp/personal-platform-policy-local-values.txt"
 fi
 
 if grep -RInE 'ghcr\.io/.+:main' .env.example k8s >/tmp/personal-platform-policy-main-tags.txt; then

@@ -111,6 +111,69 @@ Open `http://localhost:3000` and sign in with the credentials from the
 `monitoring/grafana-admin` Secret. The Grafana deployment is wired to the
 in-cluster Loki service.
 
+## Central MCP Gateway
+
+The `central-mcp-gateway` is an optional Compose service that aggregates all
+internal MCP services behind a single public endpoint with centralized auth,
+tool allowlist and audit. It runs alongside the individual MCP services and does
+not replace them in phase 1.
+
+Start the gateway together with its upstreams:
+
+```bash
+just smoke-gateway-sh
+```
+
+Or start it manually:
+
+```bash
+docker compose --env-file .env -f compose/docker-compose.yml \
+  --profile gateway --profile github --profile deploy --profile social --profile vos \
+  up -d central-mcp-gateway
+```
+
+The gateway listens on `http://localhost:8040`. Check it:
+
+```bash
+# health / readiness
+curl http://localhost:8040/healthz
+curl http://localhost:8040/readyz
+
+# MCP initialize (always call before tools/list in a fresh session)
+curl -X POST http://localhost:8040/mcp \
+  -H "Authorization: Bearer $CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"local","version":"1.0"}}}'
+
+# List available tools
+curl -X POST http://localhost:8040/mcp \
+  -H "Authorization: Bearer $CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+The `GATEWAY_TOOL_ALLOWLIST` in `.env` controls which tools the gateway exposes
+publicly. Upstream service URLs (`GATEWAY_UPSTREAM_*`) use internal Docker
+network names and must not be changed to `localhost` addresses.
+
+Kubernetes base/overlays for the gateway and a Cloudflare public route are
+follow-up work after local validation is complete.
+
+## Runtime configuration ownership
+
+Configuration is split across three layers. Add values to the correct layer
+to avoid local assumptions leaking into the VPS (enforced by `check-policy.sh`):
+
+| Layer | Purpose | Example values |
+|---|---|---|
+| `k8s/base/` | Neutral structural defaults — same shape in all environments | Port numbers, service account name, secret key references, cluster-local DNS (`*.svc.cluster.local`) |
+| `k8s/overlays/local/` | Local dev overrides | `BFF_ENV: development`, `COOKIE_SECURE: "false"`, `FRONTEND_URL: http://localhost:5173`, `local-dev-token` secrets |
+| `k8s/overlays/vps/` | VPS production values | `BFF_ENV: production`, `COOKIE_SECURE: "true"`, `FRONTEND_URL: https://studio.example.com`, SOPS-managed secrets |
+
+The `check-policy.sh` script fails the CI if any of the following patterns
+appear in `k8s/base`: `local-dev-token`, `localhost`, `APP_ENV: development`,
+`BFF_ENV: development`, `COOKIE_SECURE: "false"`.
+
 ## KEDA HTTP Pilot
 
 Install KEDA and the HTTP Add-on, then apply the GitHub MCP pilot routes:
