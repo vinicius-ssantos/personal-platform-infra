@@ -40,6 +40,15 @@ jobs:
         run: |
           find scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
+      - name: Validate PowerShell scripts parse
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path scripts -Filter '*.ps1' -File | ForEach-Object {
+            $content = Get-Content -LiteralPath $_.FullName -Raw
+            [scriptblock]::Create($content) | Out-Null
+            Write-Host "OK $($_.FullName)"
+          }
+
       - name: Run semantic policy checks
         run: bash scripts/check-policy.sh
 
