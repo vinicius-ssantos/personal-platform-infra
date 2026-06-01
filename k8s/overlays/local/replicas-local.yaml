@@ -25,6 +25,14 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: central-mcp-gateway
+  namespace: mcp
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
   name: github-unified-mcp-bff
   namespace: bff
 spec:

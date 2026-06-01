@@ -44,6 +44,7 @@ echo "Waiting for rollouts (timeout: $TIMEOUT each)..."
 kubectl rollout status deploy/github-unified-mcp      -n mcp --timeout="$TIMEOUT"
 kubectl rollout status deploy/deploy-orchestrator-mcp -n mcp --timeout="$TIMEOUT"
 kubectl rollout status deploy/mcp-social              -n mcp --timeout="$TIMEOUT"
+kubectl rollout status deploy/central-mcp-gateway     -n mcp --timeout="$TIMEOUT"
 kubectl rollout status deploy/github-unified-mcp-bff  -n bff --timeout="$TIMEOUT"
 kubectl rollout status deploy/vos-studio-mcp          -n vos --timeout="$TIMEOUT"
 kubectl rollout status deploy/vos-studio-bff          -n bff --timeout="$TIMEOUT"
@@ -81,6 +82,7 @@ echo "Starting port-forwards..."
 start_pf github-unified-mcp      mcp 8765 19765
 start_pf deploy-orchestrator-mcp mcp 8000 18000
 start_pf mcp-social              mcp 8080 18080
+start_pf central-mcp-gateway     mcp 8080 18040
 start_pf github-unified-mcp-bff  bff 8000 18010
 start_pf vos-studio-mcp          vos 8000 18020
 start_pf vos-studio-bff          bff 8000 18030
@@ -91,12 +93,13 @@ echo "Running health checks..."
 check_health github-unified-mcp      19765 /healthz
 check_health deploy-orchestrator-mcp 18000 /healthz
 check_health mcp-social              18080 /health
+check_health central-mcp-gateway     18040 /healthz
 check_health github-unified-mcp-bff  18010 /healthz
 check_health vos-studio-mcp          18020 /health
 check_health vos-studio-bff          18030 /healthz
 
 echo ""
-echo "k3d smoke passed: all 6 ready services are healthy."
+echo "k3d smoke passed: all 7 ready services are healthy."
 echo ""
 kubectl get pods -n mcp -o wide
 kubectl get pods -n bff -o wide
