@@ -1,4 +1,12 @@
 ---
+# Bootstrap VPS for personal platform.
+#
+# First run: connect as root (Hetzner default) and create the operator user:
+#   ansible-playbook -i ansible/inventory/vps.ini bootstrap-vps.yml \
+#     -e ansible_user=root -e create_operator_user=true
+#
+# Subsequent runs: connect as the operator user (ansible_user in inventory):
+#   ansible-playbook -i ansible/inventory/vps.ini bootstrap-vps.yml
 - name: Bootstrap VPS for personal platform
   hosts: vps
   become: true
@@ -7,8 +15,33 @@
       - "80"
       - "443"
     k3s_api_allowed_cidrs: []
+    create_operator_user: false
+    operator_user: "{{ ansible_user }}"
 
   tasks:
+    - name: Create operator user with sudo access
+      when: create_operator_user | bool
+      block:
+        - name: Create operator user
+          ansible.builtin.user:
+            name: "{{ operator_user }}"
+            shell: /bin/bash
+            groups: sudo
+            append: true
+            create_home: true
+
+        - name: Add operator SSH key
+          ansible.posix.authorized_key:
+            user: "{{ operator_user }}"
+            key: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519.pub') }}"
+
+        - name: Allow sudo without password for operator
+          ansible.builtin.copy:
+            content: "{{ operator_user }} ALL=(ALL) NOPASSWD:ALL\n"
+            dest: "/etc/sudoers.d/90-{{ operator_user }}"
+            mode: "0440"
+            validate: visudo -cf %s
+
     - name: Install base packages
       ansible.builtin.apt:
         name:
@@ -47,16 +80,26 @@
 
     - name: Create .kube directory for operator user
       ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.kube"
+        path: "{{ ansible_user_dir }}/.kube"
         state: directory
         mode: "0700"
+        owner: "{{ operator_user }}"
+        group: "{{ operator_user }}"
 
     - name: Copy k3s kubeconfig for operator user
       ansible.builtin.copy:
         src: /etc/rancher/k3s/k3s.yaml
-        dest: "{{ ansible_env.HOME }}/.kube/config"
+        dest: "{{ ansible_user_dir }}/.kube/config"
         remote_src: true
         mode: "0600"
+        owner: "{{ operator_user }}"
+        group: "{{ operator_user }}"
+
+    - name: Patch kubeconfig server address with public IP
+      ansible.builtin.replace:
+        path: "{{ ansible_user_dir }}/.kube/config"
+        regexp: 'https://127\.0\.0\.1:6443'
+        replace: "https://{{ ansible_host }}:6443"
 
     - name: Install just
       ansible.builtin.shell: |
@@ -122,6 +165,16 @@
         name: fail2ban
         enabled: true
         state: started
+
+    - name: Print next steps
+      ansible.builtin.debug:
+        msg:
+          - "Bootstrap complete."
+          - "Export VPS_KUBECONFIG for GitHub Actions:"
+          - "  ssh {{ operator_user }}@{{ ansible_host }} 'cat ~/.kube/config' | base64 -w0"
+          - "Then add the output as the VPS_KUBECONFIG secret in your GitHub repository settings."
+          - "Run GHCR pull secret creation before waking workloads:"
+          - "  GHCR_USERNAME=<user> GHCR_TOKEN=<token> just create-ghcr-secret"
 
   handlers:
     - name: Restart sshd
