@@ -33,6 +33,22 @@ just compose-logs
 just compose-down
 ```
 
+`compose-up`, `compose-logs`, and `compose-down` are stable aliases for the full
+`all` profile. For incremental work, use the profile-specific targets:
+
+```bash
+just compose-up-profile github
+just compose-logs-profile github
+just compose-down-profile github
+
+just compose-up-profile vos
+just compose-up-profile all
+```
+
+This is useful when validating one service family without starting the complete
+local platform. Full-stack smoke validation should still use `just compose-up`
+and `just smoke-all`.
+
 The managed services consume images published by their upstream
 repositories:
 

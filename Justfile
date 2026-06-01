@@ -47,13 +47,22 @@ check-policy:
 	bash scripts/check-policy.sh
 
 compose-up: check-env
-	docker compose -f compose/docker-compose.yml --env-file .env --profile all up -d --wait
+	just compose-up-profile all
 
 compose-down:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile all down
+	just compose-down-profile all
 
 compose-logs:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile all logs -f --tail=200
+	just compose-logs-profile all
+
+compose-up-profile profile="all": check-env
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} up -d --wait
+
+compose-down-profile profile="all":
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} down
+
+compose-logs-profile profile="all":
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} logs -f --tail=200
 
 quick-tunnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1
