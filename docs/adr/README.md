@@ -18,3 +18,4 @@
 | [0014](0014-status-page-via-cloudflare-worker.md) | Status page via Cloudflare Worker | Accepted |
 | [0015](0015-logs-centralizados-com-loki-alloy.md) | Logs centralizados com Loki e Alloy | Accepted |
 | [0016](0016-scale-to-zero-via-keda-http-add-on.md) | Scale-to-zero via KEDA HTTP Add-on | Accepted |
+| [0017](0017-kubernetes-ownership-in-infra-repo.md) | Kubernetes ownership lives in personal-platform-infra | Accepted |
