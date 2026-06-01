@@ -76,6 +76,9 @@ quick-tunnel-down:
 ngrok-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-up.ps1
 
+ngrok-down:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-down.ps1
+
 k3d-ngrok-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/k3d-ngrok-up.ps1
 
