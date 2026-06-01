@@ -70,6 +70,9 @@ quick-tunnel-up:
 quick-tunnel-refresh:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1 -ForceRefresh
 
+quick-tunnel-down:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-down.ps1
+
 ngrok-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-up.ps1
 
@@ -88,12 +91,16 @@ smoke-github-bff:
 smoke-vos:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-vos.ps1
 
+smoke-gateway:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-central-mcp-gateway.ps1
+
 smoke-all:
 	just smoke-github
 	just smoke-deploy
 	just smoke-social
 	just smoke-github-bff
 	just smoke-vos
+	just smoke-gateway
 
 smoke-github-sh:
 	bash scripts/smoke-github-unified-mcp.sh
@@ -110,12 +117,16 @@ smoke-github-bff-sh:
 smoke-vos-sh:
 	bash scripts/smoke-vos.sh
 
+smoke-gateway-sh:
+	bash scripts/smoke-central-mcp-gateway.sh
+
 smoke-all-sh:
 	just smoke-github-sh
 	just smoke-deploy-sh
 	just smoke-social-sh
 	just smoke-github-bff-sh
 	just smoke-vos-sh
+	just smoke-gateway-sh
 
 smoke-k3d:
 	bash scripts/smoke-k3d.sh

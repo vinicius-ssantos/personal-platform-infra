@@ -97,6 +97,7 @@ main() {
   probe "GitHub Unified MCP BFF" "GITHUB_BFF_PUBLIC_URL" "/healthz" || failures=$((failures + 1))
   probe "VOS Studio MCP" "VOS_MCP_PUBLIC_URL" || failures=$((failures + 1))
   probe "VOS Studio BFF" "VOS_BFF_PUBLIC_URL" "/healthz" || failures=$((failures + 1))
+  probe "Central MCP Gateway" "CENTRAL_MCP_GATEWAY_PUBLIC_URL" "/healthz" || failures=$((failures + 1))
 
   echo ""
   echo "=== summary ==="

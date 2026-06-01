@@ -7,10 +7,13 @@ services:
     environment:
       FASTMCP_HOST: 0.0.0.0
       FASTMCP_PORT: 8765
+      FASTMCP_ALLOWED_HOSTS: github-unified-mcp:8765,localhost:8765,127.0.0.1:8765
       MCP_AUTH_ENABLED: "true"
       MCP_AUTH_MODE: bearer
       MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
       GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_ALLOWED_REPOS: ${GITHUB_ALLOWED_REPOS}
+      GITHUB_REQUIRE_ALLOWED_REPOS: "true"
       GITHUB_READ_ONLY: "true"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8765/healthz', timeout=3).read()\""]
@@ -116,6 +119,54 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  central-mcp-gateway:
+    image: ${CENTRAL_MCP_GATEWAY_IMAGE}
+    profiles: ["gateway", "all"]
+    ports:
+      - "8040:8080"
+    environment:
+      GATEWAY_APP_NAME: central-mcp-gateway
+      GATEWAY_ENVIRONMENT: local
+      GATEWAY_PUBLIC_BASE_URL: ${CENTRAL_MCP_GATEWAY_PUBLIC_URL}
+      GATEWAY_OAUTH_ISSUER: ${CENTRAL_MCP_GATEWAY_PUBLIC_URL}
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: 8080
+      GATEWAY_LOG_LEVEL: info
+      GATEWAY_PUBLIC_BEARER_TOKEN: ${CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN}
+      GATEWAY_OAUTH_CLIENT_ID: chatgpt
+      GATEWAY_OAUTH_CLIENT_SECRET: ${CENTRAL_MCP_GATEWAY_OAUTH_CLIENT_SECRET}
+      GATEWAY_SESSION_SECRET: ${CENTRAL_MCP_GATEWAY_SESSION_SECRET}
+      GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS: ${CENTRAL_MCP_GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS}
+      GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read deploy:read social:write
+      GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,github.search_issues,deploy.get_status,social.prepare_post
+      GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
+      GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
+      GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp
+      GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp
+      GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
+      GATEWAY_GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GATEWAY_DEPLOY_API_KEY: ${MCP_SERVER_API_KEY}
+      GATEWAY_SOCIAL_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN}
+      GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE: 20
+      GATEWAY_TRUSTED_PROXY_COUNT: 1
+      GATEWAY_IDEMPOTENCY_TTL_SECONDS: 300
+    depends_on:
+      github-unified-mcp:
+        condition: service_healthy
+      deploy-orchestrator-mcp:
+        condition: service_healthy
+      mcp-social:
+        condition: service_healthy
+      vos-studio-mcp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=3).read()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
   ngrok-proxy:
     image: caddy:2.8-alpine
     profiles: ["ngrok", "all"]
@@ -132,6 +183,7 @@ services:
       - github-unified-mcp-bff
       - vos-studio-mcp
       - vos-studio-bff
+      - central-mcp-gateway
     restart: unless-stopped
 
 volumes:
