@@ -1,5 +1,23 @@
 :8080 {
 	route {
+		respond /healthz 200
+
+		handle /.well-known/* {
+			reverse_proxy central-mcp-gateway:8080
+		}
+
+		handle /oauth/* {
+			reverse_proxy central-mcp-gateway:8080
+		}
+
+		handle /mcp {
+			reverse_proxy central-mcp-gateway:8080
+		}
+
+		handle_path /gateway/* {
+			reverse_proxy central-mcp-gateway:8080
+		}
+
 		@missing_platform_token not {
 			header X-Platform-Token {$PUBLIC_EDGE_TOKEN}
 		}
@@ -29,23 +47,6 @@
 			reverse_proxy vos-studio-bff:8000
 		}
 
-		handle /.well-known/* {
-			reverse_proxy central-mcp-gateway:8080
-		}
-
-		handle /oauth/* {
-			reverse_proxy central-mcp-gateway:8080
-		}
-
-		handle /mcp {
-			reverse_proxy central-mcp-gateway:8080
-		}
-
-		handle_path /gateway/* {
-			reverse_proxy central-mcp-gateway:8080
-		}
-
-		respond /healthz 200
 		respond 404
 	}
 }
