@@ -14,7 +14,8 @@ $Services = @(
     @{ Env = "SOCIAL_MCP_PUBLIC_URL"; Name = "social-mcp"; Port = 8080; HealthPath = "/health" },
     @{ Env = "GITHUB_BFF_PUBLIC_URL"; Name = "github-bff"; Port = 8010; HealthPath = "/healthz" },
     @{ Env = "VOS_MCP_PUBLIC_URL"; Name = "vos-mcp"; Port = 8020; HealthPath = "/health" },
-    @{ Env = "VOS_BFF_PUBLIC_URL"; Name = "vos-bff"; Port = 8030; HealthPath = "/healthz" }
+    @{ Env = "VOS_BFF_PUBLIC_URL"; Name = "vos-bff"; Port = 8030; HealthPath = "/healthz" },
+    @{ Env = "CENTRAL_MCP_GATEWAY_PUBLIC_URL"; Name = "central-mcp-gateway"; Port = 8040; HealthPath = "/healthz" }
 )
 
 function New-HexToken([int]$Bytes = 32) {
@@ -175,16 +176,20 @@ if (Test-Placeholder $currentEnv["GITHUB_TOKEN"]) {
     $initialValues["GITHUB_TOKEN"] = $ghToken
 }
 
-foreach ($key in @("MCP_BEARER_TOKEN", "MCP_SERVER_API_KEY", "SOCIAL_MCP_ACCESS_TOKEN")) {
+foreach ($key in @("MCP_BEARER_TOKEN", "MCP_SERVER_API_KEY", "SOCIAL_MCP_ACCESS_TOKEN", "PUBLIC_EDGE_TOKEN", "CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN", "CENTRAL_MCP_GATEWAY_OAUTH_CLIENT_SECRET", "CENTRAL_MCP_GATEWAY_SESSION_SECRET")) {
     if (Test-Placeholder $currentEnv[$key]) {
         $initialValues[$key] = New-HexToken
     }
 }
 
+if (Test-Placeholder $currentEnv["CENTRAL_MCP_GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS"]) {
+    $initialValues["CENTRAL_MCP_GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS"] = "http://localhost:3000/oauth/callback,https://chat.openai.com/aip/oauth/callback"
+}
+
 Set-EnvValues $EnvFile $initialValues
 
 Write-Host "Pulling latest Compose images..."
-docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all pull
+docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all pull --ignore-pull-failures
 
 Write-Host "Starting local Compose services..."
 docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --wait
@@ -218,6 +223,9 @@ foreach ($service in $Services) {
 }
 
 Set-EnvValues $EnvFile $publicUrls
+
+Write-Host "Restarting central MCP gateway with public OAuth URL..."
+docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --force-recreate central-mcp-gateway
 
 Write-Host "Validating public health checks..."
 just status-public
