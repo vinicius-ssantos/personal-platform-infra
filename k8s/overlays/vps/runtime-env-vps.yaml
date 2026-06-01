@@ -1,3 +1,5 @@
+# Replace example.com with your actual domain before deploying to VPS.
+# FRONTEND_URL is the origin of the SPA that calls each BFF (e.g. Cloudflare Pages URL).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +8,7 @@ metadata:
 data:
   BFF_ENV: "production"
   COOKIE_SECURE: "true"
-  FRONTEND_URL: "https://REPLACE_WITH_FRONTEND_URL"
+  FRONTEND_URL: "https://studio.example.com"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -15,8 +17,8 @@ metadata:
   namespace: bff
 data:
   BFF_ENV: "production"
-  FRONTEND_URL: "https://REPLACE_WITH_VOS_FRONTEND_URL"
-  ALLOWED_ORIGINS: "https://REPLACE_WITH_VOS_FRONTEND_URL"
+  FRONTEND_URL: "https://vos-studio.example.com"
+  ALLOWED_ORIGINS: "https://vos-studio.example.com"
   COOKIE_SECURE: "true"
 ---
 apiVersion: v1
