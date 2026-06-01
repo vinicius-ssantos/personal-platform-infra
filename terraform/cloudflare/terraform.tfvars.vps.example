@@ -1,0 +1,22 @@
+# VPS deployment example — DNS A records pointing directly to the VPS.
+# No Cloudflare Tunnel is created in this mode.
+#
+# vps_ipv4 = the ipv4_address output from terraform/vps apply.
+# domain   = your zone managed by Cloudflare.
+
+cloudflare_account_id = "change-me"
+cloudflare_zone_id    = "change-me"
+domain                = "example.com"
+target_mode           = "vps-ip"
+vps_ipv4              = "203.0.113.10"
+
+cloudflare_access_enabled               = true
+cloudflare_access_allowed_emails        = ["you@example.com"]
+cloudflare_access_allowed_email_domains = []
+cloudflare_access_allowed_idps          = []
+cloudflare_access_service_token_enabled = true
+
+# tunnel_secret is not required when target_mode = "vps-ip"
+
+# Sensitive — set via environment variables, do not commit real values:
+#   export TF_VAR_cloudflare_api_token="your-token"
