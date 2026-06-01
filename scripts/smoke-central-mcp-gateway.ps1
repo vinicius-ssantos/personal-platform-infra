@@ -46,8 +46,21 @@ if (-not $bearer) {
     Write-Error "CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN is missing in $envFile"
 }
 
+$initPayloadPath = Join-Path $env:TEMP "central-mcp-gateway-initialize.json"
+Set-Content -LiteralPath $initPayloadPath -NoNewline -Encoding ascii -Value '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke-test","version":"1.0"}}}'
+
+Write-Host "Checking $baseUrl/mcp initialize"
+curl.exe -fsS `
+    -X POST "$baseUrl/mcp" `
+    -H "Authorization: Bearer $bearer" `
+    -H "Content-Type: application/json" `
+    --data-binary "@$initPayloadPath"
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
 $payloadPath = Join-Path $env:TEMP "central-mcp-gateway-tools-list.json"
-Set-Content -LiteralPath $payloadPath -NoNewline -Encoding ascii -Value '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+Set-Content -LiteralPath $payloadPath -NoNewline -Encoding ascii -Value '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 
 Write-Host "Checking $baseUrl/mcp tools/list"
 curl.exe -fsS `
