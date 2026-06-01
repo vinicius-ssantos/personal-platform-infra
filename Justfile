@@ -76,6 +76,12 @@ quick-tunnel-down:
 ngrok-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-up.ps1
 
+k3d-ngrok-up:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/k3d-ngrok-up.ps1
+
+k3d-ngrok-down:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/k3d-ngrok-down.ps1
+
 smoke-github:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-github-unified-mcp.ps1
 

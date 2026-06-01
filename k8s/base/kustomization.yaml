@@ -5,6 +5,7 @@ resources:
   - apps/github-unified-mcp
   - apps/deploy-orchestrator-mcp
   - apps/mcp-social
+  - apps/central-mcp-gateway
   - apps/github-unified-mcp-bff
   - apps/vos-studio-mcp
   - apps/vos-studio-bff

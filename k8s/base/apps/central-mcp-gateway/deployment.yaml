@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: central-mcp-gateway
+  namespace: mcp
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: central-mcp-gateway
+  template:
+    metadata:
+      labels:
+        app: central-mcp-gateway
+    spec:
+      serviceAccountName: platform-puller
+      containers:
+        - name: central-mcp-gateway
+          image: ghcr.io/vinicius-ssantos/central-mcp-gateway:main
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: central-mcp-gateway-config
+          env:
+            - name: GATEWAY_PUBLIC_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN
+            - name: GATEWAY_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: CENTRAL_MCP_GATEWAY_OAUTH_CLIENT_SECRET
+            - name: GATEWAY_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: CENTRAL_MCP_GATEWAY_SESSION_SECRET
+            - name: GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: CENTRAL_MCP_GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS
+            - name: GATEWAY_MCP_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MCP_BEARER_TOKEN
+            - name: GATEWAY_GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: GITHUB_TOKEN
+            - name: GATEWAY_DEPLOY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MCP_SERVER_API_KEY
+            - name: GATEWAY_SOCIAL_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: SOCIAL_MCP_ACCESS_TOKEN
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
