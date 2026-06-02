@@ -43,16 +43,16 @@ fi
 upsert_secret() {
   local name="$1" namespace="$2"
   shift 2
-  # Build --from-literal args dynamically
   local args=()
   for kv in "$@"; do
     args+=("--from-literal=$kv")
   done
 
-  if kubectl get secret "$name" -n "$namespace" >/dev/null 2>&1; then
-    kubectl delete secret "$name" -n "$namespace" --ignore-not-found
-  fi
-  kubectl create secret generic "$name" -n "$namespace" "${args[@]}"
+  # Atomic upsert: generate the manifest client-side then apply server-side.
+  # Avoids the delete→create window where the Secret briefly doesn't exist
+  # and running pods can fail liveness/readiness checks.
+  kubectl create secret generic "$name" -n "$namespace" "${args[@]}" \
+    --dry-run=client -o yaml | kubectl apply -f -
   echo "  OK: secret/$name in $namespace"
 }
 

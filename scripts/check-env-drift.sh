@@ -15,6 +15,7 @@ root = Path('.')
 example_path = root / '.env.example'
 compose_path = root / 'compose' / 'docker-compose.yml'
 check_env_path = root / 'scripts' / 'check-env.sh'
+k3d_secrets_path = root / 'scripts' / 'k3d-secrets.sh'
 
 errors: list[str] = []
 
@@ -32,6 +33,7 @@ def read(path: Path) -> str:
 example = read(example_path)
 compose = read(compose_path)
 check_env = read(check_env_path)
+k3d_secrets = read(k3d_secrets_path)
 
 example_keys = {
     match.group(1)
@@ -54,6 +56,12 @@ else:
     required_keys = set()
     fail("could not parse required_keys block from scripts/check-env.sh")
 
+# Keys read from .env by k3d-secrets.sh via _get()
+k3d_keys = {
+    match.group(1)
+    for match in re.finditer(r'_get\s+([A-Z][A-Z0-9_]*)', k3d_secrets)
+}
+
 missing_from_example = sorted((compose_vars | required_keys) - example_keys)
 if missing_from_example:
     fail(
@@ -68,14 +76,24 @@ if unused_required:
         + ", ".join(unused_required)
     )
 
+missing_k3d = sorted(k3d_keys - example_keys)
+if missing_k3d:
+    fail(
+        "scripts/k3d-secrets.sh reads key(s) absent from .env.example: "
+        + ", ".join(missing_k3d)
+    )
+
 print(f".env.example keys: {len(example_keys)}")
 print(f"Compose interpolated vars: {len(compose_vars)}")
 print(f"check-env required keys: {len(required_keys)}")
+print(f"k3d-secrets.sh keys: {len(k3d_keys)}")
 
 if compose_vars:
     print("Compose vars OK: " + ", ".join(sorted(compose_vars)))
 if required_keys:
     print("Required keys OK: " + ", ".join(sorted(required_keys)))
+if k3d_keys:
+    print("k3d-secrets keys OK: " + ", ".join(sorted(k3d_keys)))
 
 if errors:
     for error in errors:
