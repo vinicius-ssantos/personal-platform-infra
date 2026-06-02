@@ -1,69 +1,129 @@
 # personal-platform-infra
 
-Infraestrutura pessoal para rodar MCPs, BFFs e serviços auxiliares em dois ambientes:
+[![CI](https://github.com/vinicius-ssantos/personal-platform-infra/actions/workflows/ci.yml/badge.svg)](https://github.com/vinicius-ssantos/personal-platform-infra/actions/workflows/ci.yml)
+[![Deploy VPS](https://github.com/vinicius-ssantos/personal-platform-infra/actions/workflows/deploy-vps.yml/badge.svg)](https://github.com/vinicius-ssantos/personal-platform-infra/actions/workflows/deploy-vps.yml)
+![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?logo=terraform&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?logo=kubernetes&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/cloudflare-F38020?logo=cloudflare&logoColor=white)
 
-- **Local**: Windows + WSL2 Ubuntu + Docker Compose/k3d + Cloudflare Tunnel
-- **VPS**: Ubuntu + k3s + Traefik
+Infraestrutura centralizada para uma plataforma pessoal de MCP servers e BFFs. Gerencia dois ambientes — **local** (Windows 11 + WSL2) e **VPS** (Ubuntu + k3s) — a partir de um único repositório de configuração.
 
-## Objetivo
+Não contém código de aplicação nem Dockerfiles. As imagens dos serviços são publicadas pelos repositórios upstream e consumidas aqui via GHCR.
 
-Centralizar a automação de:
+---
 
-- Terraform para Cloudflare, DNS, Tunnel e Pages
-- Ansible para bootstrap local e VPS
-- Docker Compose para modo local simples
-- k3d/k3s para modo Kubernetes
-- scripts de start/stop/wake/sleep
+## Arquitetura
 
-## Apps gerenciados
+```
+Local                                    VPS
+─────────────────────────────────        ─────────────────────────────────
+Windows 11 + WSL2                        Ubuntu + k3s (single-node)
+  ├── Docker Compose (iteração rápida)     ├── Traefik (ingress)
+  └── k3d (validação k8s)                 ├── namespace: mcp
+        ├── namespace: mcp                │     MCPs + central-mcp-gateway
+        ├── namespace: bff                ├── namespace: bff
+        ├── namespace: vos                │     BFFs
+        └── namespace: monitoring         ├── namespace: vos
+                                          └── namespace: monitoring
+                Internet
+                   │
+          Cloudflare DNS + Proxy
+          (TLS, Access, Tunnel)
+                   │
+              VPS :80 → Traefik
+```
 
-- `github-unified-mcp`
-- `deploy-orchestrator-mcp`
-- `mcp-social`
-- `github-unified-mcp-bff`
-- `vos-studio-mcp`
-- `vos-studio-bff`
+---
 
-Veja a [matriz de integracao de servicos](docs/service-integration-matrix.md) para o status de cada servico.
+## Serviços gerenciados
 
-## Princípios
+| Serviço | Repositório | Role | Porta | Health |
+|---|---|---|---|---|
+| `github-unified-mcp` | [↗](https://github.com/vinicius-ssantos/github-unified-mcp) | MCP server GitHub | 8765 | `/healthz` |
+| `deploy-orchestrator-mcp` | [↗](https://github.com/vinicius-ssantos/deploy-orchestrator-mcp) | MCP server de deploy | 8000 | `/healthz` |
+| `mcp-social` | [↗](https://github.com/vinicius-ssantos/mcp-social) | MCP server social | 8080 | `/health` |
+| `central-mcp-gateway` | [↗](https://github.com/vinicius-ssantos/central-mcp-gateway) | Gateway agregador | 8080 | `/healthz` |
+| `github-unified-mcp-bff` | [↗](https://github.com/vinicius-ssantos/-github-unified-mcp-bff) | BFF para GitHub flows | 8000 | `/healthz` |
+| `vos-studio-mcp` | [↗](https://github.com/vinicius-ssantos/vos-studio-mcp) | MCP server VOS Studio | 8000 | `/health` |
+| `vos-studio-bff` | [↗](https://github.com/vinicius-ssantos/vos-studio-bff) | BFF para VOS Studio | 8000 | `/healthz` |
 
-- Frontends ficam fora da VPS, preferencialmente em Cloudflare Pages/Vercel/Netlify.
-- Banco e storage ficam fora da VPS, preferencialmente Supabase/Firebase/R2.
-- Serviços podem dormir por padrão e acordar sob demanda.
-- Secrets reais nunca devem ser commitados abertos.
-- Local e VPS usam a mesma estrutura base, mudando apenas overlays/configurações.
+Todos os deployments nascem com `replicas: 0` no VPS e sobem sob demanda via `just wake-*`.
 
-## Começo rápido
+---
+
+## Quick start
+
+### Pré-requisitos
+
+- Windows 11 + WSL2 + Docker Desktop com integração WSL2
+- GitHub PAT com escopos `repo` e `read:packages`
 
 ```bash
-# 1) instalar ferramentas no WSL2
+# 1. Instalar ferramentas no WSL2
+ansible-galaxy collection install -r ansible/requirements.yml
 just bootstrap-local
+```
 
-# 2) modo local simples
-just compose-up
+### Modo Compose (mais rápido)
+
+```bash
+just env-init        # cria .env a partir do .env.example
+# edite .env com seus tokens reais
+just check-env       # valida variáveis obrigatórias
+just compose-up      # sobe todos os serviços
+just smoke-all-sh    # valida health de cada serviço
 just compose-down
+```
 
-# 3) modo Kubernetes local
-just k8s-local-up
+### Modo Kubernetes (k3d)
+
+```bash
+just k8s-local-up                                          # cria cluster + aplica overlay local
+GHCR_USERNAME="user" GHCR_TOKEN="token" just create-ghcr-secret
+just k3d-secrets                                           # injeta tokens reais do .env
+just smoke-k3d                                             # smoke completo via port-forward
 just k8s-local-down
-
-# 4) expor via Cloudflare Tunnel
-just tunnel
 ```
 
-## Estrutura
+### Expor localmente
 
-```txt
-ansible/      Bootstrap local e VPS
-terraform/   Cloudflare, DNS, Tunnel e Pages
-compose/     Modo local simples com Docker Compose
-k8s/         Manifests Kubernetes base + overlays local/vps
-scripts/     Operação diária: start, stop, tunnel, wake/sleep
-docs/        Arquitetura, setup e runbooks
-secrets/     Exemplos e arquivos criptografados futuramente
+```bash
+just quick-tunnel-up   # Cloudflare Quick Tunnel (sem conta, URLs temporárias)
+just ngrok-up          # Ngrok (requer authtoken configurado)
 ```
 
-## Status
+---
 
-Este repo começou como esqueleto de infraestrutura. Os manifests e módulos devem evoluir em pequenos commits incrementais.
+## Documentação
+
+| Doc | Conteúdo |
+|---|---|
+| [onboarding.md](docs/onboarding.md) | Do zero ao smoke test — passo a passo completo |
+| [architecture.md](docs/architecture.md) | Fluxo de requisição, namespaces, camadas de config |
+| [contributing.md](docs/contributing.md) | Convenções, checklist para novo serviço, ADRs |
+| [runtime-contracts.md](docs/runtime-contracts.md) | Contrato de cada serviço — porta, health, auth, vars |
+| [lifecycle.md](docs/lifecycle.md) | Manual vs overlay vs KEDA — diagnóstico e break-glass |
+| [runbook.md](docs/runbook.md) | Operações do dia a dia |
+| [secrets.md](docs/secrets.md) | SOPS + age — setup e rotação |
+| [disaster-recovery.md](docs/disaster-recovery.md) | Rebuild de workstation ou VPS do zero |
+| [image-pinning.md](docs/image-pinning.md) | Política de tags mutáveis vs imutáveis |
+| [vps-setup.md](docs/vps-setup.md) | Provisionamento e bootstrap do VPS |
+| [adr/](docs/adr/README.md) | 17 Architecture Decision Records |
+
+---
+
+## Stack
+
+| Camada | Ferramenta |
+|---|---|
+| Runtime local | Docker Compose + k3d |
+| Runtime VPS | k3s + Traefik |
+| Manifests | Kustomize (base + overlays) |
+| Rede / TLS | Cloudflare DNS, Tunnel, Access |
+| DNS + VPS | Terraform (Cloudflare + Hetzner) |
+| Bootstrap | Ansible |
+| Task runner | just |
+| Secrets | SOPS + age |
+| Observabilidade | Loki + Alloy + Grafana |
+| Scale-to-zero | KEDA HTTP Add-on (piloto) |
+| Renovate | Atualização automática de imagens |

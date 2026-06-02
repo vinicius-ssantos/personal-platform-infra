@@ -1,70 +1,193 @@
 # Runtime lifecycle ownership
 
-This document defines who controls Kubernetes replicas in each environment.
+Este documento define quem controla réplicas Kubernetes em cada ambiente e como diagnosticar e recuperar quando o controle esperado não está funcionando.
 
-## Rule of thumb
+## Princípio geral
 
-Only one controller should own replicas for a workload at a time.
+Apenas um controlador deve ser dono das réplicas de um workload por vez.
 
-A workload is either:
+Um workload está sempre em um destes três modos:
 
-1. **Manual-managed** — operators use `just wake-*`, `just sleep-all`, or direct `kubectl scale`.
-2. **Overlay-managed** — Kustomize overlay values define the desired replica count.
-3. **KEDA-managed** — KEDA HTTP Add-on owns scale-from-zero and cooldown behavior.
+| Modo | Quem controla | Como identificar |
+|---|---|---|
+| **Manual-managed** | Operador via `just wake-*`, `just sleep-all`, ou `kubectl scale` | Nenhum `ScaledObject` KEDA associado ao deployment |
+| **Overlay-managed** | Valores do Kustomize overlay definem a contagem desejada | Deployment aplicado com `kubectl apply -k` sem KEDA |
+| **KEDA-managed** | KEDA HTTP Add-on controla scale-from-zero e cooldown | `ScaledObject` e `InterceptorRoute` existem para o deployment |
 
-Do not mix manual scale commands with KEDA-managed workloads during normal operation.
+Não misture comandos manuais de scale com workloads KEDA-managed durante operação normal.
 
-## Local/k3d
+## Ambiente: Local / k3d
 
-Local/k3d is manual/overlay-managed:
+**Modo:** Manual/Overlay-managed
 
-- `k8s/overlays/local` brings the ready services up for development.
-- `just wake-*` can be used to bring specific services up.
-- `just sleep-all` can be used to return workloads to zero.
-- KEDA HTTP Add-on is not the default local lifecycle owner.
+O overlay local (`k8s/overlays/local`) define réplicas=1 para todos os serviços prontos. KEDA não é o controlador padrão localmente.
 
-## VPS before KEDA
+```bash
+# Subir cluster e aplicar overlay (réplicas locais ativas)
+just k8s-local-up
 
-The VPS overlay is conservative:
+# Acordar serviço específico
+just wake-github
+just wake-vos
 
-- `k8s/overlays/vps` keeps application workloads sleeping by default with replicas set to zero.
-- Operators use `just wake-*` for the service they need.
-- `just sleep-all` returns non-KEDA workloads to zero after use.
+# Colocar tudo para dormir
+just sleep-all
 
-This mode is simple and explicit, but requires manual wake-up.
+# Derrubar cluster
+just k8s-local-down
+```
 
-## VPS with KEDA HTTP Add-on
+**Verificar estado atual:**
 
-When a workload is onboarded to the KEDA HTTP Add-on:
+```bash
+kubectl get deployments -A
+kubectl get pods -A
+```
 
-- Traffic must route to the KEDA interceptor service, not directly to the target service.
-- KEDA owns scale-from-zero and cooldown for that workload.
-- Manual `wake-*` and `sleep-all` should not be used for that workload during normal operation.
-- Manual scale may still be used as break-glass recovery, but the operator should document what happened and restore the KEDA resources after recovery.
+## Ambiente: VPS — sem KEDA
 
-Current pilot workloads:
+**Modo:** Manual-managed
 
-- `github-unified-mcp`
-- `github-unified-mcp-bff`
+O overlay VPS (`k8s/overlays/vps`) mantém réplicas=0 por padrão (ADR 0001). Operadores acordam serviços sob demanda.
 
-Other services remain manual-managed until they are explicitly onboarded to KEDA.
+```bash
+# Acordar grupos de serviços
+just wake-github    # github-unified-mcp + github-unified-mcp-bff
+just wake-vos       # vos-studio-mcp + vos-studio-bff
+just wake-deploy    # deploy-orchestrator-mcp
+just wake-social    # mcp-social
+just wake-all       # todos acima
 
-## Operator decision table
+# Colocar tudo para dormir
+just sleep-all
+```
 
-| Environment | Workload state | Replica owner | Normal command |
-| --- | --- | --- | --- |
-| local/k3d | default local development | overlay/manual | `just smoke-k3d`, `just wake-*`, `just sleep-all` |
-| VPS | not onboarded to KEDA | manual | `just wake-*`, `just sleep-all` |
-| VPS | onboarded to KEDA HTTP Add-on | KEDA | send traffic through KEDA interceptor |
-| VPS | break-glass incident | operator | direct `kubectl scale`, then restore intended owner |
+**Verificar réplicas atuais:**
 
-## Script behavior policy
+```bash
+kubectl get deployments -A --no-headers \
+  -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas'
+```
 
-Manual scripts should remain safe for non-KEDA workloads.
+## Ambiente: VPS — com KEDA HTTP Add-on
 
-When a script may touch a KEDA-managed workload, it should either:
+**Modo:** KEDA-managed (apenas workloads do piloto)
 
-- skip that workload by default; or
-- print a clear warning that KEDA should be the lifecycle owner.
+Quando o piloto KEDA está ativo, tráfego deve passar pelo interceptor do KEDA, não diretamente pelo serviço. O KEDA escala o deployment de zero quando recebe tráfego e o dorme após o cooldown (600 segundos de inatividade).
 
-Expanding KEDA to additional services requires updating this document and the KEDA pilot manifests in the same change.
+**Workloads do piloto atual:**
+
+- `github-unified-mcp` (namespace: `mcp`)
+- `github-unified-mcp-bff` (namespace: `bff`)
+
+**Verificar se KEDA está ativo para um workload:**
+
+```bash
+kubectl get scaledobject -n mcp
+kubectl get scaledobject -n bff
+kubectl get interceptorroute -n mcp
+kubectl get interceptorroute -n bff
+```
+
+**Instalar o piloto:**
+
+```bash
+just keda-http-install
+just smoke-keda-http
+```
+
+**Não use** `just wake-github` ou `just sleep-all` para workloads KEDA-managed durante operação normal. Esses comandos escalam diretamente e entram em conflito com o controlador KEDA.
+
+## Tabela de decisão do operador
+
+| Ambiente | Estado do workload | Dono das réplicas | Comando normal |
+|---|---|---|---|
+| local/k3d | Desenvolvimento local | overlay/manual | `just smoke-k3d`, `just wake-*`, `just sleep-all` |
+| VPS | Não onboardado ao KEDA | manual | `just wake-*`, `just sleep-all` |
+| VPS | Onboardado ao KEDA HTTP Add-on | KEDA | enviar tráfego pelo interceptor KEDA |
+| VPS | Break-glass / incidente | operador | `kubectl scale` direto, depois restaurar dono pretendido |
+
+## Diagnóstico: serviço não responde
+
+### 1. Verificar se o pod existe e está healthy
+
+```bash
+# Substitua <ns> e <nome> conforme necessário
+kubectl get pods -n <ns> -l app=<nome>
+kubectl describe pod -n <ns> <pod-name>
+kubectl logs -n <ns> deploy/<nome> --tail=50
+```
+
+### 2. Verificar réplicas
+
+```bash
+kubectl get deployment <nome> -n <ns> -o jsonpath='{.spec.replicas}'
+```
+
+Se for 0: o serviço está dormindo. Use `just wake-<grupo>` ou `kubectl scale`.
+
+### 3. Verificar se é KEDA-managed e o interceptor está vivo
+
+```bash
+kubectl get scaledobject <nome> -n <ns>
+kubectl get pods -n keda -l app.kubernetes.io/name=keda-add-ons-http-interceptor
+```
+
+Se o interceptor não estiver running, o tráfego não vai acordar o serviço. Reinstale:
+
+```bash
+just keda-http-install
+```
+
+### 4. Verificar secrets
+
+```bash
+kubectl get secret platform-secrets -n <ns>
+# Se não existir:
+just k3d-secrets          # local/k3d
+# ou (VPS):
+kubectl create secret generic platform-secrets -n <ns> --from-literal=...
+```
+
+### 5. Verificar imagem pull
+
+```bash
+kubectl describe pod -n <ns> <pod-name> | grep -A5 "Events:"
+# "ImagePullBackOff" = problema com GHCR pull secret
+just create-ghcr-secret
+```
+
+## Break-glass: forçar escala manual em workload KEDA-managed
+
+Use apenas durante incidentes. Após recovery, restaure o controle KEDA.
+
+```bash
+# Escalar manualmente (break-glass)
+kubectl scale deployment/github-unified-mcp -n mcp --replicas=1
+
+# Após recovery, confirme que o ScaledObject ainda existe
+kubectl get scaledobject github-unified-mcp -n mcp
+
+# Se o ScaledObject foi removido acidentalmente, reaplicar
+kubectl apply -k k8s/addons/keda-http/pilot
+```
+
+Documente o break-glass: o quê aconteceu, quando, e o que foi restaurado.
+
+## Política de scripts
+
+Scripts manuais são seguros para workloads não-KEDA.
+
+Quando um script pode tocar um workload KEDA-managed, ele deve:
+- Pular esse workload por padrão, ou
+- Imprimir um aviso claro de que KEDA é o dono do ciclo de vida
+
+Expandir KEDA para serviços adicionais requer atualizar este documento e os manifestos do piloto KEDA na mesma mudança.
+
+## Referências
+
+- [ADR 0001](adr/0001-sleep-pattern-replicas-zero.md) — sleep pattern
+- [ADR 0016](adr/0016-scale-to-zero-via-keda-http-add-on.md) — KEDA HTTP Add-on
+- `k8s/addons/keda-http/pilot/` — manifestos do piloto
+- `scripts/keda-http-install.sh` — instalação
+- `scripts/smoke-keda-http.sh` — validação
