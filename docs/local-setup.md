@@ -26,8 +26,8 @@ just bootstrap-local
 ## Compose mode
 
 ```bash
-just env-init
-just check-env
+just env-init    # creates .env and auto-generates local tokens
+just check-env   # validate before starting (only GITHUB_TOKEN and SOCIAL_MCP_ACCESS_TOKEN need manual values)
 just compose-up
 just compose-logs
 just compose-down
@@ -73,13 +73,30 @@ just smoke-github
 
 ## Kubernetes mode
 
-`just k8s-local-up` creates (or reuses) the `personal-platform` k3d cluster and
-applies the local Kustomize overlay. The overlay includes a replica patch that
-starts the six ready services automatically.
+### One-command setup
+
+`just local-up` runs the complete k3d provisioning sequence in one shot:
+
+```bash
+just env-init   # once — creates .env with auto-generated local tokens
+# fill GITHUB_TOKEN and SOCIAL_MCP_ACCESS_TOKEN in .env
+just local-up   # check-env → cluster → overlay → inject secrets → smoke
+```
+
+Under the hood `local-up` runs:
+1. `check-env` — validates `.env` before touching the cluster
+2. k3d cluster create-or-reuse + overlay apply
+3. `k3d-secrets` — injects real tokens from `.env` into the cluster
+4. `smoke-k3d` — full health check via port-forward
+
+### Step-by-step (manual)
+
+If you need finer control:
 
 ```bash
 just k8s-local-up
 GHCR_USERNAME="<github-username>" GHCR_TOKEN="<token-with-read-packages>" just create-ghcr-secret
+just k3d-secrets
 kubectl get pods -A
 just k8s-local-down
 ```
@@ -87,8 +104,8 @@ just k8s-local-down
 ### k3d smoke test
 
 `just smoke-k3d` is the single-command validation for the Kubernetes local path.
-It covers the full cycle: prerequisite check â†’ cluster create-or-reuse â†’ overlay
-apply â†’ rollout wait â†’ per-service health check via `kubectl port-forward`.
+It covers the full cycle: prerequisite check → cluster create-or-reuse → overlay
+apply → rollout wait → per-service health check via `kubectl port-forward`.
 
 ```bash
 just smoke-k3d
@@ -127,7 +144,7 @@ just k8s-local-down
 
 | | Compose | k3d |
 |---|---|---|
-| Command | `just compose-up` | `just k8s-local-up` |
+| Command | `just compose-up` | `just local-up` |
 | Smoke | `just smoke-all` | `just smoke-k3d` |
 | Runtime | Docker Compose | Kubernetes (k3s in k3d) |
 | Networking | host ports | port-forward or loadbalancer (8088/8443) |

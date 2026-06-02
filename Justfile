@@ -143,6 +143,17 @@ smoke-k3d:
 smoke-logs:
 	bash scripts/smoke-logs.sh
 
+local-up: check-env
+	@echo "=== Step 1/3: cluster + overlay ==="
+	k3d cluster create personal-platform --config k8s/overlays/local/k3d-config.yaml || true
+	kubectl apply -k k8s/overlays/local
+	@echo ""
+	@echo "=== Step 2/3: inject real secrets from .env ==="
+	bash scripts/k3d-secrets.sh
+	@echo ""
+	@echo "=== Step 3/3: smoke test ==="
+	bash scripts/smoke-k3d.sh
+
 k8s-local-up:
 	k3d cluster create personal-platform --config k8s/overlays/local/k3d-config.yaml || true
 	kubectl apply -k k8s/overlays/local

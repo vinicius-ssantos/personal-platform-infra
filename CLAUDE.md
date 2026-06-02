@@ -85,8 +85,9 @@ just compose-logs
 just smoke-all
 
 # Desenvolvimento local — Kubernetes
-just k8s-local-up
-just k3d-secrets
+just local-up        # fluxo completo: cluster + secrets + smoke
+just k8s-local-up    # só cluster + overlay (sem injetar secrets)
+just k3d-secrets     # injeta tokens do .env no cluster existente
 just smoke-k3d
 just k8s-local-down
 
