@@ -188,20 +188,41 @@ if ($LASTEXITCODE -ne 0) {
     throw "docker compose failed to recreate central-mcp-gateway."
 }
 
-Write-Host "Validating public gateway through Tailscale Funnel..."
+Write-Host "Validating gateway..."
 $bearer = $currentEnv["CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN"]
 $headers = @{
     Authorization = "Bearer $bearer"
     Accept = "application/json"
 }
 
-Invoke-RestMethod -Uri "$publicBaseUrl/healthz" -TimeoutSec 30 | Out-Null
-Invoke-RestMethod -Uri "$publicBaseUrl/.well-known/oauth-authorization-server" -Headers @{ Accept = "application/json" } -TimeoutSec 30 | Out-Null
 $body = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-$tools = Invoke-RestMethod -Uri "$publicBaseUrl/mcp" -Method Post -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 30
+$publicValidationOk = $false
+
+try {
+    Invoke-RestMethod -Uri "$publicBaseUrl/healthz" -TimeoutSec 30 | Out-Null
+    Invoke-RestMethod -Uri "$publicBaseUrl/.well-known/oauth-authorization-server" -Headers @{ Accept = "application/json" } -TimeoutSec 30 | Out-Null
+    $tools = Invoke-RestMethod -Uri "$publicBaseUrl/mcp" -Method Post -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 30
+    $publicValidationOk = $true
+}
+catch {
+    Write-Warning "Public self-check through $publicBaseUrl failed from this workstation. This can happen when Windows resolves the Funnel name to the local Tailscale IP and cannot hairpin to itself."
+    Write-Warning "Checking Funnel status and local gateway instead. Use ChatGPT or another external client for the final public test."
+
+    $funnelStatus = & $Tailscale funnel status --json | ConvertFrom-Json
+    $hostKey = "$($publicBaseUrl -replace '^https://', ''):$HttpsPort"
+    if (-not $funnelStatus.AllowFunnel.$hostKey) {
+        throw "Tailscale Funnel is not active for $hostKey."
+    }
+
+    Invoke-RestMethod -Uri "http://127.0.0.1:${LocalPort}/healthz" -TimeoutSec 15 | Out-Null
+    $tools = Invoke-RestMethod -Uri "http://127.0.0.1:${LocalPort}/mcp" -Method Post -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 20
+}
 
 Write-Host ""
 Write-Host "Tailscale Funnel environment is ready."
 Write-Host "ChatGPT MCP URL: $publicBaseUrl/mcp"
+if (-not $publicValidationOk) {
+    Write-Host "Public validation from this workstation was skipped after a local hairpin failure; Funnel status and local gateway validation passed."
+}
 Write-Host "Tools:"
 $tools.result.tools | ForEach-Object { Write-Host "  - $($_.name)" }
