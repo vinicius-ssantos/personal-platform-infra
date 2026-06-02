@@ -307,6 +307,42 @@ may still count rejected requests against free-tier request limits because they
 already reached the ngrok edge, so keep the public URL private and stop ngrok
 when it is not needed.
 
+## Tailscale Funnel
+
+Tailscale Funnel is an optional no-owned-domain path for testing ChatGPT against
+the local `central-mcp-gateway`. It does not replace ngrok or Cloudflare Tunnel;
+it only exposes the gateway public URL through the device's `*.ts.net` name.
+
+Prerequisites:
+
+- Tailscale installed and logged in on the workstation.
+- MagicDNS enabled for the tailnet.
+- HTTPS certificates enabled for the tailnet.
+- Funnel allowed for this user/device in the tailnet policy.
+
+Start Compose gateway dependencies, expose `localhost:8040` through Funnel,
+write the `*.ts.net` URL into `.env`, restart the gateway with the public OAuth
+issuer, and validate `/mcp`:
+
+```powershell
+just tailscale-funnel-up
+```
+
+Use this URL in ChatGPT:
+
+```text
+https://<device>.<tailnet>.ts.net/mcp
+```
+
+Stop only the public Funnel exposure:
+
+```powershell
+just tailscale-funnel-down
+```
+
+The local app containers are left running. Use `just compose-down` to stop the
+Compose runtime.
+
 ## Upgrade k3s (VPS)
 
 Run on the VPS as root:

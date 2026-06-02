@@ -175,9 +175,19 @@ just quick-tunnel-up
 
 # Ngrok (requer conta e authtoken configurado)
 just ngrok-up
+
+# Tailscale Funnel (requer Tailscale logado e Funnel habilitado)
+just tailscale-funnel-up
 ```
 
 `quick-tunnel-up` gera URLs `trycloudflare.com` e as escreve no `.env` automaticamente. Use `quick-tunnel-refresh` para forçar novas URLs (sujeito a rate limit do Cloudflare).
+
+`tailscale-funnel-up` exposes only `central-mcp-gateway` on `localhost:8040`
+through a public `*.ts.net` URL. Use the printed URL in ChatGPT:
+
+```text
+https://<device>.<tailnet>.ts.net/mcp
+```
 
 ## Secrets
 

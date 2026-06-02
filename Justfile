@@ -79,6 +79,12 @@ ngrok-up:
 ngrok-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-down.ps1
 
+tailscale-funnel-up:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/tailscale-funnel-up.ps1
+
+tailscale-funnel-down:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/tailscale-funnel-down.ps1
+
 k3d-ngrok-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/k3d-ngrok-up.ps1
 
