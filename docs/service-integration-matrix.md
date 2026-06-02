@@ -21,6 +21,10 @@ operator scripts.
 | `github-unified-mcp-bff` | `vinicius-ssantos/-github-unified-mcp-bff` | BFF for GitHub MCP flows | upstream | `ghcr.io/vinicius-ssantos/github-unified-mcp-bff:main` configured and verified | yes, profile `github-bff` | yes, `GITHUB_UNIFIED_MCP_BFF_IMAGE` | `just smoke-github-bff` | `just smoke-k3d` | yes | ready | none | Depends on `github-unified-mcp` at `http://github-unified-mcp:8765`. k3d port-forward: 18010. |
 | `vos-studio-mcp` | `vinicius-ssantos/vos-studio-mcp` | VOS Studio MCP server | upstream | `ghcr.io/vinicius-ssantos/vos-studio-mcp:main` configured and verified | yes, profile `vos` | yes, `VOS_STUDIO_MCP_IMAGE` | `just smoke-vos` | `just smoke-k3d` | yes | ready | #51 | Exposes MCP runtime on port `8000` inside the container. k3d port-forward: 18020. Compose healthcheck uses `/health` with relaxed timeout until the upstream service exposes a lightweight `/live` endpoint. |
 | `vos-studio-bff` | `vinicius-ssantos/vos-studio-bff` | BFF for VOS Studio flows | upstream | `ghcr.io/vinicius-ssantos/vos-studio-bff:main` configured and verified | yes, profile `vos` | yes, `VOS_STUDIO_BFF_IMAGE` | `just smoke-vos` | `just smoke-k3d` | yes | ready | none | Depends on `vos-studio-mcp` at `http://vos-studio-mcp:8000`. k3d port-forward: 18030. |
+| `central-mcp-gateway` | `vinicius-ssantos/central-mcp-gateway` | Unified public MCP gateway (auth, allowlist, audit) | upstream | `ghcr.io/vinicius-ssantos/central-mcp-gateway:main` configured | yes, profile `gateway` | yes, `CENTRAL_MCP_GATEWAY_IMAGE` | `just smoke-gateway-sh` | not yet | yes (k8s base, replicas=0) | wired | none | Aggregates github, deploy, social and vos MCPs. Port 8040 (Compose), 8080 (container). Env-specific values in overlays. |
+| `jobHunterAgent` | `vinicius-ssantos/jobHunterAgent` | Job search automation agent (FastAPI + Playwright) | upstream | not confirmed | no | no | no | no | no | blocked | #117 | Python/FastAPI + SQLite + Playwright browser automation. LinkedIn session state is sensitive. Contract (port, health path, image) must be confirmed before integration. |
+| `WorkflowEngine` | `vinicius-ssantos/WorkflowEngine` | Workflow orchestration backend | upstream | not confirmed | no | no | no | no | no | blocked | #118 | Java. External dependencies (DB, queue) unknown. Runtime contract must be confirmed and dependency strategy decided per ADR 0002 before integration. |
+| `github-unified-mcp-frontend` | `vinicius-ssantos/github-unified-mcp-frontend` | React/Vite SPA for GitHub MCP flows | Cloudflare Pages | n/a — static SPA | no (Cloudflare Pages) | no | no | no | no (frontend stays in CDN per ADR 0003) | blocked | #119 | Infra role: update `FRONTEND_URL` in VPS overlay once Pages domain is confirmed. No Dockerfile or k8s manifests needed. |
 
 ## Validation checklist
 
@@ -33,4 +37,8 @@ operator scripts.
 
 ## Current blockers
 
-No current blockers for services marked `ready`.
+| Service | Blocker | Tracking issue |
+|---|---|---|
+| `jobHunterAgent` | Runtime contract (image, port, health path, env, browser automation strategy) not confirmed | #117 |
+| `WorkflowEngine` | Runtime contract and external dependency strategy not confirmed | #118 |
+| `github-unified-mcp-frontend` | Cloudflare Pages domain and BFF `FRONTEND_URL` not confirmed | #119 |
