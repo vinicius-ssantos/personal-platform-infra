@@ -27,6 +27,11 @@ The local environment may run multiple services together. The VPS should stay le
 
 ## Kubernetes configuration boundaries
 
+The source of truth for this platform's Kubernetes runtime is this repository.
+Application repositories publish images and document runtime contracts; this
+repository owns the Compose, k3d/k3s, overlay, secret and routing wiring. See
+[ADR 0017](adr/0017-kubernetes-ownership-in-infra-repo.md).
+
 - `k8s/base` describes service shape: names, labels, images, ports, probes,
   stable internal service URLs and generic resources.
 - `k8s/overlays/local` describes local/k3d behavior: local development modes,
