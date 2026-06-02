@@ -37,9 +37,10 @@ variable "vps_ipv4" {
 }
 
 variable "tunnel_secret" {
-  description = "32-byte base64-encoded secret for the Cloudflare Tunnel. Generate with: openssl rand -hex 32 | base64"
+  description = "32-byte base64-encoded secret for the Cloudflare Tunnel. Required when target_mode is local-tunnel. Generate with: openssl rand -hex 32 | base64"
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "cloudflare_access_enabled" {

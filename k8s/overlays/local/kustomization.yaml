@@ -6,3 +6,4 @@ patches:
   - path: replicas-local.yaml
   - path: bff-env-local.yaml
   - path: monitoring-local.yaml
+  - path: gateway-env-local.yaml

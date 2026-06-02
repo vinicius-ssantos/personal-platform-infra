@@ -5,9 +5,6 @@ metadata:
   namespace: mcp
 data:
   GATEWAY_APP_NAME: central-mcp-gateway
-  GATEWAY_ENVIRONMENT: local
-  GATEWAY_PUBLIC_BASE_URL: http://localhost:18040
-  GATEWAY_OAUTH_ISSUER: http://localhost:18040
   GATEWAY_HOST: 0.0.0.0
   GATEWAY_PORT: "8080"
   GATEWAY_LOG_LEVEL: info
@@ -21,3 +18,5 @@ data:
   GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE: "20"
   GATEWAY_TRUSTED_PROXY_COUNT: "1"
   GATEWAY_IDEMPOTENCY_TTL_SECONDS: "300"
+  # GATEWAY_ENVIRONMENT, GATEWAY_PUBLIC_BASE_URL and GATEWAY_OAUTH_ISSUER
+  # are environment-specific and must be set in the overlay, not here.

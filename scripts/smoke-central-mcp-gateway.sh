@@ -26,6 +26,12 @@ curl -fsS \
   -X POST "$BASE_URL/mcp" \
   -H "Authorization: Bearer ${bearer}" \
   -H "Content-Type: application/json" \
-  --data '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke-test","version":"1.0"}}}'
+
+curl -fsS \
+  -X POST "$BASE_URL/mcp" \
+  -H "Authorization: Bearer ${bearer}" \
+  -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 
 docker compose --env-file "$ENV_FILE" -f compose/docker-compose.yml --profile all ps central-mcp-gateway

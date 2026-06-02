@@ -1,10 +1,19 @@
 resources:
   - ../../base
   - loki-pvc.yaml
+  - ingress-vps.yaml
+  # After creating platform-secrets in the cluster (see platform-secrets-vps.yaml.example),
+  # you can manage them declaratively via SOPS-encrypted Secret:
+  # - platform-secrets-vps.yaml
 
 patches:
   - path: loki-volume-patch.yaml
   - path: runtime-env-vps.yaml
 
-# VPS overlay keeps workloads sleeping by default with replicas=0.
-# Add ingress, secrets and resource patches incrementally.
+# VPS overlay keeps workloads at replicas=0 (ADR 0001).
+# Wake scripts or kubectl scale bring services up on demand.
+#
+# Before first deploy:
+#   1. Replace example.com in ingress-vps.yaml and runtime-env-vps.yaml with your domain
+#   2. Create platform-secrets in each namespace (see platform-secrets-vps.yaml.example)
+#   3. Configure VPS_KUBECONFIG secret in GitHub Actions (base64-encoded k3s kubeconfig)

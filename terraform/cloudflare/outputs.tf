@@ -7,13 +7,13 @@ output "target_mode" {
 }
 
 output "tunnel_id" {
-  description = "Cloudflare Tunnel ID — used to build CNAME targets."
-  value       = cloudflare_zero_trust_tunnel_cloudflared.platform.id
+  description = "Cloudflare Tunnel ID — null when target_mode is vps-ip."
+  value       = try(cloudflare_zero_trust_tunnel_cloudflared.platform[0].id, null)
 }
 
 output "tunnel_cname" {
-  description = "CNAME value that DNS records point to when using tunnel mode."
-  value       = "${cloudflare_zero_trust_tunnel_cloudflared.platform.id}.cfargotunnel.com"
+  description = "CNAME value for DNS records in tunnel mode — null when target_mode is vps-ip."
+  value       = try("${cloudflare_zero_trust_tunnel_cloudflared.platform[0].id}.cfargotunnel.com", null)
 }
 
 output "service_hostnames" {

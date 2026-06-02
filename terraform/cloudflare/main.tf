@@ -14,18 +14,29 @@ provider "cloudflare" {
 }
 
 # ---------------------------------------------------------------------------
-# Cloudflare Tunnel
+# Cloudflare Tunnel (only created when target_mode = "local-tunnel")
 # ---------------------------------------------------------------------------
 
 resource "cloudflare_zero_trust_tunnel_cloudflared" "platform" {
+  count = local.use_tunnel ? 1 : 0
+
   account_id = var.cloudflare_account_id
   name       = "personal-platform"
   secret     = var.tunnel_secret
+
+  lifecycle {
+    precondition {
+      condition     = var.tunnel_secret != null
+      error_message = "tunnel_secret is required when target_mode is local-tunnel."
+    }
+  }
 }
 
 resource "cloudflare_zero_trust_tunnel_cloudflared_config" "platform" {
+  count = local.use_tunnel ? 1 : 0
+
   account_id = var.cloudflare_account_id
-  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.platform.id
+  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.platform[0].id
 
   config {
     dynamic "ingress_rule" {
@@ -86,7 +97,7 @@ resource "cloudflare_record" "services" {
   zone_id = var.cloudflare_zone_id
   name    = each.value.subdomain
   type    = local.use_tunnel ? "CNAME" : "A"
-  content = local.use_tunnel ? "${cloudflare_zero_trust_tunnel_cloudflared.platform.id}.cfargotunnel.com" : var.vps_ipv4
+  content = local.use_tunnel ? "${cloudflare_zero_trust_tunnel_cloudflared.platform[0].id}.cfargotunnel.com" : var.vps_ipv4
   proxied = true
 
   lifecycle {
