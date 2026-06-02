@@ -178,6 +178,9 @@ Set-EnvValues $EnvFile @{
     CENTRAL_MCP_GATEWAY_PUBLIC_URL = $publicBaseUrl
 }
 $currentEnv = Read-EnvMap $EnvFile
+$env:TAILSCALE_FUNNEL_PUBLIC_URL = $publicBaseUrl
+$env:TAILSCALE_FUNNEL_HTTPS_PORT = "$HttpsPort"
+$env:CENTRAL_MCP_GATEWAY_PUBLIC_URL = $publicBaseUrl
 
 Write-Host "Restarting central MCP gateway with public OAuth URL..."
 docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile gateway --profile github --profile deploy --profile social --profile vos up -d --force-recreate --wait central-mcp-gateway
