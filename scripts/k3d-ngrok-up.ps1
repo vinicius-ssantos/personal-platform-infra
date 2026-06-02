@@ -256,6 +256,11 @@ $KubeconfigPath = Join-Path $env:USERPROFILE ".config\k3d\kubeconfig-$ClusterNam
 if (-not (Test-Path $KubeconfigPath)) {
     Invoke-Checked $K3d @("kubeconfig", "write", $ClusterName)
 }
+$kubeconfigText = [System.IO.File]::ReadAllText($KubeconfigPath)
+$normalizedKubeconfigText = $kubeconfigText -replace "https://host\.docker\.internal:", "https://127.0.0.1:"
+if ($normalizedKubeconfigText -ne $kubeconfigText) {
+    [System.IO.File]::WriteAllText($KubeconfigPath, $normalizedKubeconfigText, [System.Text.UTF8Encoding]::new($false))
+}
 $env:KUBECONFIG = $KubeconfigPath
 Invoke-Checked $Kubectl @("config", "use-context", "k3d-$ClusterName")
 

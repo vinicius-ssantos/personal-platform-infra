@@ -144,10 +144,7 @@ smoke-logs:
 	bash scripts/smoke-logs.sh
 
 k8s-local-up:
-	k3d cluster create personal-platform --config k8s/overlays/local/k3d-config.yaml || true
-	kubectl apply -k k8s/overlays/local
-	@echo ""
-	@echo "Cluster ready. Run 'just k3d-secrets' to inject real API tokens from .env."
+	powershell.exe -ExecutionPolicy Bypass -File scripts/k8s-local-up.ps1
 
 k3d-secrets:
 	bash scripts/k3d-secrets.sh
