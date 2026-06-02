@@ -28,3 +28,13 @@ metadata:
   namespace: vos
 data:
   APP_ENV: "production"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: central-mcp-gateway-config
+  namespace: mcp
+data:
+  GATEWAY_ENVIRONMENT: "production"
+  GATEWAY_PUBLIC_BASE_URL: "https://mcp-gateway.example.com"
+  GATEWAY_OAUTH_ISSUER: "https://mcp-gateway.example.com"
