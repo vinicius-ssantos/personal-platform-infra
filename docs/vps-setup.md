@@ -41,9 +41,23 @@ ansible-playbook -i ansible/inventory/vps.ini ansible/playbooks/bootstrap-vps.ym
   -e 'k3s_api_allowed_cidrs=["198.51.100.25/32"]'
 ```
 
-Export the kubeconfig from the VPS, base64-encode it, and save it as the
-GitHub Actions secret `VPS_KUBECONFIG` when automated deploys should start
-applying `k8s/overlays/vps`.
+Export the kubeconfig from the VPS, base64-encode it, and add it as a GitHub
+Actions secret so the automated deploy can reach the cluster:
+
+```bash
+# Run from a machine that can SSH to the VPS
+ssh <operator>@<vps-ip> 'cat ~/.kube/config' | base64 -w0
+```
+
+Copy the output and add it in GitHub → Settings → Secrets → Actions →
+`VPS_KUBECONFIG`.
+
+Run the preflight check to verify everything is in order before triggering
+the first automated deploy:
+
+```bash
+just vps-preflight
+```
 
 Create or update GHCR pull secrets before waking workloads:
 

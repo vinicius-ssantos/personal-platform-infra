@@ -28,7 +28,7 @@ jobs:
           VPS_KUBECONFIG: ${{ secrets.VPS_KUBECONFIG }}
         run: |
           if [ -z "$VPS_KUBECONFIG" ]; then
-            echo "::notice::VPS_KUBECONFIG is not configured; skipping VPS deploy."
+            echo "::notice::VPS_KUBECONFIG is not configured — skipping VPS deploy. See docs/vps-setup.md to set it up."
             echo "configured=false" >> "$GITHUB_OUTPUT"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
@@ -47,6 +47,10 @@ jobs:
         if: steps.kubeconfig.outputs.configured == 'true'
         run: kubectl cluster-info --request-timeout=10s
 
+      - name: Validate overlay (dry-run)
+        if: steps.kubeconfig.outputs.configured == 'true'
+        run: kubectl apply -k k8s/overlays/vps --dry-run=server
+
       - name: Apply VPS overlay
         if: steps.kubeconfig.outputs.configured == 'true'
         run: kubectl apply -k k8s/overlays/vps
@@ -57,13 +61,24 @@ jobs:
           kubectl get deployments -A --no-headers \
             -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,REPLICAS:.spec.replicas' \
             | awk '$3 > 0 {print $1 "/" $2}' \
-            | while read ns_name; do
+            | while read -r ns_name; do
                 ns="${ns_name%/*}"
                 name="${ns_name#*/}"
                 echo "Waiting for rollout: $name in $ns"
                 kubectl rollout status deployment/"$name" -n "$ns" --timeout=120s
               done
 
-      - name: Show workload status
+      - name: Show cluster resource summary
         if: steps.kubeconfig.outputs.configured == 'true'
-        run: kubectl get deployments -A
+        run: |
+          echo "=== Namespaces ==="
+          kubectl get namespaces
+          echo ""
+          echo "=== Deployments ==="
+          kubectl get deployments -A
+          echo ""
+          echo "=== Pods ==="
+          kubectl get pods -A
+          echo ""
+          echo "=== Services ==="
+          kubectl get services -A --field-selector='metadata.namespace!=kube-system'
