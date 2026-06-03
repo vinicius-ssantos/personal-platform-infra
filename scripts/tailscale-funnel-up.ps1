@@ -157,6 +157,12 @@ if ($initialValues.Count -gt 0) {
     $currentEnv = Read-EnvMap $EnvFile
 }
 
+Write-Host "Pulling latest central MCP gateway image..."
+docker compose -f compose/docker-compose.yml --env-file $EnvFile pull central-mcp-gateway
+if ($LASTEXITCODE -ne 0) {
+    throw "docker compose failed to pull central-mcp-gateway image."
+}
+
 Write-Host "Starting Compose gateway runtime..."
 docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile gateway --profile github --profile deploy --profile social --profile vos up -d --wait central-mcp-gateway
 if ($LASTEXITCODE -ne 0) {
