@@ -343,6 +343,15 @@ ChatGPT custom MCP connector settings:
 - Token endpoint auth method: `none`.
 - OIDC: disabled.
 
+Admin UI is separate from the ChatGPT MCP connector. Use the local URL for
+administration and the `CENTRAL_MCP_GATEWAY_ADMIN_TOKEN` from `.env`:
+
+```text
+http://localhost:8040/admin/ui/login
+```
+
+Do not use the public Tailscale/ngrok/quick-tunnel URL for routine admin access.
+
 If Windows resolves the `*.ts.net` name to the local Tailscale IP and the
 browser times out during OAuth, keep Funnel enabled and run:
 

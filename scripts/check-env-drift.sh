@@ -4,7 +4,20 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-python - <<'PY'
+if [[ -n "${PYTHON:-}" ]]; then
+  PYTHON_CMD=("$PYTHON")
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON_CMD=(python3)
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_CMD=(python)
+elif command -v py >/dev/null 2>&1; then
+  PYTHON_CMD=(py -3)
+else
+  echo "ERROR: python3, python, or py is required to run check-env-drift." >&2
+  exit 1
+fi
+
+"${PYTHON_CMD[@]}" - <<'PY'
 from __future__ import annotations
 
 import re

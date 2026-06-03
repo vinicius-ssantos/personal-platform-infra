@@ -16,6 +16,7 @@ Fill these values before starting services:
   MCP_BEARER_TOKEN         - local bearer token, e.g. openssl rand -hex 32
   MCP_SERVER_API_KEY       - local deploy token, e.g. openssl rand -hex 32
   SOCIAL_MCP_ACCESS_TOKEN  - social integration access token
+  CENTRAL_MCP_GATEWAY_ADMIN_TOKEN - local Admin UI token, e.g. openssl rand -hex 32
 
 Then run:
   just check-env
