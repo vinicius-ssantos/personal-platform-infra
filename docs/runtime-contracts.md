@@ -82,7 +82,8 @@ Use este documento antes de mudar qualquer wiring de Compose ou Kubernetes, e an
 | Health path | `/healthz` |
 | Readiness path | `/readyz` |
 | Auth | Bearer token via `Authorization: Bearer <token>` |
-| Variáveis obrigatórias | `GATEWAY_PUBLIC_BEARER_TOKEN`, `GATEWAY_OAUTH_CLIENT_SECRET`, `GATEWAY_SESSION_SECRET`, `GATEWAY_PUBLIC_BASE_URL`, `GATEWAY_OAUTH_ISSUER` |
+| Variáveis obrigatórias | `GATEWAY_PUBLIC_BEARER_TOKEN`, `GATEWAY_SESSION_SECRET`, `GATEWAY_PUBLIC_BASE_URL`, `GATEWAY_OAUTH_ISSUER` |
+| OAuth client secret | Opcional. Deixe vazio para clientes públicos com PKCE, como ChatGPT custom MCP connectors com token auth method `none`. |
 | Upstreams | github-unified-mcp, deploy-orchestrator-mcp, mcp-social, vos-studio-mcp |
 | Namespace k8s | `mcp` |
 
