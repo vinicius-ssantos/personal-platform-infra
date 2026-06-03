@@ -189,6 +189,15 @@ through a public `*.ts.net` URL. Use the printed URL in ChatGPT:
 https://<device>.<tailnet>.ts.net/mcp
 ```
 
+Configure the ChatGPT connector as OAuth with client ID `chatgpt`, an empty
+client secret, token endpoint auth method `none`, and OIDC disabled. If the
+OAuth browser redirect times out on Windows, run:
+
+```powershell
+& "C:\Program Files\Tailscale\tailscale.exe" up --accept-dns=false
+just tailscale-funnel-up
+```
+
 ## Secrets
 
 O repositório usa duas camadas de secrets:

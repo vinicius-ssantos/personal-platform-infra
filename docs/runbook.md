@@ -334,6 +334,23 @@ Use this URL in ChatGPT:
 https://<device>.<tailnet>.ts.net/mcp
 ```
 
+ChatGPT custom MCP connector settings:
+
+- Connection: server URL.
+- Authentication: OAuth.
+- Client ID: `chatgpt`.
+- Client secret: leave empty.
+- Token endpoint auth method: `none`.
+- OIDC: disabled.
+
+If Windows resolves the `*.ts.net` name to the local Tailscale IP and the
+browser times out during OAuth, keep Funnel enabled and run:
+
+```powershell
+& "C:\Program Files\Tailscale\tailscale.exe" up --accept-dns=false
+just tailscale-funnel-up
+```
+
 Stop only the public Funnel exposure:
 
 ```powershell
