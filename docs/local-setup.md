@@ -71,6 +71,20 @@ To smoke-test only the GitHub MCP service:
 just smoke-github
 ```
 
+### Central MCP Gateway Admin UI
+
+The local Compose runtime enables the gateway Admin UI. Access it through the
+local port, not through a public tunnel:
+
+```text
+http://localhost:8040/admin/ui/login
+```
+
+Login with the value of `CENTRAL_MCP_GATEWAY_ADMIN_TOKEN` from your uncommitted
+`.env` file. `just tailscale-funnel-up`, `just quick-tunnel-up`, and
+`just k3d-ngrok-up` generate this token when it is missing or still set to
+`change-me`.
+
 ## Kubernetes mode
 
 `just k8s-local-up` creates (or reuses) the `personal-platform` k3d cluster and
