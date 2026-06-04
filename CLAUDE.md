@@ -154,7 +154,7 @@ just tunnel
 - **`mcp-social` tem PVC no k8s** — validar storage class/backup antes de tratar como produção durável.
 - **`deploy-vps.yml` precisa do secret `VPS_KUBECONFIG`** — base64 do kubeconfig k3s do VPS; sem ele o workflow registra notice e pula o deploy real.
 - **SOPS precisa da chave age em `~/.age/personal-platform.txt`** — sem a chave, `just secrets-edit-*` não funciona.
-- **Grafana inicial usa credenciais dev** — trocar para Secret antes de expor em VPS.
+- **Grafana usa o Secret `grafana-admin`** (namespace `monitoring`, via `secretKeyRef`) — crie-o antes de subir o monitoring: local com `just grafana-secret`, VPS pelo fluxo SOPS (`secrets/platform-secrets-vps.enc.yaml`). Sem o Secret o pod entra em crashloop.
 - **Alguns ConfigMaps ainda têm placeholders** — valores como `REPLACE_WITH_FRONTEND_URL` devem ser substituídos em overlay/secret de VPS antes de produção.
 - **`vos-studio-mcp` ainda usa `/health` como liveness/readiness** — idealmente o app upstream deve expor `/live` separado de checks pesados de dependência.
 

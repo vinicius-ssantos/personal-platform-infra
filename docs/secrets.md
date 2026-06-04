@@ -76,9 +76,10 @@ SOPS_AGE_KEY_FILE=~/.age/personal-platform.txt sops -d secrets/local.enc.yaml
 
 ### VPS platform-secrets (declarative, applied to the cluster)
 
-The runtime `platform-secrets` objects for the VPS (referenced by the
-deployments in namespaces `mcp`, `bff` and `vos`) are managed as SOPS-encrypted
-Kubernetes Secret manifests. They are **not** part of the kustomize overlay —
+The runtime Secrets for the VPS — the `platform-secrets` objects referenced by
+the deployments in namespaces `mcp`, `bff` and `vos`, plus the `grafana-admin`
+Secret in `monitoring` — are managed as SOPS-encrypted Kubernetes Secret
+manifests. They are **not** part of the kustomize overlay —
 plain `kubectl apply -k` cannot decrypt SOPS — so they are applied with a
 dedicated decrypt step.
 
