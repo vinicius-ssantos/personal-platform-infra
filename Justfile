@@ -149,6 +149,9 @@ smoke-all-sh:
 	just smoke-vos-sh
 	just smoke-gateway-sh
 
+smoke-e2e:
+	bash scripts/smoke-e2e.sh
+
 smoke-k3d:
 	bash scripts/smoke-k3d.sh
 
