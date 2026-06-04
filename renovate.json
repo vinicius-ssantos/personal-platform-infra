@@ -1,12 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", "docker:pinDigests"],
   "schedule": ["before 9am on monday"],
   "labels": ["dependencies"],
   "packageRules": [
     {
       "description": "Group all platform service images into a single PR",
-      "matchPackagePatterns": ["ghcr.io/vinicius-ssantos/.*"],
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^ghcr\\.io/vinicius-ssantos//"],
       "groupName": "platform images",
       "automerge": false
     },
@@ -17,11 +18,19 @@
       "automerge": true
     }
   ],
-  "docker": {
-    "enabled": true
-  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track ghcr image tags declared in .env.example",
+      "managerFilePatterns": ["/^\\.env\\.example$/"],
+      "matchStrings": [
+        "=(?<depName>ghcr\\.io/[^:\\s]+):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
   "kubernetes": {
     "enabled": true,
-    "fileMatch": ["k8s/.*\\.yaml$"]
+    "managerFilePatterns": ["/k8s/.*\\.yaml$/"]
   }
 }

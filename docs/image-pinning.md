@@ -57,6 +57,26 @@ images:
 
 Keep the exact pinned versions in reviewable commits. A VPS deploy PR should make it obvious whether it changes infra only, image versions only, or both.
 
+## Automation (Renovate)
+
+`renovate.json` operationalizes this policy:
+
+- **Digest pinning** (`docker:pinDigests`): image references managed by the
+  Docker, Compose and Kubernetes managers are pinned to `tag@sha256:<digest>`.
+  This keeps the human-readable tag (e.g. `:main`) while making every pull
+  reproducible, and Renovate opens a PR whenever the upstream digest moves.
+- **Grouped platform-image PRs**: all `ghcr.io/vinicius-ssantos/*` updates land
+  in a single weekly PR labelled `dependencies` (Mondays before 9am), never
+  auto-merged — image bumps stay human-reviewed.
+- **`.env.example` coverage**: a custom regex manager tracks the
+  `*_IMAGE=ghcr.io/...:tag` entries so the Compose image vars get the same
+  pinning/update treatment as the manifests.
+- **GitHub Actions**: patch-level action updates auto-merge; minor/major are
+  proposed for review.
+
+Renovate updates references in place; pinning a specific immutable release tag
+in the VPS overlay (above) remains a deliberate, reviewable change.
+
 ## Candidate services
 
 - `github-unified-mcp`
@@ -89,8 +109,11 @@ Before pinning a new image in the VPS overlay:
 - expected environment variables and secrets exist;
 - rollback target is known.
 
-## Future policy check
+## Policy check
 
-A later CI/policy check can scan production-oriented overlays and warn when they render mutable tags such as `:main`, `:latest`, or branch tags for release-ready services.
-
-Until that check exists, reviewers should treat mutable VPS image references as an explicit operational risk.
+`scripts/check-policy.sh` (run in CI) already warns when `.env.example` or the
+manifests still carry mutable `ghcr.io/...:main` tags, pointing back to this doc.
+It is a warning, not a hard failure: combined with Renovate digest pinning, a
+mutable tag remains reproducible, but reviewers should still treat a mutable VPS
+image reference for a release-ready service as an explicit operational risk and
+prefer an immutable tag/digest in the overlay.
