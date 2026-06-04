@@ -50,6 +50,8 @@ Also record where these values live:
 - VPS provider account and SSH key location.
 - Terraform backend/state location.
 - GHCR package read token location.
+- `mcp-social` SQLite backup location (the only in-cluster data of record — see
+  `docs/mcp-social-storage.md`). The Loki PVC is not backed up by design.
 
 ## Local workstation reset
 
@@ -196,6 +198,18 @@ just terraform-apply
 ```bash
 just status-public
 ```
+
+## Lost persistent volumes (mcp-social / Loki)
+
+Node-local `local-path` PVCs do not survive a full VPS rebuild.
+
+- **`mcp/mcp-social-data`** holds the only in-cluster data of record (SQLite).
+  Restore it from the most recent backup after the cluster is back — see the
+  Restore section in `docs/mcp-social-storage.md`. Without a backup this data is
+  unrecoverable; the app starts with an empty database.
+- **`monitoring/loki-data`** is a rolling 7-day log window and is intentionally
+  not backed up. Recreate it empty (it is part of the VPS overlay) and let Loki
+  repopulate from new traffic — see `docs/loki-storage.md`.
 
 ## Image versions after recovery
 

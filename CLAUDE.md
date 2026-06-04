@@ -151,7 +151,7 @@ just tunnel
 
 - **`smoke-all` usa PowerShell** (`.ps1`) — no Linux/CI, usar os scripts `.sh` diretamente.
 - **`community.general` precisa ser instalado antes do bootstrap** — rodar `ansible-galaxy collection install -r ansible/requirements.yml`.
-- **`mcp-social` tem PVC no k8s** — validar storage class/backup antes de tratar como produção durável.
+- **`mcp-social` tem PVC no k8s** — único dado de record no cluster (SQLite em `/data/social.db`). Storage é `local-path` node-local, sem backup automático; ver `docs/mcp-social-storage.md` para retenção, backup e restore.
 - **`deploy-vps.yml` precisa do secret `VPS_KUBECONFIG`** — base64 do kubeconfig k3s do VPS; sem ele o workflow registra notice e pula o deploy real.
 - **SOPS precisa da chave age em `~/.age/personal-platform.txt`** — sem a chave, `just secrets-edit-*` não funciona.
 - **Grafana usa o Secret `grafana-admin`** (namespace `monitoring`, via `secretKeyRef`) — crie-o antes de subir o monitoring: local com `just grafana-secret`, VPS pelo fluxo SOPS (`secrets/platform-secrets-vps.enc.yaml`). Sem o Secret o pod entra em crashloop.
@@ -181,6 +181,4 @@ Todas as decisões estão em `docs/adr/`.
 | alta | Padronizar base/overlays para separar config local e config VPS |
 | alta | Declarar secrets de runtime via Kubernetes Secrets/SOPS em vez de placeholders nos manifests base |
 | média | Adicionar ingress/rotas VPS e alinhar com Cloudflare DNS |
-| média | Trocar credenciais dev do Grafana por Secret antes de expor observabilidade |
-| média | Documentar retenção/backup para PVC do `mcp-social` e logs Loki |
 | baixa | Adotar Renovate ou rotina equivalente para image tags |

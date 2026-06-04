@@ -106,6 +106,8 @@ just ngrok-up          # Ngrok (requer authtoken configurado)
 | [runbook.md](docs/runbook.md) | Operações do dia a dia |
 | [secrets.md](docs/secrets.md) | SOPS + age — setup e rotação |
 | [disaster-recovery.md](docs/disaster-recovery.md) | Rebuild de workstation ou VPS do zero |
+| [mcp-social-storage.md](docs/mcp-social-storage.md) | PVC SQLite do `mcp-social` — retenção, backup e restore |
+| [loki-storage.md](docs/loki-storage.md) | PVC de logs do Loki — retenção e trade-offs |
 | [image-pinning.md](docs/image-pinning.md) | Política de tags mutáveis vs imutáveis |
 | [vps-setup.md](docs/vps-setup.md) | Provisionamento e bootstrap do VPS |
 | [adr/](docs/adr/README.md) | 17 Architecture Decision Records |
