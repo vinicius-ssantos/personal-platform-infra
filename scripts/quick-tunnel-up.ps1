@@ -223,6 +223,9 @@ foreach ($service in $Services) {
 }
 
 Set-EnvValues $EnvFile $publicUrls
+foreach ($key in $publicUrls.Keys) {
+    [System.Environment]::SetEnvironmentVariable($key, $publicUrls[$key], "Process")
+}
 
 Write-Host "Restarting central MCP gateway with public OAuth URL..."
 docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --force-recreate central-mcp-gateway
