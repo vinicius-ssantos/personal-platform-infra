@@ -107,8 +107,12 @@ echo "k3d smoke passed: all 7 ready services are healthy."
 if [[ -n "${CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN:-}" ]] || \
    { [[ -f .env ]] && grep -qE '^CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN=.+' .env; }; then
   echo ""
-  echo "Running end-to-end gateway smoke..."
-  GATEWAY_URL="http://localhost:18040" bash "$ROOT_DIR/scripts/smoke-e2e.sh"
+  echo "Running end-to-end gateway smoke (including upstream routing)..."
+  # E2E_UPSTREAM_TOOL forces verification of the gateway↔upstream path.
+  # github.search_issues is always in the default GATEWAY_TOOL_ALLOWLIST and is read-only.
+  GATEWAY_URL="http://localhost:18040" \
+  E2E_UPSTREAM_TOOL="${E2E_UPSTREAM_TOOL:-github.search_issues}" \
+  bash "$ROOT_DIR/scripts/smoke-e2e.sh"
 else
   echo ""
   echo "Skipping E2E gateway smoke: CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN not set (env or .env)."
