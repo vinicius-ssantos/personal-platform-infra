@@ -226,6 +226,7 @@ Write-Host "NGROK_PUBLIC_URL=$publicBaseUrl"
 $publicValues = @{
     DOMAIN = (($publicBaseUrl -replace "^https?://", "") -replace "/.*$", "")
     NGROK_PUBLIC_URL = $publicBaseUrl
+    CENTRAL_MCP_GATEWAY_PUBLIC_URL = $publicBaseUrl
 }
 
 foreach ($route in $Routes) {
@@ -233,6 +234,12 @@ foreach ($route in $Routes) {
 }
 
 Set-EnvValues $EnvFile $publicValues
+foreach ($key in $publicValues.Keys) {
+    [System.Environment]::SetEnvironmentVariable($key, $publicValues[$key], "Process")
+}
+
+Write-Host "Restarting central MCP gateway with ngrok OAuth URL..."
+docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --force-recreate --wait central-mcp-gateway
 
 Write-Host "Validating public path routes..."
 just status-public
