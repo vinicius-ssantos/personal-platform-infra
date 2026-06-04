@@ -100,6 +100,20 @@ check_health vos-studio-bff          18030 /healthz
 
 echo ""
 echo "k3d smoke passed: all 7 ready services are healthy."
+
+# End-to-end path through the gateway (auth + tools). Needs the public bearer
+# token; skip with a notice if it is not configured so the health smoke still
+# stands on its own.
+if [[ -n "${CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN:-}" ]] || \
+   { [[ -f .env ]] && grep -qE '^CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN=.+' .env; }; then
+  echo ""
+  echo "Running end-to-end gateway smoke..."
+  GATEWAY_URL="http://localhost:18040" bash "$ROOT_DIR/scripts/smoke-e2e.sh"
+else
+  echo ""
+  echo "Skipping E2E gateway smoke: CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN not set (env or .env)."
+fi
+
 echo ""
 kubectl get pods -n mcp -o wide
 kubectl get pods -n bff -o wide

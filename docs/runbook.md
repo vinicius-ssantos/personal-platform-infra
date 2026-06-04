@@ -156,6 +156,22 @@ The `GATEWAY_TOOL_ALLOWLIST` in `.env` controls which tools the gateway exposes
 publicly. Upstream service URLs (`GATEWAY_UPSTREAM_*`) use internal Docker
 network names and must not be changed to `localhost` addresses.
 
+### End-to-end smoke
+
+Beyond per-service health checks, `just smoke-e2e` exercises the real request
+path through the gateway: `initialize` → `tools/list` (asserts an allowlisted
+tool is present) → `tools/call` → and confirms a non-allowlisted tool is
+rejected. It needs the gateway running and `CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN`
+(env or `.env`), and `jq`.
+
+```bash
+just smoke-e2e                                   # Compose gateway on :8040
+GATEWAY_URL=http://localhost:18040 just smoke-e2e  # k3d port-forward
+```
+
+`just smoke-k3d` runs this automatically after the health checks (skipped with a
+notice if the bearer token is not configured).
+
 Kubernetes base/overlays for the gateway and a Cloudflare public route are
 follow-up work after local validation is complete.
 
