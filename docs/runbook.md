@@ -369,6 +369,60 @@ just tailscale-funnel-down
 The local app containers are left running. Use `just compose-down` to stop the
 Compose runtime.
 
+## Tailscale Container Funnel
+
+Use this alternative when the Windows Tailscale client is unhealthy or when you
+want the public edge to be owned by Docker Compose. This does not remove the
+workstation Tailscale flow above; it adds a separate `tailscale/tailscale`
+sidecar node.
+
+Create a Tailscale auth key in the admin console:
+
+```text
+https://login.tailscale.com/admin/settings/keys
+```
+
+Recommended dev settings:
+
+- pre-authorized: enabled
+- reusable: enabled
+- ephemeral: disabled if you want the hostname to stay stable
+
+Set these values in the uncommitted `.env`:
+
+```env
+TAILSCALE_AUTHKEY=tskey-auth-...
+TAILSCALE_CONTAINER_HOSTNAME=personal-platform-gateway
+TAILSCALE_CONTAINER_HTTPS_PORT=443
+```
+
+Start the containerized Funnel:
+
+```powershell
+just tailscale-container-up
+```
+
+The command starts the central gateway and upstream MCPs, registers the
+container node, writes `TAILSCALE_CONTAINER_PUBLIC_URL` and
+`CENTRAL_MCP_GATEWAY_PUBLIC_URL` into `.env`, recreates the gateway with the
+public OAuth issuer, and enables Funnel to `http://127.0.0.1:8080` inside the
+shared gateway network namespace.
+
+Use the printed MCP URL in ChatGPT:
+
+```text
+https://personal-platform-gateway.<tailnet>.ts.net/mcp
+```
+
+Stop only the Tailscale sidecar/Funnel:
+
+```powershell
+just tailscale-container-down
+```
+
+The Docker volume `tailscale-gateway-state` is preserved so normal restarts keep
+the same node identity.
+
 ## Upgrade k3s (VPS)
 
 Run on the VPS as root:

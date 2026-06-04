@@ -85,6 +85,12 @@ tailscale-funnel-up:
 tailscale-funnel-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/tailscale-funnel-down.ps1
 
+tailscale-container-up:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/tailscale-container-up.ps1
+
+tailscale-container-down:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/tailscale-container-down.ps1
+
 k3d-ngrok-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/k3d-ngrok-up.ps1
 
