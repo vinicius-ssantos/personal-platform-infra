@@ -1,4 +1,5 @@
-# Replace example.com with your actual domain before deploying to VPS.
+# The __VPS_DOMAIN__ token is rendered to the real domain at deploy time from the
+# VPS_DOMAIN variable (scripts/render-vps-overlay.sh).
 # FRONTEND_URL is the origin of the SPA that calls each BFF (e.g. Cloudflare Pages URL).
 apiVersion: v1
 kind: ConfigMap
@@ -8,7 +9,7 @@ metadata:
 data:
   BFF_ENV: "production"
   COOKIE_SECURE: "true"
-  FRONTEND_URL: "https://studio.example.com"
+  FRONTEND_URL: "https://studio.__VPS_DOMAIN__"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -17,8 +18,8 @@ metadata:
   namespace: bff
 data:
   BFF_ENV: "production"
-  FRONTEND_URL: "https://vos-studio.example.com"
-  ALLOWED_ORIGINS: "https://vos-studio.example.com"
+  FRONTEND_URL: "https://vos-studio.__VPS_DOMAIN__"
+  ALLOWED_ORIGINS: "https://vos-studio.__VPS_DOMAIN__"
   COOKIE_SECURE: "true"
 ---
 apiVersion: v1
@@ -36,5 +37,5 @@ metadata:
   namespace: mcp
 data:
   GATEWAY_ENVIRONMENT: "production"
-  GATEWAY_PUBLIC_BASE_URL: "https://mcp-gateway.example.com"
-  GATEWAY_OAUTH_ISSUER: "https://mcp-gateway.example.com"
+  GATEWAY_PUBLIC_BASE_URL: "https://mcp-gateway.__VPS_DOMAIN__"
+  GATEWAY_OAUTH_ISSUER: "https://mcp-gateway.__VPS_DOMAIN__"

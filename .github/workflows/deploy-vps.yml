@@ -49,7 +49,14 @@ jobs:
 
       - name: Apply VPS overlay
         if: steps.kubeconfig.outputs.configured == 'true'
-        run: kubectl apply -k k8s/overlays/vps
+        env:
+          VPS_DOMAIN: ${{ vars.VPS_DOMAIN }}
+        run: |
+          if [ -z "$VPS_DOMAIN" ]; then
+            echo "::error::VPS_DOMAIN repository variable is not set; cannot render ingress/runtime hosts."
+            exit 1
+          fi
+          bash scripts/render-vps-overlay.sh | kubectl apply -f -
 
       - name: Wait for rollouts to complete
         if: steps.kubeconfig.outputs.configured == 'true'
