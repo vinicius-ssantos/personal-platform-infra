@@ -118,6 +118,14 @@ Todo o DNS e exposição pública passa pelo Cloudflare:
 
 O Terraform neste repo gerencia: DNS records, Tunnel, Access applications e políticas.
 
+**Edge público vs. serviços protegidos:** os seis serviços diretos
+(`mcp-github`, `deploy-mcp`, `social-mcp`, `github-bff`, `vos-mcp`, `vos-bff`)
+ficam atrás do Cloudflare Access. O `central-mcp-gateway` (`mcp-gateway.<domínio>`)
+é o edge público de OAuth do ChatGPT: recebe DNS e roteamento (ingress no VPS,
+tunnel no local) mas **fica fora do Access**, pois faz a própria autenticação
+(bearer público + OAuth) e uma tela do Access quebraria o fluxo OAuth de terceiro.
+No Terraform isso é o mapa `public_services` (DNS/tunnel, sem Access).
+
 ## Serviços e contratos
 
 | Serviço | Namespace | Porta | Health path | Auth |

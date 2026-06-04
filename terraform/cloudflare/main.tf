@@ -40,7 +40,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "platform" {
 
   config {
     dynamic "ingress_rule" {
-      for_each = local.services
+      for_each = local.all_services
       content {
         hostname = "${ingress_rule.value.subdomain}.${var.domain}"
         service  = ingress_rule.value.backend
@@ -86,13 +86,28 @@ locals {
     }
   }
 
+  # Public edge services. The central MCP gateway is the ChatGPT-facing OAuth
+  # endpoint and runs its own bearer/OAuth authentication, so it gets DNS and
+  # tunnel routing but is intentionally NOT placed behind Cloudflare Access
+  # (an Access login interstitial would break the third-party OAuth flow).
+  public_services = {
+    mcp_gateway = {
+      subdomain = "mcp-gateway"
+      backend   = "http://localhost:8040"
+    }
+  }
+
+  # DNS and tunnel routing cover every reachable host; Cloudflare Access is
+  # applied only to local.services (the Access-protected, directly-reached set).
+  all_services = merge(local.services, local.public_services)
+
   # When using a tunnel, all records are CNAMEs pointing to the tunnel hostname.
   # When pointing directly at the VPS, all records are A records.
   use_tunnel = var.target_mode == "local-tunnel"
 }
 
 resource "cloudflare_record" "services" {
-  for_each = local.services
+  for_each = local.all_services
 
   zone_id = var.cloudflare_zone_id
   name    = each.value.subdomain
