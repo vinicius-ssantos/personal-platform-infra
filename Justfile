@@ -212,6 +212,12 @@ secrets-edit-local: secrets-check
 secrets-edit-vps: secrets-check
 	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/vps.enc.yaml
 
+secrets-edit-vps-k8s: secrets-check
+	SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.age/personal-platform.txt}" sops secrets/platform-secrets-vps.enc.yaml
+
+k8s-vps-secrets:
+	bash scripts/apply-vps-secrets.sh
+
 status:
 	bash scripts/status.sh
 

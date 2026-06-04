@@ -6,3 +6,7 @@ creation_rules:
   - path_regex: secrets/vps\.enc\.yaml$
     age: >-
       age1REPLACE_WITH_YOUR_VPS_AGE_PUBLIC_KEY
+
+  - path_regex: secrets/platform-secrets-vps\.enc\.yaml$
+    age: >-
+      age1REPLACE_WITH_YOUR_VPS_AGE_PUBLIC_KEY

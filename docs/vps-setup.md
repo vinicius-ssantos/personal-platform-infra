@@ -63,6 +63,15 @@ Create the runtime `platform-secrets` objects from the encrypted secrets flow
 before waking workloads. The deployments reference those Secrets directly; the
 base manifests do not contain final token values.
 
+```bash
+# Fill the encrypted manifests once, then apply with your VPS kubeconfig active:
+cp secrets/platform-secrets-vps.enc.yaml.example secrets/platform-secrets-vps.enc.yaml
+just secrets-edit-vps-k8s    # fill in real values (encrypted in place)
+just k8s-vps-secrets         # decrypt + kubectl apply -f -
+```
+
+See `docs/secrets.md` for the full SOPS flow.
+
 ## Apply Kubernetes overlay
 
 The overlay uses a `__VPS_DOMAIN__` token, so render it with your domain before
