@@ -169,6 +169,17 @@ just smoke-e2e                                   # Compose gateway on :8040
 GATEWAY_URL=http://localhost:18040 just smoke-e2e  # k3d port-forward
 ```
 
+To also verify the gateway↔upstream routing path (not just the gateway's own
+`gateway.status` handler), set `E2E_UPSTREAM_TOOL` to any allowlisted upstream
+tool:
+
+```bash
+E2E_UPSTREAM_TOOL=github.search_issues just smoke-e2e
+```
+
+This step is skipped when `E2E_UPSTREAM_TOOL` is unset so the smoke works in CI
+without live upstream containers.
+
 `just smoke-k3d` runs this automatically after the health checks (skipped with a
 notice if the bearer token is not configured).
 
