@@ -21,16 +21,18 @@ services**:
 
 | Service | Namespace | `InterceptorRoute` hostname |
 |---|---|---|
-| `github-unified-mcp` | mcp | `mcp-github.example.com` |
-| `github-unified-mcp-bff` | bff | `github-bff.example.com` |
-| `deploy-orchestrator-mcp` | mcp | `deploy-mcp.example.com` |
-| `mcp-social` | mcp | `social-mcp.example.com` |
-| `vos-studio-mcp` | vos | `vos-mcp.example.com` |
-| `vos-studio-bff` | bff | `vos-bff.example.com` |
-| `central-mcp-gateway` | mcp | `mcp-gateway.example.com` |
+| `github-unified-mcp` | mcp | `mcp-github.<domain>` |
+| `github-unified-mcp-bff` | bff | `github-bff.<domain>` |
+| `deploy-orchestrator-mcp` | mcp | `deploy-mcp.<domain>` |
+| `mcp-social` | mcp | `social-mcp.<domain>` |
+| `vos-studio-mcp` | vos | `vos-mcp.<domain>` |
+| `vos-studio-bff` | bff | `vos-bff.<domain>` |
+| `central-mcp-gateway` | mcp | `mcp-gateway.<domain>` |
 
-Hostnames are placeholders; replace `example.com` with the real domain in the
-VPS ingress layer (same `__VPS_DOMAIN__` token pattern as other overlays).
+Hostnames use `__VPS_DOMAIN__` tokens in the manifests. `keda-http-install.sh`
+renders them at apply time via `kustomize build | sed`. For local/k3d testing,
+`VPS_DOMAIN` defaults to `example.com` (matching `smoke-keda-http.sh` Host
+headers). For VPS production: `VPS_DOMAIN=your.domain just keda-http-install`.
 
 The HTTP Add-on deploys an interceptor, scaler, and operator. Traffic must be
 routed to the interceptor proxy, which then forwards to the target service while

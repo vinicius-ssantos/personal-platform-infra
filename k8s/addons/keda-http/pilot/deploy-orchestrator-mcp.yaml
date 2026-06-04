@@ -9,7 +9,7 @@ spec:
     port: 8000
   rules:
     - hosts:
-        - deploy-mcp.example.com
+        - deploy-mcp.__VPS_DOMAIN__
   scalingMetric:
     requestRate:
       targetValue: 5

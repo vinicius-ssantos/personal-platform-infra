@@ -9,7 +9,7 @@ spec:
     port: 8000
   rules:
     - hosts:
-        - github-bff.example.com
+        - github-bff.__VPS_DOMAIN__
   scalingMetric:
     requestRate:
       targetValue: 5
