@@ -387,7 +387,8 @@ The script:
 After upgrade, restore workloads:
 
 ```bash
-kubectl apply -k k8s/overlays/vps
+export VPS_DOMAIN=example.org   # base domain; renders the __VPS_DOMAIN__ token
+just k8s-vps-apply              # = render-vps-overlay.sh | kubectl apply -f -
 just wake-github
 ```
 

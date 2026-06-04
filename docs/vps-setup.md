@@ -45,6 +45,12 @@ Export the kubeconfig from the VPS, base64-encode it, and save it as the
 GitHub Actions secret `VPS_KUBECONFIG` when automated deploys should start
 applying `k8s/overlays/vps`.
 
+Also set the `VPS_DOMAIN` GitHub Actions **repository variable** (not a secret —
+the domain is not sensitive) to your base domain, e.g. `example.org`. The VPS
+overlay carries a `__VPS_DOMAIN__` token instead of a hard-coded domain so the
+real domain never lives in git; `deploy-vps.yml` renders it from `VPS_DOMAIN`
+before applying. Without this variable the deploy fails fast with a clear error.
+
 Create or update GHCR pull secrets before waking workloads:
 
 ```bash
@@ -59,8 +65,14 @@ base manifests do not contain final token values.
 
 ## Apply Kubernetes overlay
 
+The overlay uses a `__VPS_DOMAIN__` token, so render it with your domain before
+applying (CI does this automatically from the `VPS_DOMAIN` variable):
+
 ```bash
-kubectl apply -k k8s/overlays/vps
+export VPS_DOMAIN=example.org
+just k8s-vps-apply          # render + kubectl apply -f -
+# or inspect first:
+just render-vps             # prints rendered manifests
 ```
 
 ## Status page

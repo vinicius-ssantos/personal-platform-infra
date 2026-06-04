@@ -14,6 +14,8 @@ patches:
 # Wake scripts or kubectl scale bring services up on demand.
 #
 # Before first deploy:
-#   1. Replace example.com in ingress-vps.yaml and runtime-env-vps.yaml with your domain
+#   1. Set the VPS_DOMAIN repo variable in GitHub Actions; the __VPS_DOMAIN__ token in
+#      ingress-vps.yaml and runtime-env-vps.yaml is rendered to it (scripts/render-vps-overlay.sh).
+#      For local apply, export VPS_DOMAIN before running `just k8s-vps-apply`.
 #   2. Create platform-secrets in each namespace (see platform-secrets-vps.yaml.example)
 #   3. Configure VPS_KUBECONFIG secret in GitHub Actions (base64-encoded k3s kubeconfig)

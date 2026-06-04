@@ -1,5 +1,6 @@
 # Ingress for VPS deployment (k3s + Traefik default ingress controller).
-# Replace example.com with your actual domain in all host fields.
+# Host fields use the __VPS_DOMAIN__ token; it is rendered to the real domain
+# at deploy time from the VPS_DOMAIN variable (scripts/render-vps-overlay.sh).
 # Cloudflare proxies TLS; Traefik receives plain HTTP on port 80.
 ---
 apiVersion: networking.k8s.io/v1
@@ -11,7 +12,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   rules:
-    - host: mcp-github.example.com
+    - host: mcp-github.__VPS_DOMAIN__
       http:
         paths:
           - path: /
@@ -21,7 +22,7 @@ spec:
                 name: github-unified-mcp
                 port:
                   number: 8765
-    - host: deploy-mcp.example.com
+    - host: deploy-mcp.__VPS_DOMAIN__
       http:
         paths:
           - path: /
@@ -31,7 +32,7 @@ spec:
                 name: deploy-orchestrator-mcp
                 port:
                   number: 8000
-    - host: social-mcp.example.com
+    - host: social-mcp.__VPS_DOMAIN__
       http:
         paths:
           - path: /
@@ -51,7 +52,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   rules:
-    - host: github-bff.example.com
+    - host: github-bff.__VPS_DOMAIN__
       http:
         paths:
           - path: /
@@ -61,7 +62,7 @@ spec:
                 name: github-unified-mcp-bff
                 port:
                   number: 8000
-    - host: vos-bff.example.com
+    - host: vos-bff.__VPS_DOMAIN__
       http:
         paths:
           - path: /
@@ -81,7 +82,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   rules:
-    - host: vos-mcp.example.com
+    - host: vos-mcp.__VPS_DOMAIN__
       http:
         paths:
           - path: /

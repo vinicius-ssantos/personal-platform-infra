@@ -158,8 +158,11 @@ k3d-secrets:
 k8s-local-down:
 	k3d cluster delete personal-platform
 
+render-vps:
+	bash scripts/render-vps-overlay.sh
+
 k8s-vps-apply:
-	kubectl apply -k k8s/overlays/vps
+	bash scripts/render-vps-overlay.sh | kubectl apply -f -
 
 tunnel:
 	./scripts/tunnel.sh
