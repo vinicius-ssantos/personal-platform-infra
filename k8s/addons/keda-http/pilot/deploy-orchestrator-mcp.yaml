@@ -1,0 +1,34 @@
+apiVersion: http.keda.sh/v1beta1
+kind: InterceptorRoute
+metadata:
+  name: deploy-orchestrator-mcp
+  namespace: mcp
+spec:
+  target:
+    service: deploy-orchestrator-mcp
+    port: 8000
+  rules:
+    - hosts:
+        - deploy-mcp.example.com
+  scalingMetric:
+    requestRate:
+      targetValue: 5
+      window: 1m
+      granularity: 1s
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: deploy-orchestrator-mcp
+  namespace: mcp
+spec:
+  scaleTargetRef:
+    name: deploy-orchestrator-mcp
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  cooldownPeriod: 600
+  triggers:
+    - type: external-push
+      metadata:
+        scalerAddress: keda-add-ons-http-external-scaler.keda:9090
+        interceptorRoute: deploy-orchestrator-mcp
