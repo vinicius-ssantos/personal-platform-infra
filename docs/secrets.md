@@ -74,6 +74,30 @@ just secrets-edit-vps     # opens secrets/vps.enc.yaml in $EDITOR
 SOPS_AGE_KEY_FILE=~/.age/personal-platform.txt sops -d secrets/local.enc.yaml
 ```
 
+### VPS platform-secrets (declarative, applied to the cluster)
+
+The runtime `platform-secrets` objects for the VPS (referenced by the
+deployments in namespaces `mcp`, `bff` and `vos`) are managed as SOPS-encrypted
+Kubernetes Secret manifests. They are **not** part of the kustomize overlay —
+plain `kubectl apply -k` cannot decrypt SOPS — so they are applied with a
+dedicated decrypt step.
+
+```bash
+# 1. Create the encrypted file from the template and fill in real values
+cp secrets/platform-secrets-vps.enc.yaml.example secrets/platform-secrets-vps.enc.yaml
+SOPS_AGE_KEY_FILE=~/.age/personal-platform.txt sops -e -i secrets/platform-secrets-vps.enc.yaml
+
+# 2. Edit later
+just secrets-edit-vps-k8s
+
+# 3. Apply to the VPS cluster (kubeconfig must point at the VPS, age key present)
+just k8s-vps-secrets        # = sops --decrypt ... | kubectl apply -f -
+```
+
+`secrets/platform-secrets-vps.enc.yaml` is gitignored; only the `.example`
+template is committed. Apply the Secrets before waking workloads — the
+deployments reference them by name.
+
 ### Checking your age public key
 
 ```bash

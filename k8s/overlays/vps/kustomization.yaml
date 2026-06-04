@@ -2,9 +2,9 @@ resources:
   - ../../base
   - loki-pvc.yaml
   - ingress-vps.yaml
-  # After creating platform-secrets in the cluster (see platform-secrets-vps.yaml.example),
-  # you can manage them declaratively via SOPS-encrypted Secret:
-  # - platform-secrets-vps.yaml
+  # platform-secrets are NOT included here: kustomize cannot decrypt SOPS.
+  # Apply them separately with `just k8s-vps-secrets` (decrypt + kubectl apply),
+  # or imperatively — see platform-secrets-vps.yaml.example and docs/secrets.md.
 
 patches:
   - path: loki-volume-patch.yaml
