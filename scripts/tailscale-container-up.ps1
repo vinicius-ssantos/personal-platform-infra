@@ -148,8 +148,19 @@ Set-EnvValues $EnvFile @{
 
 Write-Host "Recreating central MCP gateway with container Funnel OAuth URL..."
 Invoke-Compose ($profiles + @("up", "-d", "--force-recreate", "--wait", "central-mcp-gateway", "tailscale-gateway"))
+Get-TailscaleContainerPublicUrl | Out-Null
 
 Write-Host "Starting Tailscale Funnel in the container..."
+foreach ($port in @("443", "8443", "10000")) {
+    if ($port -ne $httpsPort) {
+        try {
+            Invoke-ComposeExec @("tailscale", "funnel", "--https=$port", "off") | Out-Null
+        }
+        catch {
+            Write-Host "Warning: could not clear Tailscale Funnel port $port; continuing."
+        }
+    }
+}
 Invoke-ComposeExec @("tailscale", "funnel", "--bg", "--yes", "--https=$httpsPort", "http://127.0.0.1:8080") | Out-Host
 
 Write-Host "Validating local gateway..."
