@@ -178,6 +178,9 @@ just ngrok-up
 
 # Tailscale Funnel (requer Tailscale logado e Funnel habilitado)
 just tailscale-funnel-up
+
+# Tailscale Docker sidecar (requer TAILSCALE_AUTHKEY no .env)
+just tailscale-container-up
 ```
 
 `quick-tunnel-up` gera URLs `trycloudflare.com` e as escreve no `.env` automaticamente. Use `quick-tunnel-refresh` para forçar novas URLs (sujeito a rate limit do Cloudflare).
@@ -196,6 +199,14 @@ OAuth browser redirect times out on Windows, run:
 ```powershell
 & "C:\Program Files\Tailscale\tailscale.exe" up --accept-dns=false
 just tailscale-funnel-up
+```
+
+If the Windows Tailscale client is stuck or unhealthy, use the Docker sidecar
+flow instead. Generate an auth key at `https://login.tailscale.com/admin/settings/keys`,
+set `TAILSCALE_AUTHKEY` in `.env`, then run:
+
+```powershell
+just tailscale-container-up
 ```
 
 ## Secrets

@@ -1,7 +1,7 @@
 services:
   github-unified-mcp:
     image: ${GITHUB_UNIFIED_MCP_IMAGE}
-    profiles: ["github", "all"]
+    profiles: ["github", "tailscale", "all"]
     ports:
       - "8765:8765"
     environment:
@@ -25,7 +25,7 @@ services:
 
   deploy-orchestrator-mcp:
     image: ${DEPLOY_ORCHESTRATOR_MCP_IMAGE}
-    profiles: ["deploy", "all"]
+    profiles: ["deploy", "tailscale", "all"]
     ports:
       - "8001:8000"
     environment:
@@ -44,7 +44,7 @@ services:
 
   mcp-social:
     image: ${MCP_SOCIAL_IMAGE}
-    profiles: ["social", "all"]
+    profiles: ["social", "tailscale", "all"]
     ports:
       - "8080:8080"
     environment:
@@ -81,7 +81,7 @@ services:
 
   vos-studio-mcp:
     image: ${VOS_STUDIO_MCP_IMAGE}
-    profiles: ["vos", "all"]
+    profiles: ["vos", "tailscale", "all"]
     ports:
       - "8020:8000"
     environment:
@@ -121,7 +121,7 @@ services:
 
   central-mcp-gateway:
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
-    profiles: ["gateway", "all"]
+    profiles: ["gateway", "tailscale", "all"]
     ports:
       - "8040:8080"
     environment:
@@ -171,6 +171,26 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  tailscale-gateway:
+    image: tailscale/tailscale:stable
+    profiles: ["tailscale"]
+    network_mode: "service:central-mcp-gateway"
+    environment:
+      TS_AUTHKEY: ${TAILSCALE_AUTHKEY}
+      TS_HOSTNAME: ${TAILSCALE_CONTAINER_HOSTNAME}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTH_ONCE: "true"
+      TS_ACCEPT_DNS: "false"
+      TS_USERSPACE: "true"
+      TS_ENABLE_HEALTH_CHECK: "true"
+      TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
+    volumes:
+      - tailscale-gateway-state:/var/lib/tailscale
+    depends_on:
+      central-mcp-gateway:
+        condition: service_healthy
+    restart: unless-stopped
+
   ngrok-proxy:
     image: caddy:2.8-alpine
     profiles: ["ngrok", "all"]
@@ -192,3 +212,4 @@ services:
 
 volumes:
   social-data:
+  tailscale-gateway-state:
