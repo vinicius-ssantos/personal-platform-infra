@@ -9,7 +9,7 @@ spec:
     port: 8765
   rules:
     - hosts:
-        - mcp-github.example.com
+        - mcp-github.__VPS_DOMAIN__
   scalingMetric:
     requestRate:
       targetValue: 5

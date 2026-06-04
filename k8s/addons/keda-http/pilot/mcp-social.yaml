@@ -9,7 +9,7 @@ spec:
     port: 8080
   rules:
     - hosts:
-        - social-mcp.example.com
+        - social-mcp.__VPS_DOMAIN__
   scalingMetric:
     requestRate:
       targetValue: 5
