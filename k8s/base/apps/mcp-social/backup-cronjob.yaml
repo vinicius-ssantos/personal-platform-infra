@@ -1,0 +1,132 @@
+---
+# Non-sensitive R2 config. Credentials (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)
+# come from the platform-secrets Secret in the mcp namespace (see secrets template).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-social-backup-config
+  namespace: mcp
+data:
+  # Cloudflare R2 endpoint: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+  R2_ENDPOINT: REPLACE_WITH_R2_ENDPOINT
+  # R2 bucket name — must exist before the first backup run
+  R2_BUCKET: REPLACE_WITH_R2_BUCKET
+  # rclone remote type/provider (constant — no need to override)
+  RCLONE_CONFIG_R2_TYPE: s3
+  RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+  RCLONE_CONFIG_R2_ACL: private
+  RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mcp-social-backup
+  namespace: mcp
+spec:
+  # Daily at 03:00 UTC — mcp-social is typically asleep at this hour (sleep pattern).
+  # A sleeping pod means no writer; the SQLite files copied are fully consistent.
+  #
+  # Consistency caveat: if the pod is awake at backup time, rclone copies the raw
+  # db/wal/shm files without using SQLite's backup API, which can produce an
+  # internally inconsistent snapshot. For now this is accepted because:
+  #   (a) at 03:00 UTC the pod is almost always at replicas=0, and
+  #   (b) for disaster-recovery purposes a WAL-mode database is recoverable even
+  #       from a torn copy (SQLite replays/discards the WAL on open).
+  # A future improvement is to add RBAC + kubectl to the job so it can scale the
+  # deployment to 0 before copying and back to 1 afterwards, making the guarantee
+  # unconditional regardless of whether the pod is awake.
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: platform-puller
+          restartPolicy: OnFailure
+          containers:
+            - name: rclone
+              image: rclone/rclone:latest
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  DATE=$(date +%Y-%m-%d)
+                  DEST="r2:${R2_BUCKET}/mcp-social/${DATE}/"
+                  echo "Backing up /data/social.db* -> ${DEST}"
+                  # --use-server-modtime: store upload time (not source mtime) as the
+                  # object's modification time in R2. Without this, rclone preserves the
+                  # local file mtime; if social.db hasn't been written recently, the object
+                  # would get an old mtime and the prune step below would delete it immediately.
+                  rclone copy /data "${DEST}" \
+                    --include "social.db*" \
+                    --use-server-modtime \
+                    --verbose
+                  echo "Pruning daily snapshots older than 7 days..."
+                  # --use-server-modtime: prune based on upload time (R2 LastModified),
+                  # not the preserved source mtime. Consistent with the copy step above.
+                  rclone delete "r2:${R2_BUCKET}/mcp-social/" \
+                    --min-age 8d \
+                    --use-server-modtime \
+                    --rmdirs \
+                    --verbose
+                  echo "Backup complete."
+              env:
+                - name: RCLONE_CONFIG_R2_ENDPOINT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: R2_ENDPOINT
+                - name: R2_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: R2_BUCKET
+                - name: RCLONE_CONFIG_R2_TYPE
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: RCLONE_CONFIG_R2_TYPE
+                - name: RCLONE_CONFIG_R2_PROVIDER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: RCLONE_CONFIG_R2_PROVIDER
+                - name: RCLONE_CONFIG_R2_ACL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: RCLONE_CONFIG_R2_ACL
+                - name: RCLONE_CONFIG_R2_NO_CHECK_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: RCLONE_CONFIG_R2_NO_CHECK_BUCKET
+                - name: RCLONE_CONFIG_R2_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: platform-secrets
+                      key: R2_ACCESS_KEY_ID
+                - name: RCLONE_CONFIG_R2_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: platform-secrets
+                      key: R2_SECRET_ACCESS_KEY
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: mcp-social-data
+                readOnly: true
