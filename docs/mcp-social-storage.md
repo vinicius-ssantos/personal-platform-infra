@@ -21,9 +21,10 @@ and pod restarts. It does **not** survive PVC deletion or full VPS loss.
 ## Durability caveats
 
 - The PVC uses the cluster default StorageClass (k3s `local-path` on the VPS),
-  which is **node-local**. There is no replication and no automatic backup.
-- Validate the StorageClass and put a backup routine in place **before** treating
-  `mcp-social` as durable production data.
+  which is **node-local**. There is no replication.
+- An automated daily backup to Cloudflare R2 is provided via the
+  `mcp-social-backup` CronJob (see below). Configure R2 credentials before
+  treating `mcp-social` as durable production data.
 - SQLite is single-writer; take backups with `.backup`/`VACUUM INTO` (consistent
   snapshot) rather than copying `social.db` while the app is writing.
 
@@ -33,7 +34,59 @@ There is no automatic pruning of the SQLite database — rows live until the
 application deletes them. Capacity is bounded only by the 1Gi PVC. Monitor usage
 and resize (see below) before it fills.
 
-## Backup
+## Automated backup (CronJob → R2)
+
+The `mcp-social-backup` CronJob (`k8s/base/apps/mcp-social/backup-cronjob.yaml`)
+runs daily at **03:00 UTC** and uploads `social.db*` to Cloudflare R2 using
+`rclone`. Daily snapshots are kept for **7 days**; older ones are pruned
+automatically.
+
+### Prerequisites
+
+1. Create an R2 bucket (e.g. `personal-platform-backups`).
+2. Create an R2 API token with **Object Read & Write** on that bucket.
+3. Fill the ConfigMap placeholders in `backup-cronjob.yaml` or via overlay:
+
+   | Key | Value |
+   |---|---|
+   | `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+   | `R2_BUCKET` | your bucket name |
+
+4. Add credentials to `secrets/platform-secrets-vps.enc.yaml` (mcp namespace):
+
+   ```yaml
+   R2_ACCESS_KEY_ID: <r2-token-id>
+   R2_SECRET_ACCESS_KEY: <r2-token-secret>
+   ```
+
+   Apply with `just k8s-vps-secrets`.
+
+### Backup layout in R2
+
+```
+<bucket>/mcp-social/YYYY-MM-DD/social.db
+<bucket>/mcp-social/YYYY-MM-DD/social.db-wal   (if WAL active)
+<bucket>/mcp-social/YYYY-MM-DD/social.db-shm   (if WAL active)
+```
+
+### Consistency note
+
+At 03:00 UTC `mcp-social` is typically asleep (`replicas: 0`, sleep pattern).
+A sleeping pod means no writer — files copied are fully consistent. If the pod
+is awake, the copy is still viable for disaster-recovery but may capture an
+in-flight transaction; prefer the offline procedure below for a guaranteed clean
+snapshot.
+
+### Manual trigger
+
+```bash
+kubectl create job --from=cronjob/mcp-social-backup mcp-social-backup-manual -n mcp
+kubectl wait --for=condition=complete job/mcp-social-backup-manual -n mcp --timeout=120s
+kubectl logs job/mcp-social-backup-manual -n mcp
+kubectl delete job/mcp-social-backup-manual -n mcp
+```
+
+## Manual backup
 
 ### Offline backup (preferred — fits the sleep pattern)
 
