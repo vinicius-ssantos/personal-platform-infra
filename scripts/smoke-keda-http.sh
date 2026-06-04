@@ -17,16 +17,25 @@ kubectl port-forward -n keda svc/keda-add-ons-http-interceptor-proxy 18090:8080 
 PIDS+=($!)
 sleep 3
 
-curl -fsS --retry 20 --retry-delay 2 --retry-connrefused --retry-all-errors \
-  -H "Host: mcp-github.example.com" \
-  http://127.0.0.1:18090/healthz >/dev/null
+check_wake() {
+  local host="$1" path="$2" deploy="$3" ns="$4"
+  echo "  Waking $deploy via Host: $host ..."
+  curl -fsS --retry 20 --retry-delay 2 --retry-connrefused --retry-all-errors \
+    -H "Host: $host" \
+    "http://127.0.0.1:18090${path}" >/dev/null
+  kubectl rollout status "deploy/$deploy" -n "$ns" --timeout="$TIMEOUT"
+  echo "  OK: $deploy"
+}
 
-kubectl rollout status deploy/github-unified-mcp -n mcp --timeout="$TIMEOUT"
+echo "KEDA HTTP smoke: waking all 7 services via interceptor proxy..."
 
-curl -fsS --retry 20 --retry-delay 2 --retry-connrefused --retry-all-errors \
-  -H "Host: github-bff.example.com" \
-  http://127.0.0.1:18090/healthz >/dev/null
+check_wake "mcp-github.example.com"   /healthz github-unified-mcp      mcp
+check_wake "github-bff.example.com"   /healthz github-unified-mcp-bff  bff
+check_wake "deploy-mcp.example.com"   /healthz deploy-orchestrator-mcp mcp
+check_wake "social-mcp.example.com"   /health  mcp-social               mcp
+check_wake "vos-mcp.example.com"      /health  vos-studio-mcp           vos
+check_wake "vos-bff.example.com"      /healthz vos-studio-bff           bff
+check_wake "mcp-gateway.example.com"  /healthz central-mcp-gateway      mcp
 
-kubectl rollout status deploy/github-unified-mcp-bff -n bff --timeout="$TIMEOUT"
-
-echo "KEDA HTTP pilot smoke passed."
+echo ""
+echo "KEDA HTTP smoke passed: all 7 services woke and are healthy."

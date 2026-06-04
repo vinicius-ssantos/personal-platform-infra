@@ -1,0 +1,40 @@
+# central-mcp-gateway scale-to-zero decision (ADR 0016):
+# The gateway is the public OAuth edge for ChatGPT and the ingress point for all
+# upstream MCP services. Setting minReplicaCount: 0 means the first request after
+# the 10-minute cooldown window incurs a cold-start delay (typically 5-15s) while
+# KEDA wakes the pod. This is acceptable for personal use. If cold starts become
+# problematic, raise minReplicaCount to 1 here.
+apiVersion: http.keda.sh/v1beta1
+kind: InterceptorRoute
+metadata:
+  name: central-mcp-gateway
+  namespace: mcp
+spec:
+  target:
+    service: central-mcp-gateway
+    port: 8080
+  rules:
+    - hosts:
+        - mcp-gateway.example.com
+  scalingMetric:
+    requestRate:
+      targetValue: 5
+      window: 1m
+      granularity: 1s
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: central-mcp-gateway
+  namespace: mcp
+spec:
+  scaleTargetRef:
+    name: central-mcp-gateway
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  cooldownPeriod: 600
+  triggers:
+    - type: external-push
+      metadata:
+        scalerAddress: keda-add-ons-http-external-scaler.keda:9090
+        interceptorRoute: central-mcp-gateway

@@ -1,3 +1,8 @@
 resources:
   - github-unified-mcp.yaml
   - github-unified-mcp-bff.yaml
+  - deploy-orchestrator-mcp.yaml
+  - mcp-social.yaml
+  - vos-studio-mcp.yaml
+  - vos-studio-bff.yaml
+  - central-mcp-gateway.yaml
