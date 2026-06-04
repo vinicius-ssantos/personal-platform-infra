@@ -84,6 +84,15 @@ just k8s-vps-apply          # render + kubectl apply -f -
 just render-vps             # prints rendered manifests
 ```
 
+Before waking workloads, run the go/no-go preflight (tooling, cluster, overlay,
+required secrets):
+
+```bash
+VPS_DOMAIN=example.org just preflight-vps
+```
+
+The full end-to-end sequence is in `docs/vps-deploy-checklist.md`.
+
 ## Status page
 
 Initialize the local Wrangler config, replace the example domain, and protect

@@ -161,6 +161,9 @@ k8s-local-down:
 render-vps:
 	bash scripts/render-vps-overlay.sh
 
+preflight-vps:
+	bash scripts/preflight-vps.sh
+
 k8s-vps-apply:
 	bash scripts/render-vps-overlay.sh | kubectl apply -f -
 

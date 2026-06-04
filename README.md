@@ -110,6 +110,7 @@ just ngrok-up          # Ngrok (requer authtoken configurado)
 | [loki-storage.md](docs/loki-storage.md) | PVC de logs do Loki — retenção e trade-offs |
 | [image-pinning.md](docs/image-pinning.md) | Política de tags mutáveis vs imutáveis |
 | [vps-setup.md](docs/vps-setup.md) | Provisionamento e bootstrap do VPS |
+| [vps-deploy-checklist.md](docs/vps-deploy-checklist.md) | Checklist go/no-go do deploy real no VPS |
 | [adr/](docs/adr/README.md) | 17 Architecture Decision Records |
 
 ---
