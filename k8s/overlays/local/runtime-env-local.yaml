@@ -1,0 +1,46 @@
+# Local/k3d runtime config. Mirror of k8s/overlays/vps/runtime-env-vps.yaml:
+# both overlays patch the same env-specific ConfigMap keys, with local (dev)
+# values here and VPS (production) values there. The base ConfigMaps hold only
+# neutral, cluster-internal values.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: github-unified-mcp-bff-config
+  namespace: bff
+data:
+  BFF_ENV: "development"
+  MCP_URL: "http://github-unified-mcp.mcp.svc.cluster.local:8765"
+  COOKIE_SECURE: "false"
+  FRONTEND_URL: "http://localhost:5173"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vos-studio-bff-config
+  namespace: bff
+data:
+  BFF_ENV: "development"
+  FRONTEND_URL: "http://localhost:5174"
+  ALLOWED_ORIGINS: "http://localhost:5174"
+  COOKIE_SECURE: "false"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vos-studio-mcp-config
+  namespace: vos
+data:
+  APP_ENV: "development"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: central-mcp-gateway-config
+  namespace: mcp
+data:
+  GATEWAY_ENVIRONMENT: "local"
+  GATEWAY_PUBLIC_BASE_URL: "http://localhost:18040"
+  GATEWAY_OAUTH_ISSUER: "http://localhost:18040"
+  GATEWAY_ADMIN_ENABLED: "true"
+  GATEWAY_ADMIN_UI_ENABLED: "true"
+  GATEWAY_DYNAMIC_UPSTREAMS_ENABLED: "true"

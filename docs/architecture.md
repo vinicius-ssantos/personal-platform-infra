@@ -136,9 +136,26 @@ A configuração é dividida em três camadas:
 
 | Camada | Propósito | Exemplos |
 |---|---|---|
-| `k8s/base/` | Defaults neutros — iguais em todos os ambientes | Ports, labels, FQDN internos, referências a Secrets |
+| `k8s/base/` | Defaults neutros — iguais em todos os ambientes | Ports, labels, FQDN internos, referências a Secrets, `replicas: 0` |
 | `k8s/overlays/local/` | Overrides para dev local | `BFF_ENV: development`, `COOKIE_SECURE: false`, `FRONTEND_URL: localhost` |
 | `k8s/overlays/vps/` | Overrides para VPS | `BFF_ENV: production`, `COOKIE_SECURE: true`, domínios reais |
+
+### Convenção de separação base/overlays
+
+A separação entre config local e VPS segue um padrão simétrico, para que os dois
+ambientes sejam fáceis de comparar e auditar:
+
+- **Env de runtime específico de ambiente** fica num único patch por overlay, com
+  nomes espelhados: `overlays/local/runtime-env-local.yaml` e
+  `overlays/vps/runtime-env-vps.yaml`. Ambos patcheiam exatamente as mesmas
+  `ConfigMap`s/chaves — só os valores diferem (dev vs produção).
+- **Os `ConfigMap` do `k8s/base`** contêm apenas valores neutros (FQDN internos,
+  portas). Cada um documenta, em comentário, quais chaves são específicas de
+  ambiente e portanto definidas no overlay — nunca no base.
+- **`replicas: 0`** vive no base (sleep pattern, ADR 0001). Só o overlay local
+  sobe réplicas (`replicas-local.yaml`); o VPS mantém o base.
+- **Recursos exclusivos de um ambiente** entram como `resources` do overlay:
+  ingress, PVCs e secrets no VPS; `platform-secrets-local.yaml` no local.
 
 Valores sensíveis (tokens, API keys) são injetados via Kubernetes `Secret` (`platform-secrets`) em cada namespace. O `k8s/base` nunca contém tokens reais.
 
