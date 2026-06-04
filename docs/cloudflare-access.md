@@ -43,6 +43,15 @@ Terraform creates one self-hosted Access application per service hostname:
 When Access is enabled, Terraform requires at least one allowed email, allowed
 email domain, or service token. Anonymous internet access is not configured.
 
+### Public edge excluded from Access
+
+`mcp-gateway.<domain>` (the `central-mcp-gateway`) is **intentionally not** behind
+Cloudflare Access. It is the ChatGPT-facing OAuth edge and authenticates requests
+itself (public bearer token + OAuth); an Access login interstitial would break the
+third-party OAuth flow. In Terraform it lives in the `public_services` map, which
+gets DNS and tunnel routing but no Access application. Do not add it to
+`local.services`.
+
 ## Human access
 
 Human users authenticate through Cloudflare Access using the configured identity
