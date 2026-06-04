@@ -181,9 +181,14 @@ services:
       TS_STATE_DIR: /var/lib/tailscale
       TS_AUTH_ONCE: "true"
       TS_ACCEPT_DNS: "false"
-      TS_USERSPACE: "true"
+      TS_USERSPACE: "false"
       TS_ENABLE_HEALTH_CHECK: "true"
       TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
     volumes:
       - tailscale-gateway-state:/var/lib/tailscale
     depends_on:
