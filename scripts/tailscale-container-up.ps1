@@ -79,15 +79,33 @@ function Invoke-ComposeExec([string[]]$Arguments) {
     $output
 }
 
-function Get-TailscaleContainerPublicUrl() {
-    $statusRaw = Invoke-ComposeExec @("tailscale", "status", "--json")
-    $status = $statusRaw | ConvertFrom-Json
-    $dnsName = [string]$status.Self.DNSName
-    if ([string]::IsNullOrWhiteSpace($dnsName)) {
-        throw "Tailscale container DNSName is empty. Check TAILSCALE_AUTHKEY, MagicDNS, and HTTPS certificates in your tailnet."
+function Get-TailscaleContainerPublicUrl([int]$TimeoutSeconds = 60) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastState = ""
+
+    while ((Get-Date) -lt $deadline) {
+        $statusRaw = Invoke-ComposeExec @("tailscale", "status", "--json")
+        $status = $statusRaw | ConvertFrom-Json
+        $lastState = [string]$status.BackendState
+        $dnsName = [string]$status.Self.DNSName
+        if (-not [string]::IsNullOrWhiteSpace($dnsName)) {
+            return "https://$($dnsName.TrimEnd('.'))"
+        }
+
+        Start-Sleep -Seconds 3
     }
 
-    "https://$($dnsName.TrimEnd('.'))"
+    throw "Tailscale container DNSName is empty after ${TimeoutSeconds}s (state: $lastState). Check TAILSCALE_AUTHKEY, MagicDNS, and HTTPS certificates in your tailnet."
+}
+
+function Test-FunnelConfigured([string]$PublicBaseUrl, [string]$HttpsPort) {
+    $statusRaw = Invoke-ComposeExec @("tailscale", "funnel", "status", "--json")
+    $status = $statusRaw | ConvertFrom-Json
+    $hostKey = "$($PublicBaseUrl -replace '^https://', ''):$HttpsPort"
+
+    if (-not $status.AllowFunnel.$hostKey) {
+        throw "Tailscale Funnel is not active for $hostKey."
+    }
 }
 
 if (-not (Test-Path $EnvFile)) {
@@ -138,10 +156,23 @@ Write-Host "Validating local gateway..."
 Invoke-RestMethod -Uri "http://127.0.0.1:8040/healthz" -TimeoutSec 20 | Out-Null
 
 Write-Host "Validating public gateway through Tailscale container..."
-Invoke-RestMethod -Uri "$publicBaseUrl/healthz" -TimeoutSec 45 | Out-Null
-Invoke-RestMethod -Uri "$publicBaseUrl/.well-known/oauth-authorization-server" -Headers @{ Accept = "application/json" } -TimeoutSec 45 | Out-Null
+$publicValidationOk = $false
+try {
+    Invoke-RestMethod -Uri "$publicBaseUrl/healthz" -TimeoutSec 45 | Out-Null
+    Invoke-RestMethod -Uri "$publicBaseUrl/.well-known/oauth-authorization-server" -Headers @{ Accept = "application/json" } -TimeoutSec 45 | Out-Null
+    $publicValidationOk = $true
+}
+catch {
+    Write-Warning "Public self-check through $publicBaseUrl failed from this workstation. This can happen when local DNS/networking cannot resolve or hairpin the Funnel hostname."
+    Write-Warning "Checking Funnel status and local gateway instead. Use ChatGPT or another external client for the final public test."
+    Test-FunnelConfigured $publicBaseUrl $httpsPort
+    Invoke-RestMethod -Uri "http://127.0.0.1:8040/.well-known/oauth-authorization-server" -Headers @{ Accept = "application/json" } -TimeoutSec 20 | Out-Null
+}
 
 Write-Host ""
 Write-Host "Tailscale container Funnel environment is ready."
 Write-Host "ChatGPT MCP URL: $publicBaseUrl/mcp"
 Write-Host "Admin UI URL: $publicBaseUrl/admin/ui/login"
+if (-not $publicValidationOk) {
+    Write-Host "Public validation from this workstation was skipped after local DNS/hairpin failure; Funnel status and local gateway validation passed."
+}
