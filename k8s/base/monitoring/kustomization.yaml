@@ -7,5 +7,6 @@ resources:
   - alloy-config.yaml
   - alloy-deployment.yaml
   - grafana-datasources.yaml
+  - grafana-alerting.yaml
   - grafana-deployment.yaml
   - grafana-service.yaml

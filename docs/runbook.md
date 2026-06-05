@@ -111,6 +111,18 @@ Open `http://localhost:3000` and sign in with the credentials from the
 `monitoring/grafana-admin` Secret. The Grafana deployment is wired to the
 in-cluster Loki service.
 
+### Responding to alerts
+
+Grafana provisions LogQL alert rules (folder `Platform Health`) that notify a
+Telegram contact point. See `docs/monitoring.md` for the rule list, Telegram
+setup, and how to add rules. Quick triage when an alert fires:
+
+| Alert | First check |
+|---|---|
+| `platform-service-fatal` | `kubectl get pods -A` for CrashLoopBackOff; `just logs <svc>` for the panic |
+| `platform-high-error-rate` | `just logs <svc>` and filter recent errors; check upstream/secret config |
+| `gateway-auth-failures` | Verify gateway bearer/OAuth config; check for external probing in logs |
+
 ## Central MCP Gateway
 
 The `central-mcp-gateway` is an optional Compose service that aggregates all
