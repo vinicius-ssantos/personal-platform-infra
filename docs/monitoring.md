@@ -71,7 +71,8 @@ All three live in the `Platform Health` folder, evaluated every minute.
 ### Notification channel (Telegram)
 
 The provisioned contact point `telegram` reads credentials from env vars
-`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`, which Grafana expands via `$__env{}`.
+`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`, which Grafana expands via `${VAR}`
+(provisioning files use `$VAR`/`${VAR}`, not the `grafana.ini`-only `$__env{}`).
 Those come from the `grafana-alerting` Secret (`monitoring` namespace,
 `secretKeyRef` with `optional: true`).
 

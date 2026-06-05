@@ -3,8 +3,9 @@
 # Prometheus/kube-state-metrics), so all rules are LogQL-based.
 #
 # Telegram credentials are injected via env vars TELEGRAM_BOT_TOKEN /
-# TELEGRAM_CHAT_ID (secretKeyRef, optional). Grafana expands $__env{...} in
-# provisioning files at load time. When the secret is absent (e.g. local k3d),
+# TELEGRAM_CHAT_ID (secretKeyRef, optional). Grafana expands ${VAR} in
+# provisioning files at load time (provisioning uses $VAR/${VAR}, not the
+# grafana.ini-only $__env{} form). When the secret is absent (e.g. local k3d),
 # the contact point is provisioned with empty credentials and simply does not
 # deliver — Grafana still boots and the rules still evaluate.
 apiVersion: v1
@@ -22,8 +23,8 @@ data:
           - uid: telegram-default
             type: telegram
             settings:
-              bottoken: $__env{TELEGRAM_BOT_TOKEN}
-              chatid: $__env{TELEGRAM_CHAT_ID}
+              bottoken: ${TELEGRAM_BOT_TOKEN}
+              chatid: ${TELEGRAM_CHAT_ID}
             disableResolveMessage: false
   policies.yaml: |
     apiVersion: 1
@@ -48,6 +49,10 @@ data:
             title: Platform service fatal/panic
             condition: C
             for: 2m
+            # Scale-to-zero namespaces produce no matching streams when idle;
+            # treat an empty window as healthy, not NoData/Error.
+            noDataState: OK
+            execErrState: OK
             data:
               - refId: A
                 relativeTimeRange:
@@ -84,6 +89,8 @@ data:
             title: Platform high error rate
             condition: C
             for: 5m
+            noDataState: OK
+            execErrState: OK
             data:
               - refId: A
                 relativeTimeRange:
@@ -120,6 +127,8 @@ data:
             title: Gateway auth failures
             condition: C
             for: 5m
+            noDataState: OK
+            execErrState: OK
             data:
               - refId: A
                 relativeTimeRange:
