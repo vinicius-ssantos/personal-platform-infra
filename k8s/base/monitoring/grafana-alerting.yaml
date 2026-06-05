@@ -1,0 +1,162 @@
+# Grafana unified alerting, provisioned on startup (mounted at
+# /etc/grafana/provisioning/alerting). This is a logs-only stack (Loki, no
+# Prometheus/kube-state-metrics), so all rules are LogQL-based.
+#
+# Telegram credentials are injected via env vars TELEGRAM_BOT_TOKEN /
+# TELEGRAM_CHAT_ID (secretKeyRef, optional). Grafana expands ${VAR} in
+# provisioning files at load time (provisioning uses $VAR/${VAR}, not the
+# grafana.ini-only $__env{} form). When the secret is absent (e.g. local k3d),
+# the contact point is provisioned with empty credentials and simply does not
+# deliver — Grafana still boots and the rules still evaluate.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alerting
+  namespace: monitoring
+data:
+  contact-points.yaml: |
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: telegram
+        receivers:
+          - uid: telegram-default
+            type: telegram
+            settings:
+              bottoken: ${TELEGRAM_BOT_TOKEN}
+              chatid: ${TELEGRAM_CHAT_ID}
+            disableResolveMessage: false
+  policies.yaml: |
+    apiVersion: 1
+    policies:
+      - orgId: 1
+        receiver: telegram
+        group_by:
+          - alertname
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+  rules.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: platform-health
+        folder: Platform Health
+        interval: 1m
+        rules:
+          # Tier 1 (critical): fatal/panic/crash signals in any app namespace.
+          - uid: platform-service-fatal
+            title: Platform service fatal/panic
+            condition: C
+            for: 2m
+            # Scale-to-zero namespaces produce no matching streams when idle;
+            # treat an empty window as healthy, not NoData/Error.
+            noDataState: OK
+            execErrState: OK
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: loki
+                model:
+                  datasource:
+                    type: loki
+                    uid: loki
+                  refId: A
+                  queryType: instant
+                  expr: 'sum(count_over_time({namespace=~"mcp|bff|vos"} |~ `(?i)(fatal|panic|crashloopbackoff)` [5m]))'
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+            labels:
+              severity: critical
+            annotations:
+              summary: Fatal/panic log lines detected in mcp/bff/vos in the last 5m.
+          # Tier 2 (warning): elevated error log rate across app namespaces.
+          - uid: platform-high-error-rate
+            title: Platform high error rate
+            condition: C
+            for: 5m
+            noDataState: OK
+            execErrState: OK
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: loki
+                model:
+                  datasource:
+                    type: loki
+                    uid: loki
+                  refId: A
+                  queryType: instant
+                  expr: 'sum(count_over_time({namespace=~"mcp|bff|vos"} |~ `(?i)(level=error|"level":"error")` [5m]))'
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 10
+            labels:
+              severity: warning
+            annotations:
+              summary: More than 10 error log lines in mcp/bff/vos over the last 5m.
+          # Tier 3 (warning): repeated auth rejections at the gateway edge.
+          - uid: gateway-auth-failures
+            title: Gateway auth failures
+            condition: C
+            for: 5m
+            noDataState: OK
+            execErrState: OK
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: loki
+                model:
+                  datasource:
+                    type: loki
+                    uid: loki
+                  refId: A
+                  queryType: instant
+                  expr: 'sum(count_over_time({app="central-mcp-gateway"} |~ `(401|403)` [5m]))'
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 10
+            labels:
+              severity: warning
+            annotations:
+              summary: More than 10 gateway 401/403 responses over the last 5m (misconfig or probing).

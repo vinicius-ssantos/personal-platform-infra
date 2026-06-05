@@ -29,6 +29,21 @@ spec:
                   key: admin-password
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "false"
+            # Telegram alerting credentials, expanded by $__env{} in the
+            # provisioned contact point. Optional so local k3d (no secret) boots;
+            # alerting is then inert until the secret is created.
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-alerting
+                  key: telegram-bot-token
+                  optional: true
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-alerting
+                  key: telegram-chat-id
+                  optional: true
           ports:
             - name: http
               containerPort: 3000
@@ -54,7 +69,12 @@ spec:
           volumeMounts:
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources
+            - name: alerting
+              mountPath: /etc/grafana/provisioning/alerting
       volumes:
         - name: datasources
           configMap:
             name: grafana-datasources
+        - name: alerting
+          configMap:
+            name: grafana-alerting
