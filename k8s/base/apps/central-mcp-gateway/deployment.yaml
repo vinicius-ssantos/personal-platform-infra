@@ -68,6 +68,12 @@ spec:
                 secretKeyRef:
                   name: platform-secrets
                   key: SOCIAL_MCP_ACCESS_TOKEN
+            - name: GATEWAY_SANDBOX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: SANDBOX_API_KEY
+                  optional: true
           ports:
             - containerPort: 8080
           livenessProbe:

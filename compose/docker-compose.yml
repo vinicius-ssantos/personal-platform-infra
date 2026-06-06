@@ -141,16 +141,18 @@ services:
       GATEWAY_ADMIN_UI_ENABLED: ${CENTRAL_MCP_GATEWAY_ADMIN_UI_ENABLED}
       GATEWAY_DYNAMIC_UPSTREAMS_ENABLED: ${CENTRAL_MCP_GATEWAY_DYNAMIC_UPSTREAMS_ENABLED}
       GATEWAY_ADMIN_TOKEN: ${CENTRAL_MCP_GATEWAY_ADMIN_TOKEN}
-      GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read deploy:read social:write
-      GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,github.search_issues,deploy.get_status,social.prepare_post
+      GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read deploy:read social:write sandbox:run
+      GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp
       GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp
+      GATEWAY_UPSTREAM_SANDBOX_URL: ${GATEWAY_UPSTREAM_SANDBOX_URL}
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
       GATEWAY_GITHUB_TOKEN: ${GITHUB_TOKEN}
       GATEWAY_DEPLOY_API_KEY: ${MCP_SERVER_API_KEY}
       GATEWAY_SOCIAL_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN}
+      GATEWAY_SANDBOX_API_KEY: ${SANDBOX_API_KEY}
       GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE: 20
       GATEWAY_TRUSTED_PROXY_COUNT: 1
       GATEWAY_IDEMPOTENCY_TTL_SECONDS: 300

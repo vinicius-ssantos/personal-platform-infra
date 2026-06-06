@@ -42,12 +42,15 @@ Windows 11 + WSL2                        Ubuntu + k3s (single-node)
 | `github-unified-mcp` | [↗](https://github.com/vinicius-ssantos/github-unified-mcp) | MCP server GitHub | 8765 | `/healthz` |
 | `deploy-orchestrator-mcp` | [↗](https://github.com/vinicius-ssantos/deploy-orchestrator-mcp) | MCP server de deploy | 8000 | `/healthz` |
 | `mcp-social` | [↗](https://github.com/vinicius-ssantos/mcp-social) | MCP server social | 8080 | `/health` |
+| `mcp-code-sandbox` | [↗](https://github.com/vinicius-ssantos/mcp-code-sandbox) | MCP server de execução isolada de código | 8766 | MCP `/mcp` |
 | `central-mcp-gateway` | [↗](https://github.com/vinicius-ssantos/central-mcp-gateway) | Gateway agregador | 8080 | `/healthz` |
 | `github-unified-mcp-bff` | [↗](https://github.com/vinicius-ssantos/-github-unified-mcp-bff) | BFF para GitHub flows | 8000 | `/healthz` |
 | `vos-studio-mcp` | [↗](https://github.com/vinicius-ssantos/vos-studio-mcp) | MCP server VOS Studio | 8000 | `/health` |
 | `vos-studio-bff` | [↗](https://github.com/vinicius-ssantos/vos-studio-bff) | BFF para VOS Studio | 8000 | `/healthz` |
 
 Todos os deployments nascem com `replicas: 0` no VPS e sobem sob demanda via `just wake-*`.
+
+`mcp-code-sandbox` roda como processo host-local, fora do Compose/k8s, para acessar o Docker daemon diretamente sem montar o socket Docker em um contêiner. O gateway o consome como upstream privado em `http://host.docker.internal:8766/mcp` no Compose local.
 
 ---
 
