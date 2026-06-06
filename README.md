@@ -8,7 +8,7 @@
 
 Infraestrutura centralizada para uma plataforma pessoal de MCP servers e BFFs. Gerencia dois ambientes — **local** (Windows 11 + WSL2) e **VPS** (Ubuntu + k3s) — a partir de um único repositório de configuração.
 
-Não contém código de aplicação nem Dockerfiles. As imagens dos serviços são publicadas pelos repositórios upstream e consumidas aqui via GHCR.
+Não contém código de aplicação nem Dockerfiles. As imagens dos serviços são publicadas pelos repositórios upstream e consumidas aqui via GHCR. A exceção local é `mcp-code-sandbox`, que pode ser construído a partir do checkout local para ter acesso ao Docker daemon durante desenvolvimento.
 
 ---
 
@@ -50,7 +50,7 @@ Windows 11 + WSL2                        Ubuntu + k3s (single-node)
 
 Todos os deployments nascem com `replicas: 0` no VPS e sobem sob demanda via `just wake-*`.
 
-`mcp-code-sandbox` roda como processo host-local, fora do Compose/k8s, para acessar o Docker daemon diretamente sem montar o socket Docker em um contêiner. O gateway o consome como upstream privado em `http://host.docker.internal:8766/mcp` no Compose local.
+No Compose local, `mcp-code-sandbox` sobe junto com a platform usando `MCP_CODE_SANDBOX_REPO_PATH` como build context e montando o Docker socket para criar containers efêmeros. O gateway o consome como upstream privado em `http://mcp-code-sandbox:8766/mcp`. Em k8s/VPS ele permanece fora do cluster por padrão.
 
 ---
 

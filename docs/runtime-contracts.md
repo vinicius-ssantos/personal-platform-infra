@@ -92,16 +92,16 @@ Use este documento antes de mudar qualquer wiring de Compose ou Kubernetes, e an
 | Atributo | Valor |
 |---|---|
 | Repositório | `vinicius-ssantos/mcp-code-sandbox` |
-| Imagem | n/a; roda como processo host-local |
+| Imagem | `mcp-code-sandbox-server:local`, build local via `MCP_CODE_SANDBOX_REPO_PATH` |
 | Porta local | 8766 |
 | MCP endpoint | `/mcp` |
-| Health path | n/a |
+| Health path | TCP healthcheck no Compose |
 | Auth | Bearer token via `Authorization: Bearer <SANDBOX_API_KEY>` |
-| Variáveis obrigatórias | `SANDBOX_API_KEY`, `SANDBOX_HOST=127.0.0.1`, `SANDBOX_PORT=8766` |
+| Variáveis obrigatórias | `SANDBOX_API_KEY`, `MCP_CODE_SANDBOX_REPO_PATH`, `GATEWAY_UPSTREAM_SANDBOX_URL=http://mcp-code-sandbox:8766/mcp` |
 | Modo seguro | containers sem rede, filesystem read-only, `/tmp` tmpfs, CPU/memória/timeout limitados |
 | Namespace k8s | n/a; consumido pelo gateway como upstream externo |
 
-O sandbox não roda em container dentro desta infra porque precisa falar com o Docker daemon do host diretamente. O gateway local em Compose deve apontar para `GATEWAY_UPSTREAM_SANDBOX_URL=http://host.docker.internal:8766/mcp`.
+No Compose local, o sandbox roda como serviço e monta `/var/run/docker.sock` para criar containers efêmeros. Isso é uma concessão de desenvolvimento local; em k8s/VPS ele permanece fora do cluster por padrão.
 
 ### github-unified-mcp-bff
 

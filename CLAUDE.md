@@ -68,9 +68,9 @@ docs/
 | `github-unified-mcp-bff` | bff | 8000 | `/healthz` | ready |
 | `vos-studio-mcp` | vos | 8000 | `/health` | ready |
 | `vos-studio-bff` | bff | 8000 | `/healthz` | ready |
-| `mcp-code-sandbox` | host-local external | 8766 | MCP `/mcp` | ready |
+| `mcp-code-sandbox` | n/a; Compose local only | 8766 | MCP `/mcp` | ready |
 
-**Portas Compose (host):** github-mcp=8765, deploy-mcp=8001, social=8080, github-bff=8010, vos-mcp=8020, vos-bff=8030, sandbox-host=8766.
+**Portas Compose (host):** github-mcp=8765, deploy-mcp=8001, social=8080, github-bff=8010, vos-mcp=8020, vos-bff=8030, sandbox=8766.
 
 **Portas port-forward k3d (smoke):** github-mcp=19765, deploy-mcp=18000, social=18080, github-bff=18010, vos-mcp=18020, vos-bff=18030.
 

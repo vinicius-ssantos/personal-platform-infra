@@ -119,6 +119,49 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  mcp-code-sandbox-images:
+    image: docker:27-cli
+    profiles: ["sandbox", "gateway", "tailscale", "all"]
+    command:
+      - sh
+      - -ec
+      - |
+        docker build -f /sandbox/images/Dockerfile.python -t mcp-sandbox-python:local /sandbox
+        docker build -f /sandbox/images/Dockerfile.node -t mcp-sandbox-node:local /sandbox
+        docker build -f /sandbox/images/Dockerfile.java -t mcp-sandbox-java:local /sandbox
+    volumes:
+      - ${MCP_CODE_SANDBOX_REPO_PATH}:/sandbox:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: "no"
+
+  mcp-code-sandbox:
+    build:
+      context: ${MCP_CODE_SANDBOX_REPO_PATH}
+      dockerfile: Dockerfile.server
+    image: mcp-code-sandbox-server:local
+    profiles: ["sandbox", "gateway", "tailscale", "all"]
+    ports:
+      - "8766:8766"
+    environment:
+      SANDBOX_API_KEY: ${SANDBOX_API_KEY}
+      SANDBOX_TRANSPORT: streamable-http
+      SANDBOX_HOST: 0.0.0.0
+      SANDBOX_PORT: 8766
+      SANDBOX_ALLOWED_HOSTS: mcp-code-sandbox:8766,localhost:8766,127.0.0.1:8766,host.docker.internal:8766
+      SANDBOX_LOG_LEVEL: INFO
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      mcp-code-sandbox-images:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('localhost', 8766), timeout=3); s.close()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
   central-mcp-gateway:
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
     profiles: ["gateway", "tailscale", "all"]
@@ -164,6 +207,8 @@ services:
       mcp-social:
         condition: service_healthy
       vos-studio-mcp:
+        condition: service_healthy
+      mcp-code-sandbox:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=3).read()\""]
@@ -214,6 +259,7 @@ services:
       - github-unified-mcp-bff
       - vos-studio-mcp
       - vos-studio-bff
+      - mcp-code-sandbox
       - central-mcp-gateway
     restart: unless-stopped
 
