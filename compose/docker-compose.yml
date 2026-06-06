@@ -142,7 +142,7 @@ services:
       GATEWAY_DYNAMIC_UPSTREAMS_ENABLED: ${CENTRAL_MCP_GATEWAY_DYNAMIC_UPSTREAMS_ENABLED}
       GATEWAY_ADMIN_TOKEN: ${CENTRAL_MCP_GATEWAY_ADMIN_TOKEN}
       GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read deploy:read social:write sandbox:run
-      GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status
+      GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status,sandbox.run_code
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp
