@@ -130,13 +130,13 @@ services:
         docker build -f /sandbox/images/Dockerfile.node -t mcp-sandbox-node:local /sandbox
         docker build -f /sandbox/images/Dockerfile.java -t mcp-sandbox-java:local /sandbox
     volumes:
-      - ${MCP_CODE_SANDBOX_REPO_PATH}:/sandbox:ro
+      - ${MCP_CODE_SANDBOX_REPO_PATH:-../mcp-code-sandbox}:/sandbox:ro
       - /var/run/docker.sock:/var/run/docker.sock
     restart: "no"
 
   mcp-code-sandbox:
     build:
-      context: ${MCP_CODE_SANDBOX_REPO_PATH}
+      context: ${MCP_CODE_SANDBOX_REPO_PATH:-../mcp-code-sandbox}
       dockerfile: Dockerfile.server
     image: mcp-code-sandbox-server:local
     profiles: ["sandbox", "gateway", "tailscale", "all"]
