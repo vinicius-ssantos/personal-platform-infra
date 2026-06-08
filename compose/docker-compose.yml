@@ -202,6 +202,7 @@ services:
       GATEWAY_OWNER_MODE_ENABLED: "true"
       GATEWAY_OWNER_CLIENT_IDS: chatgpt
       GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES: "true"
+      GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: "true"
       GATEWAY_OWNER_DRY_RUN: "false"
     depends_on:
       github-unified-mcp:
