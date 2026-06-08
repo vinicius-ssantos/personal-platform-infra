@@ -189,7 +189,7 @@ services:
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp
-      GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp
+      GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp/
       GATEWAY_UPSTREAM_SANDBOX_URL: ${GATEWAY_UPSTREAM_SANDBOX_URL}
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
       GATEWAY_GITHUB_TOKEN: ${GITHUB_TOKEN}
