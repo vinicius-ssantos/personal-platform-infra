@@ -64,6 +64,12 @@ compose-down-profile profile="all":
 compose-logs-profile profile="all":
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} logs -f --tail=200
 
+compose-pull:
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all pull
+
+gateway-restart:
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait central-mcp-gateway
+
 quick-tunnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1
 
@@ -73,11 +79,13 @@ quick-tunnel-refresh:
 quick-tunnel-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-down.ps1
 
-ngrok-up:
-	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-up.ps1
+ngrok-up: compose-pull compose-up ngrok-start gateway-restart status-public
 
 ngrok-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-down.ps1
+
+ngrok-start:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-start.ps1
 
 tailscale-funnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/tailscale-funnel-up.ps1
