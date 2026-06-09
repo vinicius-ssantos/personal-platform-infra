@@ -162,6 +162,20 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    profiles: ["gateway", "tailscale", "all"]
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
   central-mcp-gateway:
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
     profiles: ["gateway", "tailscale", "all"]
@@ -204,7 +218,10 @@ services:
       GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES: "true"
       GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: "true"
       GATEWAY_OWNER_DRY_RUN: "false"
+      GATEWAY_REDIS_URL: redis://redis:6379/0
     depends_on:
+      redis:
+        condition: service_healthy
       github-unified-mcp:
         condition: service_healthy
       deploy-orchestrator-mcp:
