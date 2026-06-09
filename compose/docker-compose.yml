@@ -14,7 +14,7 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GITHUB_ALLOWED_REPOS: ${GITHUB_ALLOWED_REPOS}
       GITHUB_REQUIRE_ALLOWED_REPOS: "true"
-      GITHUB_READ_ONLY: "true"
+      GITHUB_READ_ONLY: "false"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8765/healthz', timeout=3).read()\""]
       interval: 10s
