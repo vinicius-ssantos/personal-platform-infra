@@ -50,6 +50,7 @@ services:
     environment:
       SOCIAL_MCP_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN}
       SOCIAL_DB_URL: sqlite+aiosqlite:////data/social.db
+      FASTMCP_ALLOWED_HOSTS: "mcp-social:8080,localhost:8080,127.0.0.1:8080"
     volumes:
       - social-data:/data
     healthcheck:
@@ -89,6 +90,7 @@ services:
       MCP_SERVER_HOST: 0.0.0.0
       MCP_SERVER_PORT: 8000
       PORT: 8000
+      UVICORN_ALLOWED_HOSTS: "vos-studio-mcp:8000,localhost:8000,127.0.0.1:8000"
     healthcheck:
       # Temporary liveness proxy until vos-studio-mcp exposes a lightweight /live endpoint.
       # /health performs dependency diagnostics and can be slower when DB/Redis/Celery are absent locally.
@@ -139,6 +141,7 @@ services:
       context: ${MCP_CODE_SANDBOX_REPO_PATH:-../mcp-code-sandbox}
       dockerfile: Dockerfile.server
     image: mcp-code-sandbox-server:local
+    pull_policy: never
     profiles: ["sandbox", "gateway", "tailscale", "all"]
     ports:
       - "8766:8766"
@@ -202,7 +205,7 @@ services:
       GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
-      GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp
+      GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp/
       GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp/
       GATEWAY_UPSTREAM_SANDBOX_URL: ${GATEWAY_UPSTREAM_SANDBOX_URL}
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}

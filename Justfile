@@ -67,6 +67,9 @@ compose-logs-profile profile="all":
 compose-pull:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile all pull
 
+compose-build:
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all build
+
 gateway-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait central-mcp-gateway
 
