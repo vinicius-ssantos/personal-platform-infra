@@ -46,6 +46,22 @@ check-env:
 check-policy:
 	bash scripts/check-policy.sh
 
+_warp := "C:\\Program Files\\Cloudflare\\Cloudflare WARP\\warp-cli.exe"
+
+# Check WARP is connected when WARP_PROXY is configured in .env.
+check-warp:
+	if ($env:WARP_PROXY) { $s = (& "{{_warp}}" status 2>&1) -join ' '; if ($s -notmatch "Status update: Connected") { Write-Error "WARP proxy configured but not connected. Run: just warp-start"; exit 1 } }
+
+warp-status:
+	& "{{_warp}}" status
+
+warp-start:
+	& "{{_warp}}" connect
+	& "{{_warp}}" status
+
+warp-stop:
+	& "{{_warp}}" disconnect
+
 compose-up: check-env
 	just compose-up-profile all
 
@@ -55,7 +71,7 @@ compose-down:
 compose-logs:
 	just compose-logs-profile all
 
-compose-up-profile profile="all": check-env
+compose-up-profile profile="all": check-env check-warp
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} up -d --wait
 
 compose-down-profile profile="all":
@@ -67,11 +83,20 @@ compose-logs-profile profile="all":
 compose-pull:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile all pull
 
+# Pull every image and recreate only the containers whose image digest changed.
+compose-upgrade: check-env
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all up -d --pull always --wait
+
 compose-build:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile all build
 
 gateway-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait central-mcp-gateway
+
+# Pull latest gateway image from GHCR then restart. Use this after CI has finished building.
+gateway-pull-restart:
+	docker compose -f compose/docker-compose.yml --env-file .env pull central-mcp-gateway
+	just gateway-restart
 
 quick-tunnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1
@@ -82,7 +107,7 @@ quick-tunnel-refresh:
 quick-tunnel-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-down.ps1
 
-ngrok-up: compose-pull compose-up ngrok-start gateway-restart status-public
+ngrok-up: compose-upgrade ngrok-start status-public
 
 ngrok-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-down.ps1
