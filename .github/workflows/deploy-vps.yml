@@ -51,6 +51,11 @@ jobs:
         if: steps.kubeconfig.outputs.configured == 'true'
         env:
           VPS_DOMAIN: ${{ vars.VPS_DOMAIN }}
+          # R2_ENDPOINT / R2_BUCKET are required when the backup config patch is
+          # present (k8s/overlays/vps/backup-config-vps.yaml). render-vps-overlay.sh
+          # fails with a clear error if the tokens are present but the vars are unset.
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
           if [ -z "$VPS_DOMAIN" ]; then
             echo "::error::VPS_DOMAIN repository variable is not set; cannot render ingress/runtime hosts."

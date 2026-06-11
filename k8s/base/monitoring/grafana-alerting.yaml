@@ -122,6 +122,50 @@ data:
               severity: warning
             annotations:
               summary: More than 10 error log lines in mcp/bff/vos over the last 5m.
+          # Tier 2b (critical): mcp-social backup job encountered rclone errors.
+          # The backup pod template carries app=mcp-social-backup; Alloy surfaces
+          # this as a Loki stream label. noDataState=OK because the pod only exists
+          # during the 03:00 UTC window — no stream between runs is expected/healthy.
+          - uid: mcp-social-backup-failure
+            title: mcp-social backup failed
+            condition: C
+            for: 0m
+            noDataState: OK
+            execErrState: OK
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 93600
+                  to: 0
+                datasourceUid: loki
+                model:
+                  datasource:
+                    type: loki
+                    uid: loki
+                  refId: A
+                  queryType: instant
+                  expr: 'count_over_time({namespace="mcp", app="mcp-social-backup", container="backup"} |= `ERROR :` [26h])'
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+            labels:
+              severity: critical
+            annotations:
+              summary: >
+                mcp-social backup job logged rclone ERROR lines.
+                Deployment may be stuck at replicas=0.
+                Check logs: kubectl logs -n mcp -l app=mcp-social-backup -c backup
           # Tier 3 (warning): repeated auth rejections at the gateway edge.
           - uid: gateway-auth-failures
             title: Gateway auth failures

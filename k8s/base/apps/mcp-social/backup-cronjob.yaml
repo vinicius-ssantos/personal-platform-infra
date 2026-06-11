@@ -1,17 +1,18 @@
 ---
 # Non-sensitive R2 config. Credentials (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)
-# come from the platform-secrets Secret in the mcp namespace (see secrets template).
+# come from the platform-secrets Secret (see secrets/platform-secrets-vps.enc.yaml.example).
+#
+# R2_ENDPOINT and R2_BUCKET are placeholders here; they are overridden by the VPS
+# overlay patch (k8s/overlays/vps/backup-config-vps.yaml) and substituted at deploy
+# time by scripts/render-vps-overlay.sh using the R2_ENDPOINT / R2_BUCKET env vars.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mcp-social-backup-config
   namespace: mcp
 data:
-  # Cloudflare R2 endpoint: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
   R2_ENDPOINT: REPLACE_WITH_R2_ENDPOINT
-  # R2 bucket name — must exist before the first backup run
   R2_BUCKET: REPLACE_WITH_R2_BUCKET
-  # rclone remote type/provider (constant — no need to override)
   RCLONE_CONFIG_R2_TYPE: s3
   RCLONE_CONFIG_R2_PROVIDER: Cloudflare
   RCLONE_CONFIG_R2_ACL: private
@@ -23,52 +24,78 @@ metadata:
   name: mcp-social-backup
   namespace: mcp
 spec:
-  # Daily at 03:00 UTC — mcp-social is typically asleep at this hour (sleep pattern).
-  # A sleeping pod means no writer; the SQLite files copied are fully consistent.
-  #
-  # Consistency caveat: if the pod is awake at backup time, rclone copies the raw
-  # db/wal/shm files without using SQLite's backup API, which can produce an
-  # internally inconsistent snapshot. For now this is accepted because:
-  #   (a) at 03:00 UTC the pod is almost always at replicas=0, and
-  #   (b) for disaster-recovery purposes a WAL-mode database is recoverable even
-  #       from a torn copy (SQLite replays/discards the WAL on open).
-  # A future improvement is to add RBAC + kubectl to the job so it can scale the
-  # deployment to 0 before copying and back to 1 afterwards, making the guarantee
-  # unconditional regardless of whether the pod is awake.
+  # Daily at 03:00 UTC.
   schedule: "0 3 * * *"
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
   jobTemplate:
     spec:
-      backoffLimit: 2
+      # No automatic retries: a failure leaves mcp-social at replicas=0 and
+      # fires a Grafana alert. Trigger a manual re-run after investigating:
+      #   kubectl create job --from=cronjob/mcp-social-backup manual-$(date +%Y%m%d) -n mcp
+      backoffLimit: 0
+      # Hard ceiling: covers even slow R2 uploads.
+      activeDeadlineSeconds: 1800
       template:
+        metadata:
+          labels:
+            app: mcp-social-backup
         spec:
-          serviceAccountName: platform-puller
-          restartPolicy: OnFailure
-          containers:
-            - name: rclone
-              image: rclone/rclone:latest
+          serviceAccountName: mcp-social-backup
+          restartPolicy: Never
+          initContainers:
+            # Step 1 — scale mcp-social to 0.
+            # Records the current replica count so step 3 can restore it.
+            # With no writer on the PVC, the SQLite snapshot in step 2 is
+            # guaranteed to be internally consistent.
+            - name: scale-down
+              image: bitnami/kubectl:1.29.4
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  PREV=$(kubectl get deployment mcp-social -n mcp \
+                    -o jsonpath='{.spec.replicas}')
+                  printf '%s' "$PREV" > /state/prev-replicas
+                  echo "mcp-social replicas: $PREV — scaling to 0"
+                  kubectl scale deployment mcp-social -n mcp --replicas=0
+                  # Returns immediately if no pod matches (already at 0).
+                  kubectl wait pod -l app=mcp-social -n mcp \
+                    --for=delete --timeout=60s \
+                    && echo "Pod terminated." \
+                    || echo "No running pod found — proceeding."
+              volumeMounts:
+                - name: state
+                  mountPath: /state
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+
+            # Step 2 — copy SQLite files to R2.
+            # The Deployment is at replicas=0; the PVC has no writer.
+            - name: backup
+              image: rclone/rclone:1.68.2
+              imagePullPolicy: IfNotPresent
               command: ["/bin/sh", "-c"]
               args:
                 - |
                   set -euo pipefail
                   DATE=$(date +%Y-%m-%d)
                   DEST="r2:${R2_BUCKET}/mcp-social/${DATE}/"
-                  echo "Backing up /data/social.db* -> ${DEST}"
-                  # --use-server-modtime: store upload time (not source mtime) as the
-                  # object's modification time in R2. Without this, rclone preserves the
-                  # local file mtime; if social.db hasn't been written recently, the object
-                  # would get an old mtime and the prune step below would delete it immediately.
+                  echo "Backing up /data/social.db* → ${DEST}"
                   rclone copy /data "${DEST}" \
                     --include "social.db*" \
                     --use-server-modtime \
                     --verbose
-                  echo "Pruning daily snapshots older than 7 days..."
-                  # --use-server-modtime: prune based on upload time (R2 LastModified),
-                  # not the preserved source mtime. Consistent with the copy step above.
+                  echo "Pruning snapshots older than 30 days..."
                   rclone delete "r2:${R2_BUCKET}/mcp-social/" \
-                    --min-age 8d \
+                    --min-age 31d \
                     --use-server-modtime \
                     --rmdirs \
                     --verbose
@@ -118,6 +145,8 @@ spec:
                 - name: data
                   mountPath: /data
                   readOnly: true
+                - name: state
+                  mountPath: /state
               resources:
                 requests:
                   cpu: 50m
@@ -125,7 +154,35 @@ spec:
                 limits:
                   cpu: 200m
                   memory: 128Mi
+
+          # Step 3 — restore replica count.
+          # Runs only after both init containers succeed; skipped on any failure.
+          containers:
+            - name: scale-up
+              image: bitnami/kubectl:1.29.4
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  PREV=$(cat /state/prev-replicas 2>/dev/null || echo "0")
+                  echo "Restoring mcp-social to ${PREV} replicas."
+                  kubectl scale deployment mcp-social -n mcp --replicas="${PREV}"
+                  echo "Done."
+              volumeMounts:
+                - name: state
+                  mountPath: /state
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+
           volumes:
+            - name: state
+              emptyDir: {}
             - name: data
               persistentVolumeClaim:
                 claimName: mcp-social-data
