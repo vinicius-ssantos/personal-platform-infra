@@ -13,9 +13,22 @@ spec:
       labels:
         app: grafana
     spec:
+      # UID/GID 472 is the documented grafana user in the official image.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: grafana
           image: grafana/grafana:11.5.2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: GF_SECURITY_ADMIN_USER
               valueFrom:

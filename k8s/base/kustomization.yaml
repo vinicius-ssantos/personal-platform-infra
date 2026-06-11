@@ -1,6 +1,7 @@
 resources:
   - namespaces.yaml
   - serviceaccounts.yaml
+  - networkpolicies.yaml
   - monitoring
   - apps/github-unified-mcp
   - apps/deploy-orchestrator-mcp
@@ -9,3 +10,26 @@ resources:
   - apps/github-unified-mcp-bff
   - apps/vos-studio-mcp
   - apps/vos-studio-bff
+
+# Baseline container hardening (see securitycontext-patch.yaml for rationale).
+# Applied per-namespace so it covers every app Deployment; in monitoring it
+# targets only Alloy — Grafana and Loki carry a stricter securityContext
+# (runAsNonRoot + known UID) directly in their manifests.
+patches:
+  - path: securitycontext-patch.yaml
+    target:
+      kind: Deployment
+      namespace: mcp
+  - path: securitycontext-patch.yaml
+    target:
+      kind: Deployment
+      namespace: bff
+  - path: securitycontext-patch.yaml
+    target:
+      kind: Deployment
+      namespace: vos
+  - path: securitycontext-patch.yaml
+    target:
+      kind: Deployment
+      namespace: monitoring
+      name: alloy

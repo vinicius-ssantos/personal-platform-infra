@@ -44,6 +44,9 @@ spec:
         spec:
           serviceAccountName: mcp-social-backup
           restartPolicy: Never
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           initContainers:
             # Step 1 — scale mcp-social to 0.
             # Records the current replica count so step 3 can restore it.
@@ -52,6 +55,12 @@ spec:
             - name: scale-down
               image: bitnami/kubectl:1.29.4
               imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                capabilities:
+                  drop:
+                    - ALL
               command: ["/bin/sh", "-c"]
               args:
                 - |
@@ -79,9 +88,16 @@ spec:
 
             # Step 2 — copy SQLite files to R2.
             # The Deployment is at replicas=0; the PVC has no writer.
+            # rclone/rclone runs as root by default; runAsNonRoot is omitted so
+            # it can read the PVC files regardless of their ownership.
             - name: backup
               image: rclone/rclone:1.68.2
               imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
               command: ["/bin/sh", "-c"]
               args:
                 - |
@@ -161,6 +177,12 @@ spec:
             - name: scale-up
               image: bitnami/kubectl:1.29.4
               imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                capabilities:
+                  drop:
+                    - ALL
               command: ["/bin/sh", "-c"]
               args:
                 - |

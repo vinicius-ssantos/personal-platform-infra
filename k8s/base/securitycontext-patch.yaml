@@ -1,0 +1,24 @@
+# Baseline container hardening applied to every app Deployment (and Alloy) via
+# JSON patch in kustomization.yaml. All targeted Deployments have exactly one
+# container, so positional /containers/0 is safe.
+#
+# Deliberately NOT set here:
+#   - runAsNonRoot: the app images (ghcr.io/vinicius-ssantos/*) and grafana/alloy
+#     don't declare a documented non-root UID; forcing one without verifying the
+#     image would cause CreateContainerConfigError or permission failures at
+#     runtime. Grafana (UID 472) and Loki (UID 10001) have known UIDs and get the
+#     full treatment directly in their deployment manifests.
+#   - readOnlyRootFilesystem: needs per-app verification of writable paths
+#     (/tmp, runtime caches) before enabling.
+- op: add
+  path: /spec/template/spec/securityContext
+  value:
+    seccompProfile:
+      type: RuntimeDefault
+- op: add
+  path: /spec/template/spec/containers/0/securityContext
+  value:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
