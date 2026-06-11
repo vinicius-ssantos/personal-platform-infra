@@ -130,6 +130,13 @@ services:
       - sh
       - -ec
       - |
+        all_exist=true
+        for img in mcp-sandbox-python:local mcp-sandbox-node:local mcp-sandbox-java:local; do
+          docker image inspect "$img" > /dev/null 2>&1 || { all_exist=false; break; }
+        done
+        if [ "$all_exist" = "true" ]; then
+          echo "Sandbox images already present, skipping build."; exit 0
+        fi
         docker build -f /sandbox/images/Dockerfile.python -t mcp-sandbox-python:local /sandbox
         docker build -f /sandbox/images/Dockerfile.node -t mcp-sandbox-node:local /sandbox
         docker build -f /sandbox/images/Dockerfile.java -t mcp-sandbox-java:local /sandbox
