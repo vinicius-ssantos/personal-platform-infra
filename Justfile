@@ -107,7 +107,8 @@ quick-tunnel-refresh:
 quick-tunnel-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-down.ps1
 
-ngrok-up: compose-upgrade ngrok-start status-public
+ngrok-up: compose-upgrade ngrok-start
+	-just status-public
 
 ngrok-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-down.ps1
