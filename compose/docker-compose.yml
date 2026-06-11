@@ -225,6 +225,7 @@ services:
       GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: "true"
       GATEWAY_OWNER_DRY_RUN: "false"
       GATEWAY_REDIS_URL: redis://redis:6379/0
+      GATEWAY_ALLOW_PRIVATE_UPSTREAM_URLS: "true"
     depends_on:
       redis:
         condition: service_healthy
