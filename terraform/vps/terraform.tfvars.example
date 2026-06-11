@@ -8,6 +8,18 @@ location     = "fsn1"
 ssh_key_name   = "personal-platform-operator"
 ssh_public_key = "ssh-ed25519 AAAA... vinicius@desktop"
 
+# SSH and k3s API access — never use 0.0.0.0/0 here.
 admin_cidr_blocks = [
   "203.0.113.10/32",
 ]
+
+# Set to true when using a Cloudflare Tunnel (target_mode = "local-tunnel" in
+# the cloudflare workspace). The tunnel uses an outbound connection from the
+# VPS, so ports 80/443 do not need to be open and the firewall rules are
+# omitted entirely.
+#
+# Set to false (default) when using DNS-proxy mode (target_mode = "vps-ip"):
+# ports 80/443 are restricted to Cloudflare's published IP ranges instead of
+# 0.0.0.0/0. Override cloudflare_ipv4_ranges / cloudflare_ipv6_ranges only if
+# Cloudflare updates their ranges before this repo is refreshed.
+use_cloudflare_tunnel = false

@@ -18,6 +18,17 @@ resource "hcloud_ssh_key" "operator" {
   public_key = var.ssh_public_key
 }
 
+locals {
+  # When using a Cloudflare Tunnel the VPS initiates the connection outbound;
+  # no inbound HTTP/HTTPS rule is needed. When using the DNS-proxy mode
+  # (vps-ip) Cloudflare's edge servers connect to the VPS, so we restrict to
+  # their published ranges instead of opening 0.0.0.0/0.
+  http_source_ips = var.use_cloudflare_tunnel ? [] : concat(
+    var.cloudflare_ipv4_ranges,
+    var.cloudflare_ipv6_ranges,
+  )
+}
+
 resource "hcloud_firewall" "platform" {
   name = "${var.server_name}-firewall"
 
@@ -28,18 +39,24 @@ resource "hcloud_firewall" "platform" {
     source_ips = var.admin_cidr_blocks
   }
 
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "80"
-    source_ips = ["0.0.0.0/0", "::/0"]
+  dynamic "rule" {
+    for_each = var.use_cloudflare_tunnel ? [] : [80]
+    content {
+      direction  = "in"
+      protocol   = "tcp"
+      port       = tostring(rule.value)
+      source_ips = local.http_source_ips
+    }
   }
 
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "443"
-    source_ips = ["0.0.0.0/0", "::/0"]
+  dynamic "rule" {
+    for_each = var.use_cloudflare_tunnel ? [] : [443]
+    content {
+      direction  = "in"
+      protocol   = "tcp"
+      port       = tostring(rule.value)
+      source_ips = local.http_source_ips
+    }
   }
 
   rule {
