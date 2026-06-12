@@ -25,7 +25,7 @@ images:
   - name: ghcr.io/vinicius-ssantos/mcp-social
     digest: sha256:de99f024c7dc29e792cff6a488ca6124885058752e7870df56957b41b464466b
   - name: ghcr.io/vinicius-ssantos/central-mcp-gateway
-    digest: sha256:02965967d6f28a4e188d7b6efb450a12ef4550cf6197433a201b5691ae7a8316
+    digest: sha256:01ff97bc5ccd4090b1356d785c576eb5c7509d5e8c461c459233ce84de314051
   - name: ghcr.io/vinicius-ssantos/github-unified-mcp-bff
     digest: sha256:98722b696f414d06a487e7e437319a93158db4488b3a93b305880e8351201a94
   - name: ghcr.io/vinicius-ssantos/vos-studio-mcp

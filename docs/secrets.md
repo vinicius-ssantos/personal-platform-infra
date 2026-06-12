@@ -25,6 +25,9 @@ Never commit real secrets in plain text.
 - `MCP_BEARER_TOKEN` — bearer token for MCP auth; generate with `openssl rand -hex 32`
 - `MCP_SERVER_API_KEY` — API key for deploy-orchestrator; generate with `openssl rand -hex 32`
 - `SOCIAL_MCP_ACCESS_TOKEN` — platform token for mcp-social
+- `REPO_RESEARCH_SIDECAR_API_KEY` — shared gateway/sidecar bearer token; generate with `openssl rand -hex 32`
+- `REPO_RESEARCH_GITHUB_TOKEN` — GitHub PAT used only by repo-research-sidecar
+- `REPO_RESEARCH_ALLOWED_REPOSITORIES` — mandatory comma-separated repo allowlist for repo-research-sidecar
 - `CLOUDFLARE_API_TOKEN` — Terraform Cloudflare provider
 - `VPS_KUBECONFIG` — base64-encoded kubeconfig for GitHub Actions deploy
 - Supabase service role key (if added later)
@@ -178,7 +181,7 @@ Expected keys:
 
 | Namespace | Secret | Keys |
 |---|---|---|
-| `mcp` | `platform-secrets` | `GITHUB_TOKEN`, `MCP_BEARER_TOKEN`, `MCP_SERVER_API_KEY`, `SOCIAL_MCP_ACCESS_TOKEN` |
+| `mcp` | `platform-secrets` | `GITHUB_TOKEN`, `MCP_BEARER_TOKEN`, `MCP_SERVER_API_KEY`, `SOCIAL_MCP_ACCESS_TOKEN`, `REPO_RESEARCH_SIDECAR_API_KEY`, `REPO_RESEARCH_GITHUB_TOKEN`, `REPO_RESEARCH_ALLOWED_REPOSITORIES` |
 | `bff` | `platform-secrets` | `MCP_TOKEN` |
 | `vos` | `platform-secrets` | reserved for future VOS sensitive values |
 

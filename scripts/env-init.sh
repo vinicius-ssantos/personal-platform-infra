@@ -16,6 +16,9 @@ Fill these values before starting services:
   MCP_BEARER_TOKEN         - local bearer token, e.g. openssl rand -hex 32
   MCP_SERVER_API_KEY       - local deploy token, e.g. openssl rand -hex 32
   SOCIAL_MCP_ACCESS_TOKEN  - social integration access token
+  REPO_RESEARCH_SIDECAR_API_KEY - shared gateway/sidecar token, e.g. openssl rand -hex 32
+  REPO_RESEARCH_GITHUB_TOKEN - GitHub PAT used only by repo-research-sidecar
+  REPO_RESEARCH_ALLOWED_REPOSITORIES - comma-separated repo allowlist
   CENTRAL_MCP_GATEWAY_ADMIN_TOKEN - local Admin UI token, e.g. openssl rand -hex 32
 
 Then run:
