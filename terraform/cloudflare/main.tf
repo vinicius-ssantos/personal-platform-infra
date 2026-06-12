@@ -58,48 +58,18 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "platform" {
 # ---------------------------------------------------------------------------
 
 locals {
-  services = {
-    mcp_github = {
-      subdomain = "mcp-github"
-      backend   = "http://localhost:8765"
-    }
-    # Local tunnel backends target Compose host ports, not container-internal ports.
-    deploy_mcp = {
-      subdomain = "deploy-mcp"
-      backend   = "http://localhost:8001"
-    }
-    social_mcp = {
-      subdomain = "social-mcp"
-      backend   = "http://localhost:8080"
-    }
-    github_bff = {
-      subdomain = "github-bff"
-      backend   = "http://localhost:8010"
-    }
-    vos_mcp = {
-      subdomain = "vos-mcp"
-      backend   = "http://localhost:8020"
-    }
-    vos_bff = {
-      subdomain = "vos-bff"
-      backend   = "http://localhost:8030"
-    }
-  }
+  # Access-protected services (default). Cloudflare Access application and
+  # policies are created only for these entries.
+  services = { for k, v in var.services : k => v if v.access_protected }
 
-  # Public edge services. The central MCP gateway is the ChatGPT-facing OAuth
-  # endpoint and runs its own bearer/OAuth authentication, so it gets DNS and
-  # tunnel routing but is intentionally NOT placed behind Cloudflare Access
-  # (an Access login interstitial would break the third-party OAuth flow).
-  public_services = {
-    mcp_gateway = {
-      subdomain = "mcp-gateway"
-      backend   = "http://localhost:8040"
-    }
-  }
+  # Public services (access_protected = false). These get DNS and tunnel
+  # routing but are intentionally NOT placed behind Cloudflare Access —
+  # e.g. the MCP gateway runs its own OAuth flow and an Access interstitial
+  # would break third-party OAuth clients such as ChatGPT.
+  public_services = { for k, v in var.services : k => v if !v.access_protected }
 
-  # DNS and tunnel routing cover every reachable host; Cloudflare Access is
-  # applied only to local.services (the Access-protected, directly-reached set).
-  all_services = merge(local.services, local.public_services)
+  # DNS and tunnel routing cover every reachable host.
+  all_services = var.services
 
   # When using a tunnel, all records are CNAMEs pointing to the tunnel hostname.
   # When pointing directly at the VPS, all records are A records.

@@ -90,28 +90,35 @@ check_health() {
   fi
 }
 
+# Single source of truth for services: name:namespace:svc_port:local_port:health_path
+# Local ports use high numbers (18xxx/19xxx) to avoid clashing with Compose.
+SERVICES=(
+  "github-unified-mcp:mcp:8765:19765:/healthz"
+  "deploy-orchestrator-mcp:mcp:8000:18000:/healthz"
+  "mcp-social:mcp:8080:18080:/health"
+  "central-mcp-gateway:mcp:8080:18040:/healthz"
+  "github-unified-mcp-bff:bff:8000:18010:/healthz"
+  "vos-studio-mcp:vos:8000:18020:/health"
+  "vos-studio-bff:bff:8000:18030:/healthz"
+)
+
 echo "Starting port-forwards..."
-start_pf github-unified-mcp      mcp 8765 19765
-start_pf deploy-orchestrator-mcp mcp 8000 18000
-start_pf mcp-social              mcp 8080 18080
-start_pf central-mcp-gateway     mcp 8080 18040
-start_pf github-unified-mcp-bff  bff 8000 18010
-start_pf vos-studio-mcp          vos 8000 18020
-start_pf vos-studio-bff          bff 8000 18030
+for _svc in "${SERVICES[@]}"; do
+  IFS=: read -r _name _ns _sport _lport _path <<< "$_svc"
+  start_pf "$_name" "$_ns" "$_sport" "$_lport"
+done
 
 echo "Waiting for port-forwards to accept connections..."
-for _pf_port in 19765 18000 18080 18040 18010 18020 18030; do
-  wait_for_port "$_pf_port"
+for _svc in "${SERVICES[@]}"; do
+  IFS=: read -r _name _ns _sport _lport _path <<< "$_svc"
+  wait_for_port "$_lport"
 done
 
 echo "Running health checks..."
-check_health github-unified-mcp      19765 /healthz
-check_health deploy-orchestrator-mcp 18000 /healthz
-check_health mcp-social              18080 /health
-check_health central-mcp-gateway     18040 /healthz
-check_health github-unified-mcp-bff  18010 /healthz
-check_health vos-studio-mcp          18020 /health
-check_health vos-studio-bff          18030 /healthz
+for _svc in "${SERVICES[@]}"; do
+  IFS=: read -r _name _ns _sport _lport _path <<< "$_svc"
+  check_health "$_name" "$_lport" "$_path"
+done
 
 echo ""
 echo "k3d smoke passed: all 7 ready services are healthy."

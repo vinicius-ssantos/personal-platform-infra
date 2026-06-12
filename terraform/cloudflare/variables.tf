@@ -84,3 +84,43 @@ variable "cloudflare_access_session_duration" {
   type        = string
   default     = "8h"
 }
+
+variable "services" {
+  description = "Services to expose via DNS, Cloudflare Tunnel, and (optionally) Access. Set access_protected = false for public OAuth endpoints that must not sit behind an Access login interstitial."
+  type = map(object({
+    subdomain        = string
+    backend          = string
+    access_protected = optional(bool, true)
+  }))
+  default = {
+    mcp_github = {
+      subdomain = "mcp-github"
+      backend   = "http://localhost:8765"
+    }
+    deploy_mcp = {
+      subdomain = "deploy-mcp"
+      backend   = "http://localhost:8001"
+    }
+    social_mcp = {
+      subdomain = "social-mcp"
+      backend   = "http://localhost:8080"
+    }
+    github_bff = {
+      subdomain = "github-bff"
+      backend   = "http://localhost:8010"
+    }
+    vos_mcp = {
+      subdomain = "vos-mcp"
+      backend   = "http://localhost:8020"
+    }
+    vos_bff = {
+      subdomain = "vos-bff"
+      backend   = "http://localhost:8030"
+    }
+    mcp_gateway = {
+      subdomain        = "mcp-gateway"
+      backend          = "http://localhost:8040"
+      access_protected = false
+    }
+  }
+}

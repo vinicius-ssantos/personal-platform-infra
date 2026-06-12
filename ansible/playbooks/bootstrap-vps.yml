@@ -110,29 +110,13 @@
         regexp: 'https://127\.0\.0\.1:6443'
         replace: "https://{{ ansible_host }}:6443"
 
-    - name: Download just archive (checksum-verified)
-      ansible.builtin.get_url:
-        url: "https://github.com/casey/just/releases/download/{{ just_version }}/just-{{ just_version }}-x86_64-unknown-linux-musl.tar.gz"
-        dest: /tmp/just.tar.gz
-        checksum: "sha256:{{ just_sha256 }}"
-        mode: "0644"
-
-    - name: Install just
-      ansible.builtin.unarchive:
-        src: /tmp/just.tar.gz
-        dest: /usr/local/bin
-        remote_src: true
-        include:
-          - just
-        mode: "0755"
-        creates: /usr/local/bin/just
-
-    - name: Install sops (checksum-verified)
-      ansible.builtin.get_url:
-        url: "https://github.com/getsops/sops/releases/download/{{ sops_version }}/sops-{{ sops_version }}.linux.amd64"
-        dest: /usr/local/bin/sops
-        checksum: "sha256:{{ sops_sha256 }}"
-        mode: "0755"
+    - name: Install platform tooling (just + sops only)
+      ansible.builtin.include_role:
+        name: platform-tools
+      vars:
+        install_kubectl: false
+        install_k3d: false
+        install_helm: false
 
     - name: Enable UFW with default deny
       community.general.ufw:

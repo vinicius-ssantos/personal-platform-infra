@@ -29,15 +29,24 @@ check_wake() {
   echo "  OK: $deploy"
 }
 
-echo "KEDA HTTP smoke: waking all 7 services via interceptor proxy..."
+# Single source of truth: host:path:deploy:namespace
+# Hosts match the Cloudflare DNS subdomains configured in terraform/cloudflare.
+SERVICES=(
+  "mcp-github.example.com:/healthz:github-unified-mcp:mcp"
+  "github-bff.example.com:/healthz:github-unified-mcp-bff:bff"
+  "deploy-mcp.example.com:/healthz:deploy-orchestrator-mcp:mcp"
+  "social-mcp.example.com:/health:mcp-social:mcp"
+  "vos-mcp.example.com:/health:vos-studio-mcp:vos"
+  "vos-bff.example.com:/healthz:vos-studio-bff:bff"
+  "mcp-gateway.example.com:/healthz:central-mcp-gateway:mcp"
+)
 
-check_wake "mcp-github.example.com"   /healthz github-unified-mcp      mcp
-check_wake "github-bff.example.com"   /healthz github-unified-mcp-bff  bff
-check_wake "deploy-mcp.example.com"   /healthz deploy-orchestrator-mcp mcp
-check_wake "social-mcp.example.com"   /health  mcp-social               mcp
-check_wake "vos-mcp.example.com"      /health  vos-studio-mcp           vos
-check_wake "vos-bff.example.com"      /healthz vos-studio-bff           bff
-check_wake "mcp-gateway.example.com"  /healthz central-mcp-gateway      mcp
+echo "KEDA HTTP smoke: waking all ${#SERVICES[@]} services via interceptor proxy..."
+
+for _svc in "${SERVICES[@]}"; do
+  IFS=: read -r _host _path _deploy _ns <<< "$_svc"
+  check_wake "$_host" "$_path" "$_deploy" "$_ns"
+done
 
 echo ""
-echo "KEDA HTTP smoke passed: all 7 services woke and are healthy."
+echo "KEDA HTTP smoke passed: all ${#SERVICES[@]} services woke and are healthy."
