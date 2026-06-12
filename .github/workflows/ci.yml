@@ -96,3 +96,27 @@ jobs:
 
           kubectl kustomize k8s/addons/keda-http/pilot > /dev/null
           echo "OK k8s/addons/keda-http/pilot"
+
+      - name: Install kube-score
+        run: |
+          KUBE_SCORE_VERSION=1.20.0
+          curl -fsSL -o /tmp/kube-score.tar.gz \
+            "https://github.com/zegl/kube-score/releases/download/v${KUBE_SCORE_VERSION}/kube-score_${KUBE_SCORE_VERSION}_linux_amd64.tar.gz"
+          tar -xzf /tmp/kube-score.tar.gz -C /tmp kube-score
+          sudo install -m 0755 /tmp/kube-score /usr/local/bin/kube-score
+          kube-score version
+
+      - name: Lint manifests with kube-score
+        run: |
+          # Ignored checks are intentional repo conventions:
+          #  - container-image-pull-policy: tags are pinned; IfNotPresent is deliberate
+          #  - deployment-replicas: sleep pattern — workloads run replicas 0/1 (ADR 0001)
+          #  - pod-networkpolicy: NetworkPolicies cover app traffic, not every Job pod
+          #  - pod-probes-identical: upstream apps expose a single health path (CLAUDE.md)
+          #  - readonlyrootfilesystem / user-group-id / ephemeral-storage: tracked as
+          #    upstream-image improvements, not enforced yet
+          IGNORE="container-image-pull-policy,container-ephemeral-storage-request-and-limit,container-security-context-readonlyrootfilesystem,container-security-context-user-group-id,pod-networkpolicy,pod-probes-identical,deployment-replicas"
+          for overlay in local vps; do
+            kubectl kustomize "k8s/overlays/$overlay" | kube-score score - --ignore-test "$IGNORE"
+            echo "OK kube-score k8s/overlays/$overlay"
+          done

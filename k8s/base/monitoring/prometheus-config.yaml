@@ -1,0 +1,20 @@
+# Minimal Prometheus config. Prometheus does NOT scrape application pods
+# itself — Alloy discovers and scrapes annotated pods (see alloy-config.yaml)
+# and pushes samples here via remote_write (the deployment enables
+# --web.enable-remote-write-receiver). Prometheus only self-scrapes so its
+# own health is visible.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s
+      evaluation_interval: 30s
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          # In-pod self-scrape over loopback; valid in any environment.
+          - targets: ["127.0.0.1:9090"]

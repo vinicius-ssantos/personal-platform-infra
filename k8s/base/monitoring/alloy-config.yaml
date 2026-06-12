@@ -17,8 +17,86 @@ data:
       forward_to = [loki.write.local.receiver]
     }
 
+    // Kubernetes events (CrashLoopBackOff, Job BackoffLimitExceeded, OOMKilled,
+    // scheduling failures, ...) are not visible in container logs. Ship them to
+    // Loki so Grafana can alert on workload-level failures in a logs-only stack.
+    loki.source.kubernetes_events "cluster" {
+      namespaces = ["mcp", "bff", "vos", "monitoring"]
+      forward_to = [loki.process.events.receiver]
+    }
+
+    // Dedicated label so alert queries can select events without scanning
+    // application log streams.
+    loki.process "events" {
+      stage.static_labels {
+        values = {
+          source = "kube-events",
+        }
+      }
+      forward_to = [loki.write.local.receiver]
+    }
+
     loki.write "local" {
       endpoint {
         url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+      }
+    }
+
+    // ---- Metrics (opt-in via pod annotations) -------------------------------
+    // Pods annotated with prometheus.io/scrape: "true" are scraped by Alloy
+    // and the samples are pushed to Prometheus via remote_write. Optional
+    // annotations: prometheus.io/path (default /metrics) and
+    // prometheus.io/port (default: the pod's declared container port).
+    discovery.relabel "metrics_pods" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+        regex         = "true"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+        regex         = "(.+)"
+        target_label  = "__metrics_path__"
+      }
+      rule {
+        source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+        regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+        replacement   = "$1:$2"
+        target_label  = "__address__"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app"]
+        target_label  = "app"
+      }
+    }
+
+    prometheus.scrape "pods" {
+      targets         = discovery.relabel.metrics_pods.output
+      scrape_interval = "30s"
+      forward_to      = [prometheus.remote_write.local.receiver]
+    }
+
+    // Alloy's own metrics, so the collector itself is observable.
+    prometheus.exporter.self "alloy" {}
+
+    prometheus.scrape "alloy" {
+      targets         = prometheus.exporter.self.alloy.targets
+      scrape_interval = "30s"
+      forward_to      = [prometheus.remote_write.local.receiver]
+    }
+
+    prometheus.remote_write "local" {
+      endpoint {
+        url = "http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
       }
     }

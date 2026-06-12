@@ -81,6 +81,7 @@ docs/
 
 ```bash
 # Desenvolvimento local — Compose
+just doctor
 just env-init
 just check-env
 just compose-up
@@ -148,7 +149,7 @@ just tunnel
 - **`just`, não `make`** — compatibilidade Windows/WSL2 (ADR 0008).
 - **Namespaces:** `mcp` para MCP servers, `bff` para BFFs, `vos` para VOS Studio e `monitoring` para observabilidade (ADR 0010/0015).
 - **Cloudflare é a camada de rede** — DNS, Tunnel, TLS e Pages ficam centralizados no Cloudflare (ADR 0009).
-- **Observabilidade leve:** Loki, Alloy e Grafana rodam no namespace `monitoring` com storage inicialmente efêmero (ADR 0015).
+- **Observabilidade leve:** Loki, Alloy, Prometheus e Grafana rodam no namespace `monitoring` com storage inicialmente efêmero (ADR 0015). Alloy coleta logs, eventos Kubernetes e métricas de pods anotados com `prometheus.io/scrape: "true"`.
 - **Scale-to-zero automático é piloto:** KEDA HTTP Add-on cobre inicialmente `github-unified-mcp` e `github-unified-mcp-bff` (ADR 0016).
 
 ## Armadilhas conhecidas

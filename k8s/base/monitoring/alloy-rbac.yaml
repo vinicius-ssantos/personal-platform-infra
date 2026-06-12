@@ -5,8 +5,10 @@ metadata:
   namespace: monitoring
 ---
 # Per-namespace Roles instead of a cluster-wide ClusterRole.
-# Alloy is configured to discover pods only in these four namespaces
-# (see alloy-config.yaml); no cluster-level resource access is needed.
+# Alloy is configured to discover pods and tail Kubernetes events only in
+# these four namespaces (see alloy-config.yaml); no cluster-level resource
+# access is needed. Events are granted in both the core API group and
+# events.k8s.io (loki.source.kubernetes_events uses the new API when present).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -14,7 +16,10 @@ metadata:
   namespace: mcp
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/log"]
+    resources: ["pods", "pods/log", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -38,7 +43,10 @@ metadata:
   namespace: bff
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/log"]
+    resources: ["pods", "pods/log", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -62,7 +70,10 @@ metadata:
   namespace: vos
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/log"]
+    resources: ["pods", "pods/log", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -86,7 +97,10 @@ metadata:
   namespace: monitoring
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/log"]
+    resources: ["pods", "pods/log", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

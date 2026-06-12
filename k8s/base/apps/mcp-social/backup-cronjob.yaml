@@ -26,6 +26,9 @@ metadata:
 spec:
   # Daily at 03:00 UTC.
   schedule: "0 3 * * *"
+  # If the controller misses the window by more than 1h (node down, clock
+  # skew), skip the run instead of firing late at an arbitrary time.
+  startingDeadlineSeconds: 3600
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 5
   failedJobsHistoryLimit: 5
@@ -116,7 +119,21 @@ spec:
                     --rmdirs \
                     --verbose
                   echo "Backup complete."
+                  # Optional dead-man's-switch ping (healthchecks.io or similar).
+                  # A missed daily ping raises an external alert even if the
+                  # whole cluster (and Grafana with it) is down.
+                  if [ -n "${HEALTHCHECKS_BACKUP_URL:-}" ]; then
+                    wget -q -T 10 -O /dev/null "$HEALTHCHECKS_BACKUP_URL" \
+                      && echo "Pinged healthchecks endpoint." \
+                      || echo "WARNING: healthchecks ping failed (backup itself succeeded)." >&2
+                  fi
               env:
+                - name: HEALTHCHECKS_BACKUP_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: platform-secrets
+                      key: HEALTHCHECKS_BACKUP_URL
+                      optional: true
                 - name: RCLONE_CONFIG_R2_ENDPOINT
                   valueFrom:
                     configMapKeyRef:

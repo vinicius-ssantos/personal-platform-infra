@@ -25,11 +25,14 @@ require_text() {
   fi
 }
 
-if ! grep -A 6 'deploy_mcp = {' terraform/cloudflare/main.tf | grep -q 'backend[[:space:]]*=[[:space:]]*"http://localhost:8001"'; then
-  fail "Cloudflare deploy-mcp local tunnel backend must match Compose host port 8001 (terraform/cloudflare/main.tf)"
+# Service defaults live in terraform/cloudflare/variables.tf (var.services).
+if ! grep -A 6 'deploy_mcp = {' terraform/cloudflare/variables.tf | grep -q 'backend[[:space:]]*=[[:space:]]*"http://localhost:8001"'; then
+  fail "Cloudflare deploy-mcp local tunnel backend must match Compose host port 8001 (terraform/cloudflare/variables.tf)"
 fi
 
-for file in cloudflare/workers/status-page/src/index.ts cloudflare/workers/status-page/wrangler.toml.example; do
+# The Worker has no in-source defaults (it fails explicitly without
+# SERVICES_JSON); the canonical service list lives in wrangler.toml.example.
+for file in cloudflare/workers/status-page/wrangler.toml.example; do
   require_text "$file" 'vos-studio-mcp' "Status page defaults must include vos-studio-mcp"
   require_text "$file" 'vos-studio-bff' "Status page defaults must include vos-studio-bff"
 done
