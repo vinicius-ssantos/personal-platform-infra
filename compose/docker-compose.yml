@@ -3,7 +3,9 @@ services:
     image: ${GITHUB_UNIFIED_MCP_IMAGE}
     profiles: ["github", "tailscale", "all"]
     ports:
-      - "8765:8765"
+      # Bind to 127.0.0.1 so ports are not exposed on the WSL2 network
+      # adapter or any LAN interface. Access via http://localhost:<port>.
+      - "127.0.0.1:8765:8765"
     environment:
       FASTMCP_HOST: 0.0.0.0
       FASTMCP_PORT: 8765
@@ -30,7 +32,7 @@ services:
     image: ${DEPLOY_ORCHESTRATOR_MCP_IMAGE}
     profiles: ["deploy", "tailscale", "all"]
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     environment:
       MCP_TRANSPORT: http
       PORT: 8000
@@ -49,7 +51,7 @@ services:
     image: ${MCP_SOCIAL_IMAGE}
     profiles: ["social", "tailscale", "all"]
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       SOCIAL_MCP_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN}
       SOCIAL_DB_URL: sqlite+aiosqlite:////data/social.db
@@ -67,7 +69,7 @@ services:
     image: ${GITHUB_UNIFIED_MCP_BFF_IMAGE}
     profiles: ["github-bff", "all"]
     ports:
-      - "8010:8000"
+      - "127.0.0.1:8010:8000"
     environment:
       BFF_ENV: development
       FRONTEND_URL: http://localhost:5173
@@ -86,7 +88,7 @@ services:
     image: ${VOS_STUDIO_MCP_IMAGE}
     profiles: ["vos", "tailscale", "all"]
     ports:
-      - "8020:8000"
+      - "127.0.0.1:8020:8000"
     environment:
       APP_ENV: development
       MCP_SERVER_HOST: 0.0.0.0
@@ -107,7 +109,7 @@ services:
     image: ${VOS_STUDIO_BFF_IMAGE}
     profiles: ["vos", "all"]
     ports:
-      - "8030:8000"
+      - "127.0.0.1:8030:8000"
     environment:
       BFF_ENV: development
       FRONTEND_URL: http://localhost:5174
@@ -146,7 +148,7 @@ services:
     pull_policy: never
     profiles: ["sandbox", "gateway", "tailscale", "all"]
     ports:
-      - "8766:8766"
+      - "127.0.0.1:8766:8766"
     environment:
       SANDBOX_API_KEY: ${SANDBOX_API_KEY}
       SANDBOX_TRANSPORT: streamable-http
@@ -172,7 +174,7 @@ services:
     profiles: ["gateway", "tailscale", "all"]
     command: redis-server --save "" --appendonly no
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -185,7 +187,7 @@ services:
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
     profiles: ["gateway", "tailscale", "all"]
     ports:
-      - "8040:8080"
+      - "127.0.0.1:8040:8080"
     environment:
       GATEWAY_APP_NAME: central-mcp-gateway
       GATEWAY_ENVIRONMENT: local
@@ -225,6 +227,11 @@ services:
       GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: "true"
       GATEWAY_OWNER_DRY_RUN: "false"
       GATEWAY_REDIS_URL: redis://redis:6379/0
+      # DEV ONLY — allows the gateway to call upstream services at private/loopback
+      # URLs (the Docker Compose service DNS names). Must NOT be set to "true" in
+      # production (k8s): upstream URLs there use cluster-internal DNS which the
+      # gateway resolves to ClusterIPs, and enabling this setting would allow SSRF
+      # to any internal k8s endpoint. The k8s ConfigMap intentionally omits this key.
       GATEWAY_ALLOW_PRIVATE_UPSTREAM_URLS: "true"
     depends_on:
       redis:
@@ -276,7 +283,7 @@ services:
     image: caddy:2.8-alpine
     profiles: ["ngrok", "all"]
     ports:
-      - "8088:8080"
+      - "127.0.0.1:8088:8080"
     environment:
       PUBLIC_EDGE_TOKEN: ${PUBLIC_EDGE_TOKEN}
     volumes:
