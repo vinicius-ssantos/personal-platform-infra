@@ -15,7 +15,9 @@ kubectl rollout status deploy/keda-add-ons-http-interceptor -n keda --timeout="$
 
 kubectl port-forward -n keda svc/keda-add-ons-http-interceptor-proxy 18090:8080 >/dev/null 2>&1 &
 PIDS+=($!)
-sleep 3
+
+# Poll until the port-forward is accepting connections before sending HTTP requests.
+until (: < /dev/tcp/127.0.0.1/18090) 2>/dev/null; do sleep 1; done
 
 check_wake() {
   local host="$1" path="$2" deploy="$3" ns="$4"

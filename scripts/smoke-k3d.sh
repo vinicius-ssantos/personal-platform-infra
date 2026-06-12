@@ -66,6 +66,18 @@ start_pf() {
   PIDS+=($!)
 }
 
+# Poll a TCP port until it accepts connections (port-forward process is ready).
+wait_for_port() {
+  local port="$1" attempts=0 max="${2:-15}"
+  until (: < /dev/tcp/127.0.0.1/"$port") 2>/dev/null; do
+    if (( ++attempts >= max )); then
+      echo "ERROR: port $port did not open within ${max}s" >&2
+      return 1
+    fi
+    sleep 1
+  done
+}
+
 check_health() {
   local name="$1" local_port="$2" path="$3"
   local url="http://localhost:${local_port}${path}"
@@ -87,7 +99,10 @@ start_pf github-unified-mcp-bff  bff 8000 18010
 start_pf vos-studio-mcp          vos 8000 18020
 start_pf vos-studio-bff          bff 8000 18030
 
-sleep 3
+echo "Waiting for port-forwards to accept connections..."
+for _pf_port in 19765 18000 18080 18040 18010 18020 18030; do
+  wait_for_port "$_pf_port"
+done
 
 echo "Running health checks..."
 check_health github-unified-mcp      19765 /healthz

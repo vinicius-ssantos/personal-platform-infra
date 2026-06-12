@@ -16,6 +16,9 @@ resources:
 # targets only Alloy — Grafana and Loki carry a stricter securityContext
 # (runAsNonRoot + known UID) directly in their manifests.
 patches:
+  - path: update-strategy-patch.yaml
+    target:
+      kind: Deployment
   - path: securitycontext-patch.yaml
     target:
       kind: Deployment

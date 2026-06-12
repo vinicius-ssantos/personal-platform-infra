@@ -1,0 +1,11 @@
+- op: add
+  path: /spec/strategy
+  value:
+    type: RollingUpdate
+    rollingUpdate:
+      # With replicas: 1 the default 25% percentages both round to 0/1, which
+      # happens to be safe, but leaving it implicit creates confusion. Explicit
+      # values: keep at least 1 pod available at all times; allow one surge pod
+      # during updates so the old pod is terminated only after the new one is ready.
+      maxUnavailable: 0
+      maxSurge: 1

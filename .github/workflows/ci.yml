@@ -80,7 +80,19 @@ jobs:
         run: |
           kubectl kustomize k8s/overlays/local > /dev/null
           echo "OK k8s/overlays/local"
-          kubectl kustomize k8s/overlays/vps > /dev/null
+
+          # VPS overlay: build and check for unsubstituted REPLACE_WITH_ placeholders.
+          # __TOKEN__ patterns are intentional — they are substituted at deploy time by
+          # render-vps-overlay.sh (which has its own safety gate). REPLACE_WITH_ values
+          # belong only in the base as schema documentation and must be patched away by
+          # the overlay before reaching a real cluster.
+          vps_out="$(kubectl kustomize k8s/overlays/vps)"
+          if printf '%s\n' "$vps_out" | grep -q 'REPLACE_WITH_'; then
+            echo "ERROR: unsubstituted REPLACE_WITH_ placeholder in k8s/overlays/vps:" >&2
+            printf '%s\n' "$vps_out" | grep -n 'REPLACE_WITH_' >&2
+            exit 1
+          fi
           echo "OK k8s/overlays/vps"
+
           kubectl kustomize k8s/addons/keda-http/pilot > /dev/null
           echo "OK k8s/addons/keda-http/pilot"
