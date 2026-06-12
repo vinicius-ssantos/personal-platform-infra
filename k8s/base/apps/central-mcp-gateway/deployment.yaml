@@ -74,6 +74,11 @@ spec:
                   name: platform-secrets
                   key: SANDBOX_API_KEY
                   optional: true
+            - name: GATEWAY_REPO_RESEARCH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: REPO_RESEARCH_SIDECAR_API_KEY
           ports:
             - containerPort: 8080
           livenessProbe:

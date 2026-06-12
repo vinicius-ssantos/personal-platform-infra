@@ -36,9 +36,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Checking $baseUrl/readyz"
-curl.exe -fsS --retry 20 --retry-delay 1 --retry-connrefused --retry-all-errors "$baseUrl/readyz"
+$readyzRaw = curl.exe -fsS --retry 20 --retry-delay 1 --retry-connrefused --retry-all-errors "$baseUrl/readyz"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
+}
+$readyz = $readyzRaw | ConvertFrom-Json
+$repoResearch = $readyz.upstreams.'repo-research'
+if (-not $repoResearch -or $repoResearch.enabled -ne $true) {
+    Write-Error "repo-research upstream is not enabled in /readyz"
 }
 
 $bearer = Read-EnvValue "CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN"

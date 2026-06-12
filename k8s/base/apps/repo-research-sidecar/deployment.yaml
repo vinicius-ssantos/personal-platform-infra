@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: repo-research-sidecar
+  namespace: mcp
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: repo-research-sidecar
+  template:
+    metadata:
+      labels:
+        app: repo-research-sidecar
+    spec:
+      serviceAccountName: platform-puller
+      containers:
+        - name: repo-research-sidecar
+          image: ghcr.io/vinicius-ssantos/mcp-proxy:main
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--port=8081"
+            - "--bearer-token=$(REPO_RESEARCH_SIDECAR_API_KEY)"
+            - "--"
+            - "repo-research-mcp"
+          env:
+            - name: REPO_RESEARCH_SIDECAR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: REPO_RESEARCH_SIDECAR_API_KEY
+            - name: REPO_RESEARCH_ALLOWED_REPOSITORIES
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: REPO_RESEARCH_ALLOWED_REPOSITORIES
+            - name: REPO_RESEARCH_GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: REPO_RESEARCH_GITHUB_TOKEN
+            - name: REPO_RESEARCH_MAX_FETCH_BYTES
+              value: "100000"
+            - name: REPO_RESEARCH_CACHE_TTL_SECONDS
+              value: "300"
+          ports:
+            - containerPort: 8081
+          livenessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

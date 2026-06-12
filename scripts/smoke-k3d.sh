@@ -44,6 +44,7 @@ echo "Waiting for rollouts (timeout: $TIMEOUT each)..."
 kubectl rollout status deploy/github-unified-mcp      -n mcp --timeout="$TIMEOUT"
 kubectl rollout status deploy/deploy-orchestrator-mcp -n mcp --timeout="$TIMEOUT"
 kubectl rollout status deploy/mcp-social              -n mcp --timeout="$TIMEOUT"
+kubectl rollout status deploy/repo-research-sidecar   -n mcp --timeout="$TIMEOUT"
 kubectl rollout status deploy/central-mcp-gateway     -n mcp --timeout="$TIMEOUT"
 kubectl rollout status deploy/github-unified-mcp-bff  -n bff --timeout="$TIMEOUT"
 kubectl rollout status deploy/vos-studio-mcp          -n vos --timeout="$TIMEOUT"
@@ -80,6 +81,10 @@ wait_for_port() {
 
 check_health() {
   local name="$1" local_port="$2" path="$3"
+  if [[ "$path" == "tcp" ]]; then
+    echo "  OK: $name"
+    return 0
+  fi
   local url="http://localhost:${local_port}${path}"
   echo "  Checking $name -> $url"
   if curl -fsS --retry 12 --retry-delay 2 --retry-connrefused --retry-all-errors "$url" >/dev/null; then
@@ -96,6 +101,7 @@ SERVICES=(
   "github-unified-mcp:mcp:8765:19765:/healthz"
   "deploy-orchestrator-mcp:mcp:8000:18000:/healthz"
   "mcp-social:mcp:8080:18080:/health"
+  "repo-research-sidecar:mcp:8081:18081:tcp"
   "central-mcp-gateway:mcp:8080:18040:/healthz"
   "github-unified-mcp-bff:bff:8000:18010:/healthz"
   "vos-studio-mcp:vos:8000:18020:/health"
@@ -121,7 +127,7 @@ for _svc in "${SERVICES[@]}"; do
 done
 
 echo ""
-echo "k3d smoke passed: all 7 ready services are healthy."
+echo "k3d smoke passed: all 8 ready services are healthy."
 
 # End-to-end path through the gateway (auth + tools). Needs the public bearer
 # token; skip with a notice if it is not configured so the health smoke still

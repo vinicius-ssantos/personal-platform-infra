@@ -20,6 +20,14 @@ docker compose --env-file "$ENV_FILE" -f compose/docker-compose.yml --profile ga
 curl -fsS --retry 20 --retry-delay 1 --retry-connrefused --retry-all-errors "$BASE_URL/healthz"
 curl -fsS --retry 20 --retry-delay 1 --retry-connrefused --retry-all-errors "$BASE_URL/readyz"
 
+if command -v jq >/dev/null 2>&1; then
+  repo_research="$(curl -fsS "$BASE_URL/readyz" | jq -r '.upstreams["repo-research"].enabled')"
+  if [[ "$repo_research" != "true" ]]; then
+    echo "ERROR: repo-research upstream is not enabled in /readyz" >&2
+    exit 1
+  fi
+fi
+
 bearer="$(read_env CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN)"
 
 curl -fsS \

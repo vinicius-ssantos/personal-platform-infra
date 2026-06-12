@@ -84,7 +84,19 @@ Use este documento antes de mudar qualquer wiring de Compose ou Kubernetes, e an
 | Auth | Bearer token via `Authorization: Bearer <token>` |
 | Variáveis obrigatórias | `GATEWAY_PUBLIC_BEARER_TOKEN`, `GATEWAY_SESSION_SECRET`, `GATEWAY_PUBLIC_BASE_URL`, `GATEWAY_OAUTH_ISSUER` |
 | OAuth client secret | Opcional. Deixe vazio para clientes públicos com PKCE, como ChatGPT custom MCP connectors com token auth method `none`. |
-| Upstreams | github-unified-mcp, deploy-orchestrator-mcp, mcp-social, vos-studio-mcp |
+| Upstreams | github-unified-mcp, deploy-orchestrator-mcp, mcp-social, vos-studio-mcp, repo-research-sidecar |
+| Namespace k8s | `mcp` |
+
+### repo-research-sidecar
+
+| Atributo | Valor |
+|---|---|
+| Repositório | `vinicius-ssantos/repo-research-mcp` |
+| Imagem proxy | `ghcr.io/vinicius-ssantos/mcp-proxy:main` |
+| Porta | 8081 |
+| Auth | Bearer token compartilhado com o gateway |
+| Variáveis obrigatórias | `REPO_RESEARCH_SIDECAR_API_KEY`, `REPO_RESEARCH_GITHUB_TOKEN`, `REPO_RESEARCH_ALLOWED_REPOSITORIES` |
+| Modo seguro | Sem exposição externa; allowlist vazia nega todos os repositórios |
 | Namespace k8s | `mcp` |
 
 ### mcp-code-sandbox

@@ -9,12 +9,13 @@ data:
   GATEWAY_PORT: "8080"
   GATEWAY_LOG_LEVEL: info
   GATEWAY_OAUTH_CLIENT_ID: chatgpt
-  GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read deploy:read social:write sandbox:run
+  GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read deploy:read social:write sandbox:run repo:read
   GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status,sandbox.run_code
   GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp.mcp.svc.cluster.local:8765/mcp
   GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp.mcp.svc.cluster.local:8000/mcp
   GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social.mcp.svc.cluster.local:8080/mcp
   GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp.vos.svc.cluster.local:8000/mcp
+  GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar.mcp.svc.cluster.local:8081
   GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE: "20"
   GATEWAY_TRUSTED_PROXY_COUNT: "1"
   GATEWAY_IDEMPOTENCY_TTL_SECONDS: "300"
