@@ -4,4 +4,4 @@ set -euo pipefail
 # operation. Use this script only for break-glass recovery. See docs/lifecycle.md.
 
 kubectl scale deploy/mcp-social -n mcp --replicas=1
-kubectl rollout status deploy/mcp-social -n mcp
+kubectl rollout status deploy/mcp-social -n mcp --timeout=120s

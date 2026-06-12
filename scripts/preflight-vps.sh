@@ -12,7 +12,7 @@
 #
 # Exit code is non-zero if any required (FAIL) check does not pass. WARN items
 # are advisory and do not fail the run.
-set -uo pipefail
+set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FAILS=0
