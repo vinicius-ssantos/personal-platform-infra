@@ -1,0 +1,175 @@
+---
+# Weekly restore verification for the mcp-social backup (ADR 0002 exception).
+# Downloads the most recent snapshot from R2 into an emptyDir and runs
+# `PRAGMA integrity_check` against it with sqlite3. This proves the backup
+# chain end to end: the object exists, is downloadable, and is a valid,
+# uncorrupted SQLite database — not just that `rclone copy` exited 0.
+#
+# Reuses mcp-social-backup-config and platform-secrets (R2 credentials).
+# Does NOT touch the live PVC or scale the Deployment.
+#
+# Failures surface via the kube-events → Loki pipeline and the
+# "Job/CronJob failed" Grafana alert. Manual run:
+#   kubectl create job --from=cronjob/mcp-social-restore-verify verify-$(date +%Y%m%d) -n mcp
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mcp-social-restore-verify
+  namespace: mcp
+spec:
+  # Weekly, Sunday 04:30 UTC — after the daily 03:00 UTC backup has finished.
+  schedule: "30 4 * * 0"
+  # Skip (don't fire late) if the window is missed by more than 1h.
+  startingDeadlineSeconds: 3600
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 900
+      template:
+        metadata:
+          labels:
+            app: mcp-social-restore-verify
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          initContainers:
+            # Step 1 — pull the newest snapshot from R2 into the scratch volume.
+            - name: restore
+              image: rclone/rclone:1.68.2
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  LATEST=$(rclone lsf "r2:${R2_BUCKET}/mcp-social/" --dirs-only | sort | tail -n 1)
+                  if [ -z "$LATEST" ]; then
+                    echo "ERROR: no snapshots found under r2:${R2_BUCKET}/mcp-social/" >&2
+                    exit 1
+                  fi
+                  echo "Restoring latest snapshot: ${LATEST}"
+                  rclone copy "r2:${R2_BUCKET}/mcp-social/${LATEST}" /restore \
+                    --include "social.db*" \
+                    --verbose
+                  if [ ! -f /restore/social.db ]; then
+                    echo "ERROR: snapshot ${LATEST} does not contain social.db" >&2
+                    exit 1
+                  fi
+                  echo "Downloaded $(du -sh /restore | cut -f1) to /restore"
+              env:
+                - name: RCLONE_CONFIG_R2_ENDPOINT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: R2_ENDPOINT
+                - name: R2_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: R2_BUCKET
+                - name: RCLONE_CONFIG_R2_TYPE
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: RCLONE_CONFIG_R2_TYPE
+                - name: RCLONE_CONFIG_R2_PROVIDER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: RCLONE_CONFIG_R2_PROVIDER
+                - name: RCLONE_CONFIG_R2_ACL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: RCLONE_CONFIG_R2_ACL
+                - name: RCLONE_CONFIG_R2_NO_CHECK_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mcp-social-backup-config
+                      key: RCLONE_CONFIG_R2_NO_CHECK_BUCKET
+                - name: RCLONE_CONFIG_R2_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: platform-secrets
+                      key: R2_ACCESS_KEY_ID
+                - name: RCLONE_CONFIG_R2_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: platform-secrets
+                      key: R2_SECRET_ACCESS_KEY
+              volumeMounts:
+                - name: restore
+                  mountPath: /restore
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+
+          containers:
+            # Step 2 — verify the restored database is internally consistent.
+            # Pings healthchecks.io on success when HEALTHCHECKS_RESTORE_URL is
+            # configured (optional secret key) — a missed weekly ping then
+            # raises an external dead-man's-switch alert.
+            - name: verify
+              image: keinos/sqlite3:3.47.2
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  echo "Running PRAGMA integrity_check on /restore/social.db ..."
+                  RESULT=$(sqlite3 /restore/social.db "PRAGMA integrity_check;")
+                  echo "integrity_check: ${RESULT}"
+                  if [ "$RESULT" != "ok" ]; then
+                    echo "ERROR: restored snapshot failed integrity_check" >&2
+                    exit 1
+                  fi
+                  TABLES=$(sqlite3 /restore/social.db "SELECT count(*) FROM sqlite_master WHERE type='table';")
+                  echo "Snapshot contains ${TABLES} tables."
+                  if [ -n "${HEALTHCHECKS_RESTORE_URL:-}" ]; then
+                    wget -q -T 10 -O /dev/null "$HEALTHCHECKS_RESTORE_URL" \
+                      && echo "Pinged healthchecks endpoint." \
+                      || echo "WARNING: healthchecks ping failed (verification itself succeeded)." >&2
+                  fi
+                  echo "Restore verification passed."
+              env:
+                - name: HEALTHCHECKS_RESTORE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: platform-secrets
+                      key: HEALTHCHECKS_RESTORE_URL
+                      optional: true
+              volumeMounts:
+                - name: restore
+                  mountPath: /restore
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+
+          volumes:
+            - name: restore
+              emptyDir:
+                sizeLimit: 512Mi

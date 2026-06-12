@@ -1,0 +1,24 @@
+# Optional: store Terraform state remotely in Cloudflare R2.
+#
+# Same setup as terraform/vps/backend.tf.example — refer to that file for
+# full instructions. Use a different key to keep workspace states separate.
+#
+# WARNING: the Cloudflare workspace state contains sensitive outputs including
+# the tunnel secret, Access service token client_secret, and DNS record IDs.
+# Ensure the R2 bucket has no public access and restrict the API token to the
+# bucket only.
+
+terraform {
+  backend "s3" {
+    bucket = "personal-platform-tfstate"
+    key    = "cloudflare/terraform.tfstate"
+
+    region   = "auto"
+    endpoint = "https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com"
+
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    force_path_style            = true
+  }
+}

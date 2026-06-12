@@ -3,4 +3,6 @@ resources:
   - deployment.yaml
   - pvc.yaml
   - service.yaml
+  - backup-rbac.yaml
   - backup-cronjob.yaml
+  - restore-verify-cronjob.yaml

@@ -8,6 +8,7 @@
 .terraform/
 terraform.tfvars
 terraform.tfvars.json
+backend.tf
 
 secrets/*.yaml
 !secrets/*.example.yaml
@@ -36,3 +37,4 @@ dist/
 cloudflare/workers/status-page/wrangler.toml
 /.claude/settings.local.json
 /.mcp.json
+.terraform.lock.hcl

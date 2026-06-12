@@ -1,49 +1,56 @@
+# Lightweight single-replica Prometheus (ADR 0015 — observability stays lean).
+# Storage is emptyDir with short retention, matching Loki: metrics are for
+# operating the platform, not long-term analytics. Samples arrive via
+# remote_write from Alloy.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: loki
+  name: prometheus
   namespace: monitoring
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: loki
+      app: prometheus
   template:
     metadata:
       labels:
-        app: loki
+        app: prometheus
     spec:
-      # UID/GID 10001 is the documented loki user in the official image.
+      # UID/GID 65534 (nobody) is the documented user in the official image.
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: loki
-          image: grafana/loki:3.4.2
+        - name: prometheus
+          image: prom/prometheus:v3.2.1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
           args:
-            - -config.file=/etc/loki/config.yaml
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=7d
+            - --web.enable-remote-write-receiver
           ports:
             - name: http
-              containerPort: 3100
+              containerPort: 9090
           readinessProbe:
             httpGet:
-              path: /ready
-              port: 3100
+              path: /-/ready
+              port: 9090
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /ready
-              port: 3100
+              path: /-/healthy
+              port: 9090
             initialDelaySeconds: 20
             periodSeconds: 20
           resources:
@@ -55,12 +62,12 @@ spec:
               memory: 512Mi
           volumeMounts:
             - name: config
-              mountPath: /etc/loki
+              mountPath: /etc/prometheus
             - name: data
-              mountPath: /loki
+              mountPath: /prometheus
       volumes:
         - name: config
           configMap:
-            name: loki-config
+            name: prometheus-config
         - name: data
           emptyDir: {}

@@ -1,0 +1,36 @@
+# Pinned tool versions + SHA256 checksums, shared by all playbooks
+# (bootstrap-vps.yml, bootstrap-wsl.yml, install-tools.yml).
+#
+# Update procedure: bump the version, replace the checksum from the project's
+# official checksum asset (URLs noted per tool), run the playbook.
+#
+# Checksums are for linux/amd64 binaries.
+---
+# https://github.com/k3s-io/k3s/releases — the get.k3s.io installer verifies
+# the binary's sha256 against the release manifest internally, so pinning the
+# version is sufficient here.
+k3s_version: "v1.36.1+k3s1"
+
+# https://dl.k8s.io/release/<ver>/bin/linux/amd64/kubectl.sha256
+kubectl_version: "v1.36.1"
+kubectl_sha256: "629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7"
+
+# k3d publishes no checksum assets; this sha256 was computed from the release
+# binary at pin time (trust-on-first-use). Recompute when bumping:
+#   curl -fsSL -o k3d https://github.com/k3d-io/k3d/releases/download/<ver>/k3d-linux-amd64 && sha256sum k3d
+k3d_version: "v5.9.0"
+k3d_sha256: "06d8f25bc3a971c4eb29e0ff08429b180402db0f4dec838c9eac427e296800a0"
+
+# https://get.helm.sh/helm-<ver>-linux-amd64.tar.gz.sha256sum
+# Pinned to the helm 3 line: helm 4 is a new major and the KEDA install flow
+# is validated against helm 3.
+helm_version: "v3.21.0"
+helm_sha256: "0093eb572e3d2380f094df162ddb525e219249de88957afe24cfbb19632acd36"
+
+# https://github.com/casey/just/releases/download/<ver>/SHA256SUMS
+just_version: "1.52.0"
+just_sha256: "e0a712614574d45625332529c864754e26782422b7c7db931466180a618f092d"
+
+# https://github.com/getsops/sops/releases/download/<ver>/sops-<ver>.checksums.txt
+sops_version: "v3.13.1"
+sops_sha256: "620a9d7e3352ababeca6908cea24a6e8b14ce89a448ddbd3f94f1ef3398f470a"

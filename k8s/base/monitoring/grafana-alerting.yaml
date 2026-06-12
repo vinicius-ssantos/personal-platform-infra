@@ -122,6 +122,136 @@ data:
               severity: warning
             annotations:
               summary: More than 10 error log lines in mcp/bff/vos over the last 5m.
+          # Tier 2b (critical): mcp-social backup job encountered rclone errors.
+          # The backup pod template carries app=mcp-social-backup; Alloy surfaces
+          # this as a Loki stream label. noDataState=OK because the pod only exists
+          # during the 03:00 UTC window — no stream between runs is expected/healthy.
+          - uid: mcp-social-backup-failure
+            title: mcp-social backup failed
+            condition: C
+            for: 0m
+            noDataState: OK
+            execErrState: OK
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 93600
+                  to: 0
+                datasourceUid: loki
+                model:
+                  datasource:
+                    type: loki
+                    uid: loki
+                  refId: A
+                  queryType: instant
+                  expr: 'count_over_time({namespace="mcp", app="mcp-social-backup", container="backup"} |= `ERROR :` [26h])'
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+            labels:
+              severity: critical
+            annotations:
+              summary: >
+                mcp-social backup job logged rclone ERROR lines.
+                Deployment may be stuck at replicas=0.
+                Check logs: kubectl logs -n mcp -l app=mcp-social-backup -c backup
+          # Tier 1 (critical): a container is crash-looping. Sourced from the
+          # kube-events → Loki pipeline (source="kube-events" static label set
+          # by Alloy), not from app logs — CrashLoopBackOff never appears in
+          # container output.
+          - uid: pod-crashloopbackoff
+            title: Pod in CrashLoopBackOff
+            condition: C
+            for: 2m
+            noDataState: OK
+            execErrState: OK
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: loki
+                model:
+                  datasource:
+                    type: loki
+                    uid: loki
+                  refId: A
+                  queryType: instant
+                  expr: 'sum(count_over_time({source="kube-events"} |~ `Back-off restarting failed container` [10m]))'
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+            labels:
+              severity: critical
+            annotations:
+              summary: >
+                A container is in CrashLoopBackOff (kube event "Back-off
+                restarting failed container").
+                Check: kubectl get pods -A | grep -v Running
+          # Tier 1 (critical): a Job/CronJob run failed (backup, restore-verify, ...).
+          # BackoffLimitExceeded and DeadlineExceeded are the terminal failure
+          # reasons emitted by the Job controller.
+          - uid: job-failed
+            title: Job/CronJob failed
+            condition: C
+            for: 0m
+            noDataState: OK
+            execErrState: OK
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 3600
+                  to: 0
+                datasourceUid: loki
+                model:
+                  datasource:
+                    type: loki
+                    uid: loki
+                  refId: A
+                  queryType: instant
+                  expr: 'sum(count_over_time({source="kube-events"} |~ `(BackoffLimitExceeded|DeadlineExceeded)` [1h]))'
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+            labels:
+              severity: critical
+            annotations:
+              summary: >
+                A Job failed (BackoffLimitExceeded or DeadlineExceeded kube event).
+                Check: kubectl get jobs -A --sort-by=.metadata.creationTimestamp
           # Tier 3 (warning): repeated auth rejections at the gateway edge.
           - uid: gateway-auth-failures
             title: Gateway auth failures

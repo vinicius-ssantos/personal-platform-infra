@@ -3,6 +3,9 @@ resources:
   - loki-config.yaml
   - loki-deployment.yaml
   - loki-service.yaml
+  - prometheus-config.yaml
+  - prometheus-deployment.yaml
+  - prometheus-service.yaml
   - alloy-rbac.yaml
   - alloy-config.yaml
   - alloy-deployment.yaml

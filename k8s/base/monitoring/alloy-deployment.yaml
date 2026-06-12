@@ -24,6 +24,20 @@ spec:
           ports:
             - name: http
               containerPort: 12345
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 12345
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 12345
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            failureThreshold: 3
           resources:
             requests:
               cpu: 25m

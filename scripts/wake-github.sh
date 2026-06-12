@@ -6,7 +6,7 @@ set -euo pipefail
 # wake the service — KEDA will scale it up automatically. See docs/lifecycle.md.
 
 kubectl scale deploy/github-unified-mcp -n mcp --replicas=1
-kubectl rollout status deploy/github-unified-mcp -n mcp
+kubectl rollout status deploy/github-unified-mcp -n mcp --timeout=120s
 
 kubectl scale deploy/github-unified-mcp-bff -n bff --replicas=1
-kubectl rollout status deploy/github-unified-mcp-bff -n bff
+kubectl rollout status deploy/github-unified-mcp-bff -n bff --timeout=120s

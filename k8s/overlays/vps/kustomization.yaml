@@ -9,6 +9,29 @@ resources:
 patches:
   - path: loki-volume-patch.yaml
   - path: runtime-env-vps.yaml
+  - path: backup-config-vps.yaml
+
+# Digest pinning for VPS deployments (docs/image-pinning.md): the base keeps
+# the development-friendly :main tag; this overlay rewrites every app image to
+# an immutable digest. Renovate (docker:pinDigests + kubernetes manager) keeps
+# these digests updated via PRs.
+#
+# Digests resolved from ghcr.io :main on 2026-06-12.
+images:
+  - name: ghcr.io/vinicius-ssantos/github-unified-mcp
+    digest: sha256:9aba04cf993b0f1b784eb9d01450a590ccb4bacf6c762d57c5063c0f79b64434
+  - name: ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp
+    digest: sha256:c92217ee5b895f50a599ecc694b36cc8b14c771692e51406c752513995ca6c40
+  - name: ghcr.io/vinicius-ssantos/mcp-social
+    digest: sha256:de99f024c7dc29e792cff6a488ca6124885058752e7870df56957b41b464466b
+  - name: ghcr.io/vinicius-ssantos/central-mcp-gateway
+    digest: sha256:02965967d6f28a4e188d7b6efb450a12ef4550cf6197433a201b5691ae7a8316
+  - name: ghcr.io/vinicius-ssantos/github-unified-mcp-bff
+    digest: sha256:98722b696f414d06a487e7e437319a93158db4488b3a93b305880e8351201a94
+  - name: ghcr.io/vinicius-ssantos/vos-studio-mcp
+    digest: sha256:f09eaba1e1afdb18e63ee1bb50073e59082fb8dd76efe9982680f71c367253d9
+  - name: ghcr.io/vinicius-ssantos/vos-studio-bff
+    digest: sha256:d0b99d9ac726e20ac7eb2e0eba52012cea62f6d4461ca2e084e96e4fb33de15d
 
 # VPS overlay keeps workloads at replicas=0 (ADR 0001).
 # Wake scripts or kubectl scale bring services up on demand.

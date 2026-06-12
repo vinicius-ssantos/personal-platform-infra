@@ -10,6 +10,8 @@
 - name: Bootstrap VPS for personal platform
   hosts: vps
   become: true
+  vars_files:
+    - ../vars/tool-versions.yml
   vars:
     ufw_public_tcp_ports:
       - "80"
@@ -35,9 +37,14 @@
             user: "{{ operator_user }}"
             key: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519.pub') }}"
 
-        - name: Allow sudo without password for operator
+        - name: Allow passwordless sudo for platform management commands
           ansible.builtin.copy:
-            content: "{{ operator_user }} ALL=(ALL) NOPASSWD:ALL\n"
+            # Restricted to commands needed for day-to-day VPS operation.
+            # Full root escalation (e.g. Ansible bootstrap itself) still works
+            # because bootstrap runs as root (first run) or via become: true
+            # against a password-bearing session. NOPASSWD:ALL is intentionally
+            # avoided to limit blast radius if the operator account is compromised.
+            content: "{{ operator_user }} ALL=(ALL) NOPASSWD: /bin/systemctl, /usr/bin/systemctl, /usr/local/bin/k3s, /usr/bin/apt-get, /usr/bin/apt, /usr/sbin/ufw\n"
             dest: "/etc/sudoers.d/90-{{ operator_user }}"
             mode: "0440"
             validate: visudo -cf %s
@@ -67,9 +74,11 @@
         - /opt/personal-platform/backups
         - /opt/personal-platform/logs
 
+    # INSTALL_K3S_VERSION pins the release; the get.k3s.io script verifies the
+    # binary's sha256 against the release manifest before installing.
     - name: Install k3s
       ansible.builtin.shell: |
-        curl -sfL https://get.k3s.io | sh -
+        curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
       args:
         creates: /usr/local/bin/k3s
 
@@ -101,22 +110,13 @@
         regexp: 'https://127\.0\.0\.1:6443'
         replace: "https://{{ ansible_host }}:6443"
 
-    - name: Install just
-      ansible.builtin.shell: |
-        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
-          | bash -s -- --to /usr/local/bin
-      args:
-        creates: /usr/local/bin/just
-
-    - name: Install sops
-      ansible.builtin.shell: |
-        VER=$(curl -fsSL https://api.github.com/repos/getsops/sops/releases/latest \
-          | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
-        curl -fsSL "https://github.com/getsops/sops/releases/download/v${VER}/sops-v${VER}.linux.amd64" \
-          -o /usr/local/bin/sops
-        chmod +x /usr/local/bin/sops
-      args:
-        creates: /usr/local/bin/sops
+    - name: Install platform tooling (just + sops only)
+      ansible.builtin.include_role:
+        name: platform-tools
+      vars:
+        install_kubectl: false
+        install_k3d: false
+        install_helm: false
 
     - name: Enable UFW with default deny
       community.general.ufw:

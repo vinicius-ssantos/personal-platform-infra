@@ -1,0 +1,185 @@
+# Default-deny ingress per namespace + explicit allowlists.
+#
+# Enforced by the network policy controller embedded in k3s/k3d (kube-router);
+# no extra CNI install is required.
+#
+# Traffic map (sources that must reach app pods):
+#   - kube-system: Traefik ingress controller (VPS ingress-vps.yaml routes)
+#   - keda:        KEDA HTTP Add-on interceptor (scale-to-zero pilot, ADR 0016)
+#   - bff -> mcp:  github-unified-mcp-bff -> github-unified-mcp:8765
+#   - bff -> vos:  vos-studio-bff -> vos-studio-mcp:8000
+#   - mcp -> mcp:  central-mcp-gateway -> github/deploy/social MCPs
+#   - mcp -> vos:  central-mcp-gateway -> vos-studio-mcp:8000
+#   - monitoring:  Alloy/Grafana -> Loki:3100 (intra-namespace only)
+#
+# Egress is intentionally unrestricted: pods need DNS (kube-system), the
+# Kubernetes API (Alloy log collection), and external APIs (GitHub, R2,
+# Telegram). Restricting egress is a follow-up that requires per-app review.
+#
+# Note: kubelet probes and `kubectl port-forward` are not affected by
+# NetworkPolicies (they do not traverse the pod-network ingress path), so
+# health checks and the smoke-k3d port-forward flow keep working.
+#
+# Namespace selectors use the immutable kubernetes.io/metadata.name label
+# (set automatically by the API server on every namespace).
+---
+# ---------------------------------------------------------------------------
+# Namespace: mcp
+# ---------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: mcp
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-platform-ingress
+  namespace: mcp
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: keda
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bff
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mcp
+---
+# ---------------------------------------------------------------------------
+# Namespace: bff
+# ---------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: bff
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-platform-ingress
+  namespace: bff
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: keda
+---
+# ---------------------------------------------------------------------------
+# Namespace: vos
+# ---------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: vos
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-platform-ingress
+  namespace: vos
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: keda
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bff
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mcp
+---
+# ---------------------------------------------------------------------------
+# Namespace: monitoring
+# Loki accepts traffic only from pods inside the monitoring namespace
+# (Alloy push, Grafana queries). This compensates for Loki running with
+# auth_enabled: false — app pods can no longer read or write logs directly.
+# ---------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-loki-from-monitoring
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: loki
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 3100
+---
+# Grafana is reached via kubectl port-forward today (unaffected by policies);
+# this rule future-proofs an eventual Traefik ingress route.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-grafana-from-ingress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: grafana
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 3000

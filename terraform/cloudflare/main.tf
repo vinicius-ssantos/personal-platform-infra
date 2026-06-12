@@ -58,48 +58,18 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "platform" {
 # ---------------------------------------------------------------------------
 
 locals {
-  services = {
-    mcp_github = {
-      subdomain = "mcp-github"
-      backend   = "http://localhost:8765"
-    }
-    # Local tunnel backends target Compose host ports, not container-internal ports.
-    deploy_mcp = {
-      subdomain = "deploy-mcp"
-      backend   = "http://localhost:8001"
-    }
-    social_mcp = {
-      subdomain = "social-mcp"
-      backend   = "http://localhost:8080"
-    }
-    github_bff = {
-      subdomain = "github-bff"
-      backend   = "http://localhost:8010"
-    }
-    vos_mcp = {
-      subdomain = "vos-mcp"
-      backend   = "http://localhost:8020"
-    }
-    vos_bff = {
-      subdomain = "vos-bff"
-      backend   = "http://localhost:8030"
-    }
-  }
+  # Access-protected services (default). Cloudflare Access application and
+  # policies are created only for these entries.
+  services = { for k, v in var.services : k => v if v.access_protected }
 
-  # Public edge services. The central MCP gateway is the ChatGPT-facing OAuth
-  # endpoint and runs its own bearer/OAuth authentication, so it gets DNS and
-  # tunnel routing but is intentionally NOT placed behind Cloudflare Access
-  # (an Access login interstitial would break the third-party OAuth flow).
-  public_services = {
-    mcp_gateway = {
-      subdomain = "mcp-gateway"
-      backend   = "http://localhost:8040"
-    }
-  }
+  # Public services (access_protected = false). These get DNS and tunnel
+  # routing but are intentionally NOT placed behind Cloudflare Access —
+  # e.g. the MCP gateway runs its own OAuth flow and an Access interstitial
+  # would break third-party OAuth clients such as ChatGPT.
+  public_services = { for k, v in var.services : k => v if !v.access_protected }
 
-  # DNS and tunnel routing cover every reachable host; Cloudflare Access is
-  # applied only to local.services (the Access-protected, directly-reached set).
-  all_services = merge(local.services, local.public_services)
+  # DNS and tunnel routing cover every reachable host.
+  all_services = var.services
 
   # When using a tunnel, all records are CNAMEs pointing to the tunnel hostname.
   # When pointing directly at the VPS, all records are A records.
@@ -190,6 +160,82 @@ resource "cloudflare_zero_trust_access_policy" "service_token_allow" {
 
   account_id     = var.cloudflare_account_id
   application_id = cloudflare_zero_trust_access_application.services[each.key].id
+  name           = "allow-service-token"
+  decision       = "allow"
+  precedence     = 2
+
+  include {
+    service_token = [cloudflare_zero_trust_access_service_token.automation[0].id]
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Status page (Cloudflare Worker) — Access enforcement
+#
+# The Worker itself is deployed via wrangler (cloudflare/workers/status-page);
+# its route DNS is managed by the Worker route. Access is enforced here so the
+# page — which lists internal hostnames and live health state — is not public.
+# ---------------------------------------------------------------------------
+
+locals {
+  status_page_protected = var.cloudflare_access_enabled && var.status_page_access_enabled
+}
+
+resource "cloudflare_zero_trust_access_application" "status_page" {
+  count = local.status_page_protected ? 1 : 0
+
+  account_id                   = var.cloudflare_account_id
+  name                         = "personal-platform-status-page"
+  domain                       = "${var.status_page_subdomain}.${var.domain}"
+  type                         = "self_hosted"
+  session_duration             = var.cloudflare_access_session_duration
+  allowed_idps                 = var.cloudflare_access_allowed_idps
+  auto_redirect_to_identity    = length(var.cloudflare_access_allowed_idps) == 1
+  service_auth_401_redirect    = true
+  http_only_cookie_attribute   = true
+  same_site_cookie_attribute   = "lax"
+  options_preflight_bypass     = true
+  app_launcher_visible         = false
+  skip_interstitial            = true
+  allow_authenticate_via_warp  = false
+  enable_binding_cookie        = true
+  skip_app_launcher_login_page = false
+
+  lifecycle {
+    precondition {
+      condition = (
+        length(var.cloudflare_access_allowed_emails) > 0 ||
+        length(var.cloudflare_access_allowed_email_domains) > 0 ||
+        var.cloudflare_access_service_token_enabled
+      )
+      error_message = "Cloudflare Access requires at least one allowed email, allowed email domain, or enabled service token."
+    }
+  }
+}
+
+resource "cloudflare_zero_trust_access_policy" "status_page_human_allow" {
+  count = (
+    local.status_page_protected &&
+    (length(var.cloudflare_access_allowed_emails) > 0 || length(var.cloudflare_access_allowed_email_domains) > 0)
+  ) ? 1 : 0
+
+  account_id     = var.cloudflare_account_id
+  application_id = cloudflare_zero_trust_access_application.status_page[0].id
+  name           = "allow-human-identities"
+  decision       = "allow"
+  precedence     = 1
+
+  include {
+    email        = var.cloudflare_access_allowed_emails
+    email_domain = var.cloudflare_access_allowed_email_domains
+  }
+}
+
+resource "cloudflare_zero_trust_access_policy" "status_page_service_token_allow" {
+  count = local.status_page_protected && var.cloudflare_access_service_token_enabled ? 1 : 0
+
+  account_id     = var.cloudflare_account_id
+  application_id = cloudflare_zero_trust_access_application.status_page[0].id
   name           = "allow-service-token"
   decision       = "allow"
   precedence     = 2

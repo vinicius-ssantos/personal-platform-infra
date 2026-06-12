@@ -37,6 +37,9 @@ status-page-dev: status-page-check
 status-page-deploy: status-page-check
 	npx wrangler deploy --config cloudflare/workers/status-page/wrangler.toml
 
+doctor:
+	bash scripts/doctor.sh
+
 env-init:
 	bash scripts/env-init.sh
 

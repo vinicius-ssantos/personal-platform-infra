@@ -3,6 +3,8 @@
   hosts: local
   connection: local
   become: true
+  vars_files:
+    - ../vars/tool-versions.yml
 
   tasks:
     - name: Install common CLI dependencies
@@ -36,26 +38,12 @@
         state: present
         update_cache: true
 
-    - name: Install kubectl
-      ansible.builtin.shell: |
-        VER=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
-        curl -fsSL "https://dl.k8s.io/release/${VER}/bin/linux/amd64/kubectl" \
-          -o /usr/local/bin/kubectl
-        chmod +x /usr/local/bin/kubectl
-      args:
-        creates: /usr/local/bin/kubectl
-
-    - name: Install k3d
-      ansible.builtin.shell: |
-        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
-      args:
-        creates: /usr/local/bin/k3d
-
-    - name: Install Helm
-      ansible.builtin.shell: |
-        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      args:
-        creates: /usr/local/bin/helm
+    - name: Install platform tooling (kubectl + k3d + helm)
+      ansible.builtin.include_role:
+        name: platform-tools
+      vars:
+        install_just: false
+        install_sops: false
 
     - name: Add Cloudflare GPG key
       ansible.builtin.shell: |
@@ -76,19 +64,10 @@
         state: present
         update_cache: true
 
-    - name: Install just
-      ansible.builtin.shell: |
-        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
-          | bash -s -- --to /usr/local/bin
-      args:
-        creates: /usr/local/bin/just
-
-    - name: Install sops
-      ansible.builtin.shell: |
-        VER=$(curl -fsSL https://api.github.com/repos/getsops/sops/releases/latest \
-          | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
-        curl -fsSL "https://github.com/getsops/sops/releases/download/v${VER}/sops-v${VER}.linux.amd64" \
-          -o /usr/local/bin/sops
-        chmod +x /usr/local/bin/sops
-      args:
-        creates: /usr/local/bin/sops
+    - name: Install platform tooling (just + sops)
+      ansible.builtin.include_role:
+        name: platform-tools
+      vars:
+        install_kubectl: false
+        install_k3d: false
+        install_helm: false

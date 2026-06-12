@@ -16,44 +16,63 @@ type ServiceStatus = Service & {
   error?: string;
 };
 
-const DEFAULT_SERVICES: Service[] = [
-  { name: "github-unified-mcp", url: "https://mcp-github.example.com/healthz" },
-  { name: "deploy-orchestrator-mcp", url: "https://deploy-mcp.example.com/healthz" },
-  { name: "mcp-social", url: "https://social-mcp.example.com/health" },
-  { name: "github-unified-mcp-bff", url: "https://github-bff.example.com/healthz" },
-  { name: "vos-studio-mcp", url: "https://vos-mcp.example.com/health" },
-  { name: "vos-studio-bff", url: "https://vos-bff.example.com/healthz" },
-];
+const CACHE_TTL_SECONDS = 30;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const services = parseServices(env.SERVICES_JSON);
-    const timeoutMs = Number(env.CHECK_TIMEOUT_MS || "2500");
-    const results = await Promise.all(services.map((service) => checkService(service, timeoutMs)));
-
-    if (new URL(request.url).pathname === "/status.json") {
-      return json({ ok: results.every((result) => result.ok), services: results });
+    if (!env.SERVICES_JSON) {
+      return new Response(
+        "Configuration error: SERVICES_JSON is not set.\n" +
+          "Set it as a Worker environment variable in the Cloudflare dashboard or wrangler.toml.\n" +
+          "Expected format: JSON array of {name, url} objects.\n",
+        { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } },
+      );
     }
 
-    return html(renderStatusPage(env.STATUS_TITLE || "Personal Platform", results));
+    const url = new URL(request.url);
+
+    // Non-GET methods bypass the cache (e.g. OPTIONS preflight).
+    if (request.method !== "GET") {
+      return serveRequest(url, env);
+    }
+
+    // Use the Cloudflare edge cache to avoid probing backend services on
+    // every request. A burst of page views only triggers one probe round
+    // per CACHE_TTL_SECONDS; backend services are protected from hammering.
+    const cache = caches.default;
+    const cacheKey = new Request(url.origin + url.pathname);
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+
+    const response = await serveRequest(url, env);
+    await cache.put(cacheKey, response.clone());
+    return response;
   },
 };
 
-function parseServices(raw: string | undefined): Service[] {
-  if (!raw) {
-    return DEFAULT_SERVICES;
+async function serveRequest(url: URL, env: Env): Promise<Response> {
+  const services = parseServices(env.SERVICES_JSON);
+  const timeoutMs = Number(env.CHECK_TIMEOUT_MS || "2500");
+  const results = await Promise.all(services.map((service) => checkService(service, timeoutMs)));
+
+  if (url.pathname === "/status.json") {
+    return json({ ok: results.every((result) => result.ok), services: results });
   }
 
+  return html(renderStatusPage(env.STATUS_TITLE || "Personal Platform", results));
+}
+
+function parseServices(raw: string): Service[] {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      return DEFAULT_SERVICES;
+      return [];
     }
     return parsed.filter((item): item is Service => {
       return typeof item?.name === "string" && typeof item?.url === "string";
     });
   } catch {
-    return DEFAULT_SERVICES;
+    return [];
   }
 }
 
@@ -145,13 +164,19 @@ function renderStatusPage(title: string, results: ServiceStatus[]): string {
 
 function html(body: string): Response {
   return new Response(body, {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": `public, max-age=${CACHE_TTL_SECONDS}`,
+    },
   });
 }
 
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body, null, 2), {
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": `public, max-age=${CACHE_TTL_SECONDS}`,
+    },
   });
 }
 

@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Validate YAML files
         run: |
@@ -56,7 +56,7 @@ jobs:
         run: bash scripts/check-env-drift.sh
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
 
       - name: Terraform fmt check
         run: |
@@ -74,13 +74,49 @@ jobs:
           terraform -chdir=terraform/vps validate
 
       - name: Install kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
 
       - name: Validate kustomize overlays
         run: |
           kubectl kustomize k8s/overlays/local > /dev/null
           echo "OK k8s/overlays/local"
-          kubectl kustomize k8s/overlays/vps > /dev/null
+
+          # VPS overlay: build and check for unsubstituted REPLACE_WITH_ placeholders.
+          # __TOKEN__ patterns are intentional — they are substituted at deploy time by
+          # render-vps-overlay.sh (which has its own safety gate). REPLACE_WITH_ values
+          # belong only in the base as schema documentation and must be patched away by
+          # the overlay before reaching a real cluster.
+          vps_out="$(kubectl kustomize k8s/overlays/vps)"
+          if printf '%s\n' "$vps_out" | grep -q 'REPLACE_WITH_'; then
+            echo "ERROR: unsubstituted REPLACE_WITH_ placeholder in k8s/overlays/vps:" >&2
+            printf '%s\n' "$vps_out" | grep -n 'REPLACE_WITH_' >&2
+            exit 1
+          fi
           echo "OK k8s/overlays/vps"
+
           kubectl kustomize k8s/addons/keda-http/pilot > /dev/null
           echo "OK k8s/addons/keda-http/pilot"
+
+      - name: Install kube-score
+        run: |
+          KUBE_SCORE_VERSION=1.20.0
+          curl -fsSL -o /tmp/kube-score.tar.gz \
+            "https://github.com/zegl/kube-score/releases/download/v${KUBE_SCORE_VERSION}/kube-score_${KUBE_SCORE_VERSION}_linux_amd64.tar.gz"
+          tar -xzf /tmp/kube-score.tar.gz -C /tmp kube-score
+          sudo install -m 0755 /tmp/kube-score /usr/local/bin/kube-score
+          kube-score version
+
+      - name: Lint manifests with kube-score
+        run: |
+          # Ignored checks are intentional repo conventions:
+          #  - container-image-pull-policy: tags are pinned; IfNotPresent is deliberate
+          #  - deployment-replicas: sleep pattern — workloads run replicas 0/1 (ADR 0001)
+          #  - pod-networkpolicy: NetworkPolicies cover app traffic, not every Job pod
+          #  - pod-probes-identical: upstream apps expose a single health path (CLAUDE.md)
+          #  - readonlyrootfilesystem / user-group-id / ephemeral-storage: tracked as
+          #    upstream-image improvements, not enforced yet
+          IGNORE="container-image-pull-policy,container-ephemeral-storage-request-and-limit,container-security-context-readonlyrootfilesystem,container-security-context-user-group-id,pod-networkpolicy,pod-probes-identical,deployment-replicas"
+          for overlay in local vps; do
+            kubectl kustomize "k8s/overlays/$overlay" | kube-score score - --ignore-test "$IGNORE"
+            echo "OK kube-score k8s/overlays/$overlay"
+          done
