@@ -120,3 +120,121 @@ jobs:
             kubectl kustomize "k8s/overlays/$overlay" | kube-score score - --ignore-test "$IGNORE"
             echo "OK kube-score k8s/overlays/$overlay"
           done
+
+  validate-self-hosted:
+    name: Validate infra scaffold (self-hosted infra-ci)
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'run-self-hosted')
+    runs-on: [self-hosted, linux, x64, infra-ci]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Prepare validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https software-properties-common
+          . /etc/os-release
+          wget -q "https://packages.microsoft.com/config/debian/${VERSION_ID}/packages-microsoft-prod.deb" -O /tmp/packages-microsoft-prod.deb
+          sudo dpkg -i /tmp/packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y powershell
+          python -m pip install --upgrade pip pyyaml
+          pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion'
+
+      - name: Validate YAML files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          paths = sorted(
+              p for p in Path('.').rglob('*')
+              if p.suffix in {'.yml', '.yaml'} and '.git' not in p.parts
+          )
+          for path in paths:
+              with path.open('r', encoding='utf-8') as fh:
+                  list(yaml.safe_load_all(fh))
+              print(f'OK {path}')
+          PY
+
+      - name: Validate Docker Compose config
+        run: |
+          if docker compose version >/dev/null 2>&1; then
+            docker compose -f compose/docker-compose.yml config --quiet
+          else
+            docker-compose -f compose/docker-compose.yml config --quiet
+          fi
+
+      - name: Validate shell scripts parse
+        run: |
+          find scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
+
+      - name: Validate PowerShell scripts parse
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path scripts -Filter '*.ps1' -File | ForEach-Object {
+            $content = Get-Content -LiteralPath $_.FullName -Raw
+            [scriptblock]::Create($content) | Out-Null
+            Write-Host "OK $($_.FullName)"
+          }
+
+      - name: Run semantic policy checks
+        run: bash scripts/check-policy.sh
+
+      - name: Validate env drift guard
+        run: bash scripts/check-env-drift.sh
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+
+      - name: Terraform fmt check
+        run: |
+          terraform -chdir=terraform/cloudflare fmt -check -recursive
+          terraform -chdir=terraform/vps fmt -check -recursive
+
+      - name: Terraform init without backend
+        run: |
+          terraform -chdir=terraform/cloudflare init -backend=false
+          terraform -chdir=terraform/vps init -backend=false
+
+      - name: Terraform validate
+        run: |
+          terraform -chdir=terraform/cloudflare validate
+          terraform -chdir=terraform/vps validate
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
+
+      - name: Validate kustomize overlays
+        run: |
+          kubectl kustomize k8s/overlays/local > /dev/null
+          echo "OK k8s/overlays/local"
+
+          vps_out="$(kubectl kustomize k8s/overlays/vps)"
+          if printf '%s\n' "$vps_out" | grep -q 'REPLACE_WITH_'; then
+            echo "ERROR: unsubstituted REPLACE_WITH_ placeholder in k8s/overlays/vps:" >&2
+            printf '%s\n' "$vps_out" | grep -n 'REPLACE_WITH_' >&2
+            exit 1
+          fi
+          echo "OK k8s/overlays/vps"
+
+          kubectl kustomize k8s/addons/keda-http/pilot > /dev/null
+          echo "OK k8s/addons/keda-http/pilot"
+
+      - name: Install kube-score
+        run: |
+          KUBE_SCORE_VERSION=1.20.0
+          curl -fsSL -o /tmp/kube-score.tar.gz \
+            "https://github.com/zegl/kube-score/releases/download/v${KUBE_SCORE_VERSION}/kube-score_${KUBE_SCORE_VERSION}_linux_amd64.tar.gz"
+          tar -xzf /tmp/kube-score.tar.gz -C /tmp kube-score
+          sudo install -m 0755 /tmp/kube-score /usr/local/bin/kube-score
+          kube-score version
+
+      - name: Lint manifests with kube-score
+        run: |
+          IGNORE="container-image-pull-policy,container-ephemeral-storage-request-and-limit,container-security-context-readonlyrootfilesystem,container-security-context-user-group-id,pod-networkpolicy,pod-probes-identical,deployment-replicas"
+          for overlay in local vps; do
+            kubectl kustomize "k8s/overlays/$overlay" | kube-score score - --ignore-test "$IGNORE"
+            echo "OK kube-score k8s/overlays/$overlay"
+          done
