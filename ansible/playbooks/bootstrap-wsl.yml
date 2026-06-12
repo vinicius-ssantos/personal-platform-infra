@@ -3,6 +3,8 @@
   hosts: local
   connection: local
   become: true
+  vars_files:
+    - ../vars/tool-versions.yml
 
   tasks:
     - name: Install base packages
@@ -51,25 +53,37 @@
         state: present
         update_cache: true
 
-    - name: Install kubectl
-      ansible.builtin.shell: |
-        VER=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
-        curl -fsSL "https://dl.k8s.io/release/${VER}/bin/linux/amd64/kubectl" \
-          -o /usr/local/bin/kubectl
-        chmod +x /usr/local/bin/kubectl
-      args:
-        creates: /usr/local/bin/kubectl
+    - name: Install kubectl (checksum-verified)
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        checksum: "sha256:{{ kubectl_sha256 }}"
+        mode: "0755"
 
-    - name: Install k3d
-      ansible.builtin.shell: |
-        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
-      args:
-        creates: /usr/local/bin/k3d
+    - name: Install k3d (checksum-verified)
+      ansible.builtin.get_url:
+        url: "https://github.com/k3d-io/k3d/releases/download/{{ k3d_version }}/k3d-linux-amd64"
+        dest: /usr/local/bin/k3d
+        checksum: "sha256:{{ k3d_sha256 }}"
+        mode: "0755"
+
+    - name: Download Helm archive (checksum-verified)
+      ansible.builtin.get_url:
+        url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
+        dest: /tmp/helm.tar.gz
+        checksum: "sha256:{{ helm_sha256 }}"
+        mode: "0644"
 
     - name: Install Helm
-      ansible.builtin.shell: |
-        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      args:
+      ansible.builtin.unarchive:
+        src: /tmp/helm.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts:
+          - --strip-components=1
+        include:
+          - linux-amd64/helm
+        mode: "0755"
         creates: /usr/local/bin/helm
 
     - name: Add Cloudflare GPG key
@@ -91,22 +105,29 @@
         state: present
         update_cache: true
 
+    - name: Download just archive (checksum-verified)
+      ansible.builtin.get_url:
+        url: "https://github.com/casey/just/releases/download/{{ just_version }}/just-{{ just_version }}-x86_64-unknown-linux-musl.tar.gz"
+        dest: /tmp/just.tar.gz
+        checksum: "sha256:{{ just_sha256 }}"
+        mode: "0644"
+
     - name: Install just
-      ansible.builtin.shell: |
-        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
-          | bash -s -- --to /usr/local/bin
-      args:
+      ansible.builtin.unarchive:
+        src: /tmp/just.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        include:
+          - just
+        mode: "0755"
         creates: /usr/local/bin/just
 
-    - name: Install sops
-      ansible.builtin.shell: |
-        VER=$(curl -fsSL https://api.github.com/repos/getsops/sops/releases/latest \
-          | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
-        curl -fsSL "https://github.com/getsops/sops/releases/download/v${VER}/sops-v${VER}.linux.amd64" \
-          -o /usr/local/bin/sops
-        chmod +x /usr/local/bin/sops
-      args:
-        creates: /usr/local/bin/sops
+    - name: Install sops (checksum-verified)
+      ansible.builtin.get_url:
+        url: "https://github.com/getsops/sops/releases/download/{{ sops_version }}/sops-{{ sops_version }}.linux.amd64"
+        dest: /usr/local/bin/sops
+        checksum: "sha256:{{ sops_sha256 }}"
+        mode: "0755"
 
     - name: Remind about Docker Desktop
       ansible.builtin.debug:

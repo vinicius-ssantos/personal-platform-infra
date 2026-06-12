@@ -1,34 +1,25 @@
-# Example only. Do not apply this file directly.
+# NOTE: digest pinning is now ACTIVE in k8s/overlays/vps/kustomization.yaml
+# (images: block) — this file is kept only as a reference for the accepted
+# pinning forms. See docs/image-pinning.md for the full policy.
 #
-# Copy the relevant entries into k8s/overlays/vps/kustomization.yaml when a
-# service has an immutable release tag or digest ready for VPS deployment.
-#
-# Prefer digest pinning for production-like VPS deployments:
+# Preferred — digest pinning:
 #
 # images:
 #   - name: ghcr.io/vinicius-ssantos/github-unified-mcp
-#     newName: ghcr.io/vinicius-ssantos/github-unified-mcp
 #     digest: sha256:<digest>
 #
-# Commit SHA tag pinning is acceptable when upstream image publishing does not
-# expose digests in the release workflow:
+# Acceptable — commit SHA tag, when upstream publishing does not expose digests:
 #
 # images:
 #   - name: ghcr.io/vinicius-ssantos/github-unified-mcp
 #     newTag: <git-sha>
 #
-# Candidate services:
+# To resolve the current digest of a :main image:
 #
-# images:
-#   - name: ghcr.io/vinicius-ssantos/github-unified-mcp
-#     newTag: <immutable-tag-or-digest>
-#   - name: ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp
-#     newTag: <immutable-tag-or-digest>
-#   - name: ghcr.io/vinicius-ssantos/mcp-social
-#     newTag: <immutable-tag-or-digest>
-#   - name: ghcr.io/vinicius-ssantos/github-unified-mcp-bff
-#     newTag: <immutable-tag-or-digest>
-#   - name: ghcr.io/vinicius-ssantos/vos-studio-mcp
-#     newTag: <immutable-tag-or-digest>
-#   - name: ghcr.io/vinicius-ssantos/vos-studio-bff
-#     newTag: <immutable-tag-or-digest>
+#   TOKEN=$(curl -fsSL "https://ghcr.io/token?scope=repository:vinicius-ssantos/<image>:pull" | jq -r .token)
+#   curl -fsSL -o /dev/null -w '%header{docker-content-digest}' \
+#     -H "Authorization: Bearer $TOKEN" \
+#     -H "Accept: application/vnd.oci.image.index.v1+json" \
+#     "https://ghcr.io/v2/vinicius-ssantos/<image>/manifests/main"
+#
+# Renovate (docker:pinDigests) opens PRs to refresh the pinned digests.
