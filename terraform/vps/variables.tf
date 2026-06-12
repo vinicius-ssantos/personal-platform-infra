@@ -106,7 +106,7 @@ variable "admin_cidr_blocks" {
       for cidr in var.admin_cidr_blocks :
       cidr
       if cidr == "0.0.0.0/0" || cidr == "::/0"
-    ], "0.0.0.0/0") && !contains([
+      ], "0.0.0.0/0") && !contains([
       for cidr in var.admin_cidr_blocks :
       cidr
       if cidr == "0.0.0.0/0" || cidr == "::/0"
