@@ -33,6 +33,9 @@ jobs:
               print(f'OK {path}')
           PY
 
+      - name: Prepare Docker Compose build contexts
+        run: mkdir -p mcp-code-sandbox
+
       - name: Validate Docker Compose config
         run: docker compose -f compose/docker-compose.yml config --quiet
 
@@ -133,7 +136,7 @@ jobs:
       - name: Prepare validation tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https software-properties-common
+          sudo apt-get install -y wget apt-transport-https software-properties-common nodejs npm
           . /etc/os-release
           wget -q "https://packages.microsoft.com/config/debian/${VERSION_ID}/packages-microsoft-prod.deb" -O /tmp/packages-microsoft-prod.deb
           sudo dpkg -i /tmp/packages-microsoft-prod.deb
@@ -157,6 +160,9 @@ jobs:
                   list(yaml.safe_load_all(fh))
               print(f'OK {path}')
           PY
+
+      - name: Prepare Docker Compose build contexts
+        run: mkdir -p mcp-code-sandbox
 
       - name: Validate Docker Compose config
         run: |
