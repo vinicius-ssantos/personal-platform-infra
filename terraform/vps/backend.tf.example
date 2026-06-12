@@ -1,0 +1,39 @@
+# Optional: store Terraform state remotely in Cloudflare R2.
+#
+# By default Terraform uses a local backend (terraform.tfstate on disk).
+# The local file is already excluded from git (.gitignore), but it is
+# unencrypted and lost if the machine is wiped. A remote backend solves both.
+#
+# Cloudflare R2 exposes an S3-compatible API; the built-in s3 backend works
+# with a few compatibility flags. R2 encrypts objects at rest automatically.
+#
+# Setup:
+#   1. Create a dedicated R2 bucket (e.g. "personal-platform-tfstate").
+#      The bucket should NOT be publicly accessible.
+#   2. Create an R2 API token with Object Read & Write on that bucket.
+#   3. Export credentials before running terraform commands:
+#        export AWS_ACCESS_KEY_ID="<r2-access-key-id>"
+#        export AWS_SECRET_ACCESS_KEY="<r2-secret-access-key>"
+#   4. Copy this file to backend.tf (gitignored by default via terraform.tfvars
+#      exclusions — add backend.tf to .gitignore if not already present).
+#   5. Fill in your Cloudflare account ID and bucket name below.
+#   6. Run: terraform init  (or terraform init -migrate-state to move existing state)
+#
+# Security note: the state for the VPS workspace contains server IPs and
+# firewall rule details. Treat the bucket with the same sensitivity as secrets.
+
+terraform {
+  backend "s3" {
+    bucket = "personal-platform-tfstate"
+    key    = "vps/terraform.tfstate"
+
+    region   = "auto"
+    endpoint = "https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com"
+
+    # R2 does not use AWS region-based bucket discovery.
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    force_path_style            = true
+  }
+}

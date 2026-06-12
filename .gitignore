@@ -8,6 +8,7 @@
 .terraform/
 terraform.tfvars
 terraform.tfvars.json
+backend.tf
 
 secrets/*.yaml
 !secrets/*.example.yaml

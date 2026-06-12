@@ -25,19 +25,42 @@ const DEFAULT_SERVICES: Service[] = [
   { name: "vos-studio-bff", url: "https://vos-bff.example.com/healthz" },
 ];
 
+const CACHE_TTL_SECONDS = 30;
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const services = parseServices(env.SERVICES_JSON);
-    const timeoutMs = Number(env.CHECK_TIMEOUT_MS || "2500");
-    const results = await Promise.all(services.map((service) => checkService(service, timeoutMs)));
+    const url = new URL(request.url);
 
-    if (new URL(request.url).pathname === "/status.json") {
-      return json({ ok: results.every((result) => result.ok), services: results });
+    // Non-GET methods bypass the cache (e.g. OPTIONS preflight).
+    if (request.method !== "GET") {
+      return serveRequest(url, env);
     }
 
-    return html(renderStatusPage(env.STATUS_TITLE || "Personal Platform", results));
+    // Use the Cloudflare edge cache to avoid probing backend services on
+    // every request. A burst of page views only triggers one probe round
+    // per CACHE_TTL_SECONDS; backend services are protected from hammering.
+    const cache = caches.default;
+    const cacheKey = new Request(url.origin + url.pathname);
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+
+    const response = await serveRequest(url, env);
+    await cache.put(cacheKey, response.clone());
+    return response;
   },
 };
+
+async function serveRequest(url: URL, env: Env): Promise<Response> {
+  const services = parseServices(env.SERVICES_JSON);
+  const timeoutMs = Number(env.CHECK_TIMEOUT_MS || "2500");
+  const results = await Promise.all(services.map((service) => checkService(service, timeoutMs)));
+
+  if (url.pathname === "/status.json") {
+    return json({ ok: results.every((result) => result.ok), services: results });
+  }
+
+  return html(renderStatusPage(env.STATUS_TITLE || "Personal Platform", results));
+}
 
 function parseServices(raw: string | undefined): Service[] {
   if (!raw) {
@@ -145,13 +168,19 @@ function renderStatusPage(title: string, results: ServiceStatus[]): string {
 
 function html(body: string): Response {
   return new Response(body, {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": `public, max-age=${CACHE_TTL_SECONDS}`,
+    },
   });
 }
 
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body, null, 2), {
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": `public, max-age=${CACHE_TTL_SECONDS}`,
+    },
   });
 }
 

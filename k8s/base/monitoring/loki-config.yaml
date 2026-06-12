@@ -5,6 +5,11 @@ metadata:
   namespace: monitoring
 data:
   config.yaml: |
+    # auth_enabled: false is acceptable for this single-tenant deployment.
+    # Loki port 3100 is restricted by NetworkPolicy to pods within the monitoring
+    # namespace only (see k8s/base/networkpolicies.yaml allow-loki-from-monitoring).
+    # Enabling multi-tenant auth would require Alloy to send X-Scope-OrgID headers
+    # and adds operational overhead without security benefit in this topology.
     auth_enabled: false
 
     server:

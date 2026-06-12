@@ -37,9 +37,14 @@
             user: "{{ operator_user }}"
             key: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519.pub') }}"
 
-        - name: Allow sudo without password for operator
+        - name: Allow passwordless sudo for platform management commands
           ansible.builtin.copy:
-            content: "{{ operator_user }} ALL=(ALL) NOPASSWD:ALL\n"
+            # Restricted to commands needed for day-to-day VPS operation.
+            # Full root escalation (e.g. Ansible bootstrap itself) still works
+            # because bootstrap runs as root (first run) or via become: true
+            # against a password-bearing session. NOPASSWD:ALL is intentionally
+            # avoided to limit blast radius if the operator account is compromised.
+            content: "{{ operator_user }} ALL=(ALL) NOPASSWD: /bin/systemctl, /usr/bin/systemctl, /usr/local/bin/k3s, /usr/bin/apt-get, /usr/bin/apt, /usr/sbin/ufw\n"
             dest: "/etc/sudoers.d/90-{{ operator_user }}"
             mode: "0440"
             validate: visudo -cf %s

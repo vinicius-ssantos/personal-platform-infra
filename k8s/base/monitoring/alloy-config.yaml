@@ -7,6 +7,9 @@ data:
   config.alloy: |
     discovery.kubernetes "pods" {
       role = "pod"
+      namespaces {
+        names = ["mcp", "bff", "vos", "monitoring"]
+      }
     }
 
     loki.source.kubernetes "pods" {

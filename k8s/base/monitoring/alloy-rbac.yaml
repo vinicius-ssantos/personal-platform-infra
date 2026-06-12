@@ -4,22 +4,99 @@ metadata:
   name: alloy
   namespace: monitoring
 ---
+# Per-namespace Roles instead of a cluster-wide ClusterRole.
+# Alloy is configured to discover pods only in these four namespaces
+# (see alloy-config.yaml); no cluster-level resource access is needed.
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: alloy-pod-logs
+  namespace: mcp
 rules:
   - apiGroups: [""]
-    resources: ["namespaces", "nodes", "pods", "pods/log"]
+    resources: ["pods", "pods/log"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: alloy-pod-logs
+  namespace: mcp
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: Role
+  name: alloy-pod-logs
+subjects:
+  - kind: ServiceAccount
+    name: alloy
+    namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy-pod-logs
+  namespace: bff
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy-pod-logs
+  namespace: bff
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alloy-pod-logs
+subjects:
+  - kind: ServiceAccount
+    name: alloy
+    namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy-pod-logs
+  namespace: vos
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy-pod-logs
+  namespace: vos
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alloy-pod-logs
+subjects:
+  - kind: ServiceAccount
+    name: alloy
+    namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy-pod-logs
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy-pod-logs
+  namespace: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
   name: alloy-pod-logs
 subjects:
   - kind: ServiceAccount
