@@ -92,10 +92,10 @@ Use este documento antes de mudar qualquer wiring de Compose ou Kubernetes, e an
 | Atributo | Valor |
 |---|---|
 | Repositório | `vinicius-ssantos/repo-research-mcp` |
-| Imagem proxy | `ghcr.io/vinicius-ssantos/mcp-proxy:main` |
+| Imagem | `ghcr.io/vinicius-ssantos/repo-research-mcp:main` |
 | Porta | 8081 |
 | Auth | Bearer token compartilhado com o gateway |
-| Variáveis obrigatórias | `REPO_RESEARCH_SIDECAR_API_KEY`, `REPO_RESEARCH_GITHUB_TOKEN`, `REPO_RESEARCH_ALLOWED_REPOSITORIES` |
+| Variáveis obrigatórias | `MCP_TRANSPORT=streamable-http`, `MCP_HOST=0.0.0.0`, `MCP_PORT=8081`, `REPO_RESEARCH_GITHUB_TOKEN`, `REPO_RESEARCH_ALLOWED_REPOSITORIES` como JSON array |
 | Modo seguro | Sem exposição externa; allowlist vazia nega todos os repositórios |
 | Namespace k8s | `mcp` |
 

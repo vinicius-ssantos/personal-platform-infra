@@ -16,14 +16,19 @@ spec:
       serviceAccountName: platform-puller
       containers:
         - name: repo-research-sidecar
-          image: ghcr.io/vinicius-ssantos/mcp-proxy:main
+          image: ghcr.io/vinicius-ssantos/repo-research-mcp:main
           imagePullPolicy: IfNotPresent
-          args:
-            - "--port=8081"
-            - "--bearer-token=$(REPO_RESEARCH_SIDECAR_API_KEY)"
-            - "--"
-            - "repo-research-mcp"
+          command:
+            - python
+            - -c
+            - "import os; from repo_research_mcp import server as s; s.configure_logging(s._settings.log_format); s.mcp.settings.host=os.getenv('MCP_HOST','0.0.0.0'); s.mcp.settings.port=int(os.getenv('MCP_PORT','8081')); s.mcp.settings.transport_security.allowed_hosts.append('repo-research-sidecar.mcp.svc.cluster.local:8081'); s.mcp.run(transport='streamable-http')"
           env:
+            - name: MCP_TRANSPORT
+              value: streamable-http
+            - name: MCP_HOST
+              value: 0.0.0.0
+            - name: MCP_PORT
+              value: "8081"
             - name: REPO_RESEARCH_SIDECAR_API_KEY
               valueFrom:
                 secretKeyRef:

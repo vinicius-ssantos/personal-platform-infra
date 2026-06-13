@@ -205,12 +205,14 @@ services:
   repo-research-sidecar:
     image: ${REPO_RESEARCH_SIDECAR_IMAGE}
     profiles: ["gateway", "tailscale", "all"]
-    command:
-      - "--port=8081"
-      - "--bearer-token=${REPO_RESEARCH_SIDECAR_API_KEY}"
-      - "--"
-      - "repo-research-mcp"
+    entrypoint:
+      - python
+      - -c
+      - "import os; from repo_research_mcp import server as s; s.configure_logging(s._settings.log_format); s.mcp.settings.host=os.getenv('MCP_HOST','0.0.0.0'); s.mcp.settings.port=int(os.getenv('MCP_PORT','8081')); s.mcp.settings.transport_security.allowed_hosts.append('repo-research-sidecar:8081'); s.mcp.run(transport='streamable-http')"
     environment:
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8081"
       REPO_RESEARCH_ALLOWED_REPOSITORIES: ${REPO_RESEARCH_ALLOWED_REPOSITORIES}
       REPO_RESEARCH_GITHUB_TOKEN: ${REPO_RESEARCH_GITHUB_TOKEN}
       REPO_RESEARCH_MAX_FETCH_BYTES: "100000"
@@ -246,7 +248,7 @@ services:
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp/
       GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp/
       GATEWAY_UPSTREAM_SANDBOX_URL: ${GATEWAY_UPSTREAM_SANDBOX_URL}
-      GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar:8081
+      GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar:8081/mcp
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
       GATEWAY_GITHUB_TOKEN: ${GITHUB_TOKEN}
       GATEWAY_DEPLOY_API_KEY: ${MCP_SERVER_API_KEY}

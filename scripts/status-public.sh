@@ -13,6 +13,8 @@ fail() { echo -e "  ${RED}✗${NC} $*"; }
 warn() { echo -e "  ${YELLOW}~${NC} $*"; }
 
 TIMEOUT_SECONDS="${PUBLIC_STATUS_TIMEOUT_SECONDS:-10}"
+RETRY_COUNT="${PUBLIC_STATUS_RETRY_COUNT:-6}"
+RETRY_DELAY_SECONDS="${PUBLIC_STATUS_RETRY_DELAY_SECONDS:-2}"
 ENV_FILE="${ENV_FILE:-.env}"
 
 if [[ -f "$ENV_FILE" ]]; then
@@ -61,6 +63,10 @@ probe() {
     --silent \
     --show-error \
     --location \
+    --retry "$RETRY_COUNT" \
+    --retry-delay "$RETRY_DELAY_SECONDS" \
+    --retry-all-errors \
+    --retry-connrefused \
     "${headers[@]}" \
     --max-time "$TIMEOUT_SECONDS" \
     --write-out '\n%{http_code}' \
@@ -88,6 +94,7 @@ main() {
   echo ""
   echo "=== public endpoints ==="
   echo "timeout: ${TIMEOUT_SECONDS}s"
+  echo "retries: ${RETRY_COUNT} attempt(s), ${RETRY_DELAY_SECONDS}s delay"
 
   local failures=0
 

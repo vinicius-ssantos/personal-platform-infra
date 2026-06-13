@@ -27,7 +27,7 @@ Never commit real secrets in plain text.
 - `SOCIAL_MCP_ACCESS_TOKEN` — platform token for mcp-social
 - `REPO_RESEARCH_SIDECAR_API_KEY` — shared gateway/sidecar bearer token; generate with `openssl rand -hex 32`
 - `REPO_RESEARCH_GITHUB_TOKEN` — GitHub PAT used only by repo-research-sidecar
-- `REPO_RESEARCH_ALLOWED_REPOSITORIES` — mandatory comma-separated repo allowlist for repo-research-sidecar
+- `REPO_RESEARCH_ALLOWED_REPOSITORIES` — mandatory JSON array repo allowlist for repo-research-sidecar, for example `["owner/repo"]`
 - `CLOUDFLARE_API_TOKEN` — Terraform Cloudflare provider
 - `VPS_KUBECONFIG` — base64-encoded kubeconfig for GitHub Actions deploy
 - Supabase service role key (if added later)
