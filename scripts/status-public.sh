@@ -13,8 +13,10 @@ fail() { echo -e "  ${RED}✗${NC} $*"; }
 warn() { echo -e "  ${YELLOW}~${NC} $*"; }
 
 TIMEOUT_SECONDS="${PUBLIC_STATUS_TIMEOUT_SECONDS:-10}"
+CONNECT_TIMEOUT_SECONDS="${PUBLIC_STATUS_CONNECT_TIMEOUT_SECONDS:-5}"
 RETRY_COUNT="${PUBLIC_STATUS_RETRY_COUNT:-6}"
 RETRY_DELAY_SECONDS="${PUBLIC_STATUS_RETRY_DELAY_SECONDS:-2}"
+IP_VERSION="${PUBLIC_STATUS_IP_VERSION:-4}"
 ENV_FILE="${ENV_FILE:-.env}"
 
 if [[ -f "$ENV_FILE" ]]; then
@@ -55,19 +57,27 @@ probe() {
 
   local response http_code curl_status
   local headers=()
+  local ip_args=()
   if [[ -n "${PUBLIC_EDGE_TOKEN:-}" ]]; then
     headers+=(--header "X-Platform-Token: ${PUBLIC_EDGE_TOKEN}")
+  fi
+  if [[ "$IP_VERSION" == "4" ]]; then
+    ip_args+=(--ipv4)
+  elif [[ "$IP_VERSION" == "6" ]]; then
+    ip_args+=(--ipv6)
   fi
 
   response="$(curl \
     --silent \
     --show-error \
     --location \
+    "${ip_args[@]}" \
     --retry "$RETRY_COUNT" \
     --retry-delay "$RETRY_DELAY_SECONDS" \
     --retry-all-errors \
     --retry-connrefused \
     "${headers[@]}" \
+    --connect-timeout "$CONNECT_TIMEOUT_SECONDS" \
     --max-time "$TIMEOUT_SECONDS" \
     --write-out '\n%{http_code}' \
     "$url" 2>&1)"
@@ -94,7 +104,9 @@ main() {
   echo ""
   echo "=== public endpoints ==="
   echo "timeout: ${TIMEOUT_SECONDS}s"
+  echo "connect timeout: ${CONNECT_TIMEOUT_SECONDS}s"
   echo "retries: ${RETRY_COUNT} attempt(s), ${RETRY_DELAY_SECONDS}s delay"
+  echo "ip version: ${IP_VERSION}"
 
   local failures=0
 
