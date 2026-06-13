@@ -210,13 +210,13 @@ services:
       - -c
       - "import os; from mcp.server.fastmcp import server as f; exec(\"orig=f.StreamableHTTPASGIApp.__call__\\nasync def patched(self, scope, receive, send):\\n    if scope.get('type') == 'http':\\n        scope = dict(scope)\\n        headers = [(k, v) for k, v in scope.get('headers', []) if k != b'accept']\\n        headers.append((b'accept', b'application/json, text/event-stream'))\\n        scope['headers'] = headers\\n    await orig(self, scope, receive, send)\\nf.StreamableHTTPASGIApp.__call__ = patched\"); from repo_research_mcp import server as s; s.configure_logging(s._settings.log_format); s.mcp.settings.host=os.getenv('MCP_HOST','0.0.0.0'); s.mcp.settings.port=int(os.getenv('MCP_PORT','8081')); s.mcp.settings.json_response=True; s.mcp.settings.stateless_http=True; s.mcp.settings.transport_security.allowed_hosts.append('repo-research-sidecar:8081'); s.mcp.run(transport='streamable-http')"
     environment:
-      MCP_TRANSPORT: streamable-http
-      MCP_HOST: 0.0.0.0
-      MCP_PORT: "8081"
-      REPO_RESEARCH_ALLOWED_REPOSITORIES: '${REPO_RESEARCH_ALLOWED_REPOSITORIES}'
-      REPO_RESEARCH_GITHUB_TOKEN: ${REPO_RESEARCH_GITHUB_TOKEN}
-      REPO_RESEARCH_MAX_FETCH_BYTES: "100000"
-      REPO_RESEARCH_CACHE_TTL_SECONDS: "300"
+      - MCP_TRANSPORT=streamable-http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8081
+      - REPO_RESEARCH_ALLOWED_REPOSITORIES=${REPO_RESEARCH_ALLOWED_REPOSITORIES}
+      - REPO_RESEARCH_GITHUB_TOKEN=${REPO_RESEARCH_GITHUB_TOKEN}
+      - REPO_RESEARCH_MAX_FETCH_BYTES=100000
+      - REPO_RESEARCH_CACHE_TTL_SECONDS=300
     restart: unless-stopped
 
   central-mcp-gateway:
