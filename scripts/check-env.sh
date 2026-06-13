@@ -55,6 +55,28 @@ for key in "${required_keys[@]}"; do
   fi
 done
 
+validate_json_array_of_strings() {
+  local key="$1"
+  local value
+  value="$(grep -E "^${key}=" "$ENV_FILE" | tail -n 1 | cut -d= -f2-)"
+
+  if [[ "$value" == \'*\' || "$value" == \"*\" ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "WARN: jq is not installed; skipping JSON validation for $key"
+    return 0
+  fi
+
+  if ! printf '%s' "$value" | jq -e 'type == "array" and all(.[]; type == "string")' >/dev/null; then
+    echo "INVALID: $key must be a JSON array of strings, for example [\"owner/repo\"]"
+    ERRORS=$((ERRORS + 1))
+  fi
+}
+
+validate_json_array_of_strings REPO_RESEARCH_ALLOWED_REPOSITORIES
+
 if [[ "$ERRORS" -gt 0 ]]; then
   echo ""
   echo "$ERRORS problem(s) found in $ENV_FILE. Fix them before starting services." >&2
