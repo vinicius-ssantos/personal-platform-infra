@@ -15,7 +15,7 @@ data:
   GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp.mcp.svc.cluster.local:8000/mcp
   GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social.mcp.svc.cluster.local:8080/mcp
   GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp.vos.svc.cluster.local:8000/mcp
-  GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar.mcp.svc.cluster.local:8081
+  GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar.mcp.svc.cluster.local:8081/mcp
   GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE: "20"
   GATEWAY_TRUSTED_PROXY_COUNT: "1"
   GATEWAY_IDEMPOTENCY_TTL_SECONDS: "300"

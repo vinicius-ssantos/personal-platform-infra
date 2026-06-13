@@ -18,7 +18,7 @@ Fill these values before starting services:
   SOCIAL_MCP_ACCESS_TOKEN  - social integration access token
   REPO_RESEARCH_SIDECAR_API_KEY - shared gateway/sidecar token, e.g. openssl rand -hex 32
   REPO_RESEARCH_GITHUB_TOKEN - GitHub PAT used only by repo-research-sidecar
-  REPO_RESEARCH_ALLOWED_REPOSITORIES - comma-separated repo allowlist
+  REPO_RESEARCH_ALLOWED_REPOSITORIES - JSON array repo allowlist, e.g. '["owner/repo"]'
   CENTRAL_MCP_GATEWAY_ADMIN_TOKEN - local Admin UI token, e.g. openssl rand -hex 32
 
 Then run:
