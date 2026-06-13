@@ -208,7 +208,7 @@ services:
     entrypoint:
       - python
       - -c
-      - "import os; from repo_research_mcp import server as s; s.configure_logging(s._settings.log_format); s.mcp.settings.host=os.getenv('MCP_HOST','0.0.0.0'); s.mcp.settings.port=int(os.getenv('MCP_PORT','8081')); s.mcp.settings.transport_security.allowed_hosts.append('repo-research-sidecar:8081'); s.mcp.run(transport='streamable-http')"
+      - "import os; from mcp.server.fastmcp import server as f; exec(\"orig=f.StreamableHTTPASGIApp.__call__\\nasync def patched(self, scope, receive, send):\\n    if scope.get('type') == 'http':\\n        scope = dict(scope)\\n        headers = [(k, v) for k, v in scope.get('headers', []) if k != b'accept']\\n        headers.append((b'accept', b'application/json, text/event-stream'))\\n        scope['headers'] = headers\\n    await orig(self, scope, receive, send)\\nf.StreamableHTTPASGIApp.__call__ = patched\"); from repo_research_mcp import server as s; s.configure_logging(s._settings.log_format); s.mcp.settings.host=os.getenv('MCP_HOST','0.0.0.0'); s.mcp.settings.port=int(os.getenv('MCP_PORT','8081')); s.mcp.settings.json_response=True; s.mcp.settings.stateless_http=True; s.mcp.settings.transport_security.allowed_hosts.append('repo-research-sidecar:8081'); s.mcp.run(transport='streamable-http')"
     environment:
       MCP_TRANSPORT: streamable-http
       MCP_HOST: 0.0.0.0
@@ -242,7 +242,7 @@ services:
       GATEWAY_DYNAMIC_UPSTREAMS_ENABLED: ${CENTRAL_MCP_GATEWAY_DYNAMIC_UPSTREAMS_ENABLED}
       GATEWAY_ADMIN_TOKEN: ${CENTRAL_MCP_GATEWAY_ADMIN_TOKEN}
       GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read github:write deploy:read social:write sandbox:run repo:read
-      GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command
+      GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command,repo.search,repo.fetch,repo.repository_overview,repo.list_files
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp/
