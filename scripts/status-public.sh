@@ -18,6 +18,7 @@ RETRY_COUNT="${PUBLIC_STATUS_RETRY_COUNT:-6}"
 RETRY_DELAY_SECONDS="${PUBLIC_STATUS_RETRY_DELAY_SECONDS:-2}"
 IP_VERSION="${PUBLIC_STATUS_IP_VERSION:-4}"
 ENV_FILE="${ENV_FILE:-.env}"
+declare -A RESOLVED_HOST_IPS=()
 
 if [[ -f "$ENV_FILE" ]]; then
   set -a
@@ -31,6 +32,76 @@ trim_trailing_slash() {
   local value="$1"
   value="${value//$'\r'/}"
   echo "${value%/}"
+}
+
+url_scheme() {
+  local url="$1"
+  echo "${url%%://*}"
+}
+
+url_host() {
+  local url="$1"
+  local without_scheme="${url#*://}"
+  local host_port="${without_scheme%%/*}"
+  host_port="${host_port##*@}"
+  if [[ "$host_port" == \[*\]* ]]; then
+    echo "${host_port%%]*}]"
+    return 0
+  fi
+  echo "${host_port%%:*}"
+}
+
+url_port() {
+  local url="$1"
+  local scheme host_port without_scheme
+  scheme="$(url_scheme "$url")"
+  without_scheme="${url#*://}"
+  host_port="${without_scheme%%/*}"
+  host_port="${host_port##*@}"
+
+  if [[ "$host_port" == \[*\]:* ]]; then
+    echo "${host_port##*:}"
+  elif [[ "$host_port" == *:* ]]; then
+    echo "${host_port##*:}"
+  elif [[ "$scheme" == "http" ]]; then
+    echo "80"
+  else
+    echo "443"
+  fi
+}
+
+resolve_host_ip() {
+  local host="$1"
+
+  if [[ -n "${PUBLIC_STATUS_RESOLVE_IP:-}" ]]; then
+    echo "$PUBLIC_STATUS_RESOLVE_IP"
+    return 0
+  fi
+
+  if [[ -n "${RESOLVED_HOST_IPS[$host]:-}" ]]; then
+    echo "${RESOLVED_HOST_IPS[$host]}"
+    return 0
+  fi
+
+  local ip=""
+  if command -v powershell.exe >/dev/null 2>&1; then
+    ip="$(
+      powershell.exe -NoProfile -Command \
+        "param([string]\$HostName) try { Resolve-DnsName -Type A \$HostName -ErrorAction Stop | Where-Object { \$_.IPAddress } | Select-Object -First 1 -ExpandProperty IPAddress } catch { exit 1 }" \
+        "$host" 2>/dev/null | tr -d '\r' | head -n 1
+    )"
+  fi
+
+  if [[ -z "$ip" ]] && command -v getent >/dev/null 2>&1; then
+    ip="$(getent ahostsv4 "$host" 2>/dev/null | awk 'NR == 1 { print $1 }')"
+  fi
+
+  if [[ -z "$ip" ]]; then
+    return 1
+  fi
+
+  RESOLVED_HOST_IPS[$host]="$ip"
+  echo "$ip"
 }
 
 probe() {
@@ -58,6 +129,7 @@ probe() {
   local response http_code curl_status
   local headers=()
   local ip_args=()
+  local resolve_args=()
   if [[ -n "${PUBLIC_EDGE_TOKEN:-}" ]]; then
     headers+=(--header "X-Platform-Token: ${PUBLIC_EDGE_TOKEN}")
   fi
@@ -67,11 +139,19 @@ probe() {
     ip_args+=(--ipv6)
   fi
 
+  local host port ip
+  host="$(url_host "$url")"
+  port="$(url_port "$url")"
+  if ip="$(resolve_host_ip "$host")"; then
+    resolve_args+=(--resolve "${host}:${port}:${ip}")
+  fi
+
   response="$(curl \
     --silent \
     --show-error \
     --location \
     "${ip_args[@]}" \
+    "${resolve_args[@]}" \
     --retry "$RETRY_COUNT" \
     --retry-delay "$RETRY_DELAY_SECONDS" \
     --retry-all-errors \
