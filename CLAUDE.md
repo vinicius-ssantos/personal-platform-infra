@@ -2,6 +2,15 @@
 
 Guia de contexto para AI assistants que trabalham neste repositório.
 
+## Workflow de commits
+
+**NUNCA commitar direto na `main`.** Sempre:
+1. Criar branch: `git checkout -b feat/<descricao>`
+2. Commitar
+3. Push: `git push origin feat/<descricao>`
+4. Abrir PR via `gh pr create` com descrição clara
+5. Só mergear após aprovação do usuário, a menos que ele peça explicitamente para pular o PR
+
 ## O que é este repo
 
 Infraestrutura centralizada para uma plataforma pessoal de MCP servers e BFFs.
