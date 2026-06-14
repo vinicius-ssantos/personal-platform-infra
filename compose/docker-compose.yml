@@ -214,6 +214,9 @@ services:
       REPO_RESEARCH_GITHUB_TOKEN: ${REPO_RESEARCH_GITHUB_TOKEN}
       REPO_RESEARCH_MAX_FETCH_BYTES: "100000"
       REPO_RESEARCH_CACHE_TTL_SECONDS: "300"
+      HTTPS_PROXY: ${WARP_PROXY:-}
+      HTTP_PROXY: ${WARP_PROXY:-}
+      NO_PROXY: localhost,127.0.0.1,repo-research-sidecar
     restart: unless-stopped
 
   central-mcp-gateway:
