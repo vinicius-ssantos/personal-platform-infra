@@ -1,7 +1,8 @@
 ---
-description: Revisor de código, infraestrutura e configuração. Verifica segurança, boas práticas, consistência com ADRs, YAML/Compose/Terraform syntax. Edit: deny — apenas aponta problemas. Use antes de merge, deploy ou commit.
+description: Revisor / code review / security review. Verifica segurança, boas práticas, ADRs, YAML/Compose/Terraform syntax, kustomize build. Edit: deny — aponta problemas. Use antes de merge, deploy, commit, ou para revisar PR, verificar consistência, checar segurança.
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
+color: "#FF8C00"
 permission:
   edit: deny
   bash: ask

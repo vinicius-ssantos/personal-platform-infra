@@ -1,7 +1,8 @@
 ---
-description: Especialista em shell script, PowerShell e automação. Cria e mantém scripts operacionais, smoke tests, automações do Justfile e tarefas repeatitivas. Use para scripting, automação de CI, smoke tests, manipulação de arquivos em lote.
+description: Shell script, PowerShell, automação, Justfile, smoke tests. Cria e mantém scripts operacionais, CI scripts, automações, tarefas repeatitivas, manipulação de arquivos. Use para scripting, automação, criar/modificar scripts shell/PowerShell, adicionar recipes no Justfile.
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
+color: "#00FF7F"
 permission:
   edit: allow
   bash: allow

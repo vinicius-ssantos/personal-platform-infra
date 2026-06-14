@@ -1,7 +1,8 @@
 ---
-description: Infraestrutura Kubernetes, Terraform, Ansible, Kustomize. Cria e edita deployments, services, configmaps, overlays, recursos k8s, terraform resources e playbooks Ansible. Use para tasks de infraestrutura, deploy, scaling, debugging de cluster.
+description: Kubernetes, Terraform, Ansible, Kustomize, k8s. Cria e edita deployments, services, configmaps, overlays, namespaces, HPA, NetworkPolicy, terraform resources, playbooks Ansible. Use para infraestrutura, deploy, scaling, debugging de cluster, criar/alterar recursos k8s.
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
+color: "#00BFFF"
 permission:
   edit: allow
   bash: allow

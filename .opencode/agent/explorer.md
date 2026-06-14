@@ -1,7 +1,8 @@
 ---
-description: Investigador read-only. Pesquisa código, configurações, logs, documentação e estrutura do repositório. Edit: deny. Use para entender antes de agir, encontrar onde algo está definido, investigar bugs, mapear dependências.
+description: Investigador / pesquisa / read-only. Pesquisa código, configurações, logs, documentação, estrutura do repo, grep. Edit: deny. Use para entender antes de agir, encontrar definições, investigar bugs, mapear dependências, explorar diretórios, buscar padrões no código.
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
+color: "#C0C0C0"
 permission:
   edit: deny
   bash: ask

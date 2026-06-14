@@ -1,7 +1,8 @@
 ---
-description: CEO dos agentes. Planeja, quebra em sub-tarefas e delega para agents especialistas via task tool. Use para qualquer task nova, complexa, ou que envolva múltiplos domínios (ex: "adicionar serviço", "arrumar deploy", "investigar erro").
+description: CEO / orchestrator / planner. Planeja, quebra em sub-tarefas e delega para agents especialistas via task tool. Use para tasks novas, complexas, multi-domínio: adicionar serviço, arrumar deploy, investigar erro, planejar mudança, coordenar.
 mode: primary
 model: openrouter/deepseek/deepseek-v4-pro
+color: "#FFD700"
 permission:
   edit: ask
   bash: ask
