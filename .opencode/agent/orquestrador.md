@@ -1,7 +1,7 @@
 ---
 description: CEO / orchestrator / planner. Planeja, quebra em sub-tarefas e delega para agents especialistas via task tool. Use para tasks novas, complexas, multi-domínio: adicionar serviço, arrumar deploy, investigar erro, planejar mudança, coordenar.
 mode: primary
-model: openrouter/deepseek/deepseek-v4-pro
+model: openrouter/deepseek/deepseek-v4-flash
 color: "#FFD700"
 temperature: 0.2
 permission:

@@ -1,7 +1,7 @@
 ---
 description: Shell script, PowerShell, automação, Justfile, smoke tests. Cria e mantém scripts operacionais, CI scripts, automações, tarefas repeatitivas, manipulação de arquivos. Use para scripting, automação, criar/modificar scripts shell/PowerShell, adicionar recipes no Justfile.
 mode: subagent
-model: openrouter/deepseek/deepseek-v4-pro
+model: openrouter/deepseek/deepseek-v4-flash:free
 color: "#00FF7F"
 temperature: 0.2
 permission:

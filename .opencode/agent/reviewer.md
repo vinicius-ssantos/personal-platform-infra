@@ -1,7 +1,7 @@
 ---
 description: Revisor / code review / security review. Verifica segurança, boas práticas, ADRs, YAML/Compose/Terraform syntax, kustomize build. Edit: deny — aponta problemas. Use antes de merge, deploy, commit, ou para revisar PR, verificar consistência, checar segurança.
 mode: subagent
-model: openrouter/deepseek/deepseek-v4-pro
+model: openrouter/deepseek/deepseek-v4-flash:free
 color: "#FF8C00"
 temperature: 0.1
 permission:

@@ -1,7 +1,7 @@
 ---
 description: Operações / ops / dia-a-dia. Smoke tests, logs, status, wake/sleep, port-forward, troubleshooting, healthcheck, just commands. Use para tasks operacionais rotineiras, diagnóstico rápido, acordar/dormir serviços, rodar smokes, verificar logs e saúde da plataforma.
 mode: subagent
-model: openrouter/deepseek/deepseek-v4-pro
+model: openrouter/deepseek/deepseek-v4-flash:free
 color: "#FF69B4"
 temperature: 0.2
 permission:

@@ -1,7 +1,7 @@
 ---
 description: Kubernetes, Terraform, Ansible, Kustomize, k8s. Cria e edita deployments, services, configmaps, overlays, namespaces, HPA, NetworkPolicy, terraform resources, playbooks Ansible. Use para infraestrutura, deploy, scaling, debugging de cluster, criar/alterar recursos k8s.
 mode: subagent
-model: openrouter/deepseek/deepseek-v4-pro
+model: openrouter/deepseek/deepseek-v4-flash:free
 color: "#00BFFF"
 temperature: 0.1
 permission:
