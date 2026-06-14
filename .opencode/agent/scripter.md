@@ -3,6 +3,7 @@ description: Shell script, PowerShell, automação, Justfile, smoke tests. Cria 
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
 color: "#00FF7F"
+temperature: 0.2
 permission:
   edit: allow
   bash: allow

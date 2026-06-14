@@ -3,6 +3,7 @@ description: Kubernetes, Terraform, Ansible, Kustomize, k8s. Cria e edita deploy
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
 color: "#00BFFF"
+temperature: 0.1
 permission:
   edit: allow
   bash: allow

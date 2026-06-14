@@ -3,6 +3,7 @@ description: Operações / ops / dia-a-dia. Smoke tests, logs, status, wake/slee
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
 color: "#FF69B4"
+temperature: 0.2
 permission:
   edit: ask
   bash: allow

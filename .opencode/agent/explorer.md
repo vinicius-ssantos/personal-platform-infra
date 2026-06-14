@@ -3,6 +3,7 @@ description: Investigador / pesquisa / read-only. Pesquisa código, configuraç�
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
 color: "#C0C0C0"
+temperature: 0.3
 permission:
   edit: deny
   bash: ask

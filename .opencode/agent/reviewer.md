@@ -3,6 +3,7 @@ description: Revisor / code review / security review. Verifica segurança, boas 
 mode: subagent
 model: openrouter/deepseek/deepseek-v4-pro
 color: "#FF8C00"
+temperature: 0.1
 permission:
   edit: deny
   bash: ask
