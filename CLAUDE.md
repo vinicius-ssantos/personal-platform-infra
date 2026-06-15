@@ -13,29 +13,27 @@ Guia de contexto para AI assistants que trabalham neste repositório.
 
 ## Uso dos agents (.opencode/agent/)
 
-**Antes de qualquer ação especializada, leia o agent correspondente:**
+**Modelos:** o `task` tool só spawna `general`/`explore` com o mesmo modelo da sessão. Os agents `.md` são contexto especializado que você DEVE usar antes de executar — não agents autônomos.
 
-| Se for fazer... | Leia antes |
+### Plugin task-router (PREFERIDO)
+
+O plugin `.opencode/plugin/task-router.ts` (auto-descoberto) injeta automaticamente o contexto do agent no `task` tool quando o prompt menciona o nome do agent.
+
+**Quando o plugin está carregado** (sessão nova pós-restart):
+- Só mencione o nome do agent no prompt do `task` (ex: `infra-engineer`, `reviewer`, `scripter`, `operations`, `explorer`)
+- **NÃO** inclua o contexto do agent manualmente no prompt
+- **NÃO** leia o arquivo `.md` do agent manualmente
+- O plugin injeta o contexto automaticamente
+
+**Quando o plugin NÃO está carregado** (sessão atual sem restart):
+
+| Se for fazer... | Leia o agent manualmente |
 |---|---|
 | Editar k8s, terraform, ansible, kustomize | `.opencode/agent/infra-engineer.md` |
 | Revisar código, PR, segurança | `.opencode/agent/reviewer.md` |
 | Criar/manter scripts, Justfile, automação | `.opencode/agent/scripter.md` |
 | Smoke test, logs, status, wake/sleep | `.opencode/agent/operations.md` |
 | Investigar algo antes de agir | `.opencode/agent/explorer.md` |
-
-**Modelos:** o `task` tool só spawna `general`/`explore` com o mesmo modelo da sessão. Os agents `.md` são contexto especializado que você DEVE ler antes de executar — não agents autônomos.
-
-### Plugin task-router
-
-O plugin `.opencode/plugin/task-router.ts` (auto-descoberto) injeta automaticamente o contexto do agent no `task` tool quando o prompt menciona o nome do agent (ex: `infra-engineer`, `reviewer`).
-
-**Quando o plugin está carregado** (sessão nova pós-restart):
-- Basta mencionar o nome do agent no prompt do `task`
-- O plugin injeta o contexto automaticamente
-- NÃO preciso ler o agent manualmente
-
-**Quando o plugin NÃO está carregado** (sessão atual):
-- Ler o agent manualmente antes de agir (tabela acima)
 
 ## O que é este repo
 
