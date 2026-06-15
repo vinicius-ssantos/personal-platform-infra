@@ -109,11 +109,36 @@ Before pinning a new image in the VPS overlay:
 - expected environment variables and secrets exist;
 - rollback target is known.
 
+## Managing Renovate PRs
+
+Renovate opens PRs automatically. Review and handle them as follows:
+
+| PR type | Example title | Action |
+|---|---|---|
+| **Digest pin (first time)** | `chore(deps): pin ghcr.io/...` | Review, merge. Pins `:main` to `:main@sha256:...` in k8s manifests, Compose and `.env.example`. |
+| **Digest update** | `chore(deps): update ghcr.io/... digest to abc...` | Review changelog if available. Merge — the digest is from the same mutable `:main` stream the base already tracks. |
+| **GitHub Actions patch** | `chore(deps): update actions/checkout...` | Auto-merged. Only patch-level action bumps. |
+
+### Accepting a digest-pin PR
+
+1. Wait for CI to pass.
+2. Review the diff: only digest hashes should change, never image names or tags.
+3. Merge. The VPS deploy workflow applies the update if `k8s/**` changed.
+
+### Rejecting or modifying
+
+If a Renovate PR is unwanted (e.g., a digest move broke something upstream):
+
+1. Close the PR without merging.
+2. Open an issue in the upstream repo.
+3. The next Renovate schedule will propose the digest again once fixed.
+
+To freeze a specific digest, pin it manually in `k8s/overlays/vps/kustomization.yaml`
+and temporarily exclude the image from Renovate's `packageRules` if needed.
+
 ## Policy check
 
-`scripts/check-policy.sh` (run in CI) already warns when `.env.example` or the
-manifests still carry mutable `ghcr.io/...:main` tags, pointing back to this doc.
-It is a warning, not a hard failure: combined with Renovate digest pinning, a
-mutable tag remains reproducible, but reviewers should still treat a mutable VPS
-image reference for a release-ready service as an explicit operational risk and
-prefer an immutable tag/digest in the overlay.
+`scripts/check-policy.sh` (run in CI) warns when `.env.example` or the k8s base
+manifests carry mutable `ghcr.io/...:main` tags. This warning is expected during
+local development and is resolved once Renovate's digest-pinning PRs are merged.
+It is a warning, not a hard failure.

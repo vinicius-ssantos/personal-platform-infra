@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "labels": ["dependencies"],
+  "enabledManagers": [
+    "docker-compose",
+    "kubernetes",
+    "github-actions",
+    "regex"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackagePrefixes": ["ghcr.io/vinicius-ssantos/"],
+      "groupName": "platform images",
+      "groupSlug": "platform-images",
+      "schedule": ["before 9am on Monday"],
+      "automerge": false,
+      "pinDigests": true
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "groupName": "GitHub Actions (patch)"
+    }
+  ],
+  "docker-compose": {
+    "enabled": true
+  },
+  "kubernetes": {
+    "enabled": true
+  },
+  "regexManagers": [
+    {
+      "fileMatch": ["^\\.env\\.example$"],
+      "matchStrings": [
+        "_(?<depName>ghcr\\.io/vinicius-ssantos/[^:]+):(?<currentValue>main)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "ignorePaths": [
+    "secrets/**",
+    "terraform/**"
+  ]
+}
