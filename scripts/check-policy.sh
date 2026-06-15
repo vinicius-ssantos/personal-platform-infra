@@ -46,6 +46,8 @@ if grep -RInE 'local-dev-token|localhost|APP_ENV: development|BFF_ENV: developme
 fi
 
 if grep -RInE 'ghcr\.io/.+:main' .env.example k8s >/tmp/personal-platform-policy-main-tags.txt; then
+  # Renovate (docker:pinDigests) resolves this automatically via PRs —
+  # see docs/image-pinning.md and .github/renovate.json.
   warn "mutable :main image tags remain in runtime examples/manifests; see docs/image-pinning.md"
 fi
 
