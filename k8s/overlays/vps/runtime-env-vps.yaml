@@ -10,6 +10,7 @@ data:
   BFF_ENV: "production"
   COOKIE_SECURE: "true"
   FRONTEND_URL: "https://studio.__VPS_DOMAIN__"
+  ALLOWED_ORIGINS: "https://studio.__VPS_DOMAIN__"
 ---
 apiVersion: v1
 kind: ConfigMap

@@ -73,6 +73,7 @@ services:
     environment:
       BFF_ENV: development
       FRONTEND_URL: http://localhost:5173
+      ALLOWED_ORIGINS: http://localhost:5173
       MCP_URL: http://github-unified-mcp:8765
       MCP_TOKEN: ${MCP_BEARER_TOKEN}
       COOKIE_SECURE: "false"
