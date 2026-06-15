@@ -11,23 +11,33 @@ Guia de contexto para AI assistants que trabalham neste repositório.
 4. Abrir PR via `gh pr create` com descrição clara
 5. Só mergear após aprovação do usuário, a menos que ele peça explicitamente para pular o PR
 
-## Uso dos agents (.opencode/agent/)
-
-**Modelos:** o `task` tool só spawna `general`/`explore` com o mesmo modelo da sessão. Os agents `.md` são contexto especializado que você DEVE usar antes de executar — não agents autônomos.
+## Uso dos agents e custo de API
 
 ### Plugin task-router (PREFERIDO)
 
 O plugin `.opencode/plugin/task-router.ts` (auto-descoberto) injeta automaticamente o contexto do agent no `task` tool quando o prompt menciona o nome do agent.
 
 **Quando o plugin está carregado** (sessão nova pós-restart):
-- Só mencione o nome do agent no prompt do `task` (ex: `infra-engineer`, `reviewer`, `scripter`, `operations`, `explorer`)
+- Só mencione o nome do agent no prompt do `task` tool
 - **NÃO** inclua o contexto do agent manualmente no prompt
 - **NÃO** leia o arquivo `.md` do agent manualmente
 - O plugin injeta o contexto automaticamente
 
-**Quando o plugin NÃO está carregado** (sessão atual sem restart):
+### Economia de créditos
 
-| Se for fazer... | Leia o agent manualmente |
+| Quem executa | Custo | Quando usar |
+|---|---|---|
+| `task` tool com `explore` | **$0** (flash-free) | Investigação, pesquisa, revisão (só leitura) |
+| `task` tool com `general` | **Mesmo que sessão** | **NUNCA** — orquestrador faz direto pelo mesmo preço |
+| Orquestrador (eu) | **Mesmo que sessão** | Edições, execução, comandos — é preferível a `general` |
+
+**Regra de ouro:** `task` tool só com `explore` + nome do agent. O plugin injeta o contexto do agent (reviewer, infra-engineer, etc.) mesmo no `explore`.
+
+### Quando o plugin NÃO está carregado (sessão sem restart)
+
+Leia o arquivo `.md` do agent manualmente antes de agir:
+
+| Se for fazer... | Leia manualmente |
 |---|---|
 | Editar k8s, terraform, ansible, kustomize | `.opencode/agent/infra-engineer.md` |
 | Revisar código, PR, segurança | `.opencode/agent/reviewer.md` |
