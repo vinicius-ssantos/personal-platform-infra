@@ -1,23 +1,4 @@
 ---
-# Non-sensitive R2 config. Credentials (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)
-# come from the platform-secrets Secret (see secrets/platform-secrets-vps.enc.yaml.example).
-#
-# R2_ENDPOINT and R2_BUCKET are placeholders here; they are overridden by the VPS
-# overlay patch (k8s/overlays/vps/backup-config-vps.yaml) and substituted at deploy
-# time by scripts/render-vps-overlay.sh using the R2_ENDPOINT / R2_BUCKET env vars.
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mcp-social-backup-config
-  namespace: mcp
-data:
-  R2_ENDPOINT: REPLACE_WITH_R2_ENDPOINT
-  R2_BUCKET: REPLACE_WITH_R2_BUCKET
-  RCLONE_CONFIG_R2_TYPE: s3
-  RCLONE_CONFIG_R2_PROVIDER: Cloudflare
-  RCLONE_CONFIG_R2_ACL: private
-  RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
----
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -136,34 +117,22 @@ spec:
                       optional: true
                 - name: RCLONE_CONFIG_R2_ENDPOINT
                   valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
+                    secretKeyRef:
+                      name: platform-secrets
                       key: R2_ENDPOINT
                 - name: R2_BUCKET
                   valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
+                    secretKeyRef:
+                      name: platform-secrets
                       key: R2_BUCKET
                 - name: RCLONE_CONFIG_R2_TYPE
-                  valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
-                      key: RCLONE_CONFIG_R2_TYPE
+                  value: s3
                 - name: RCLONE_CONFIG_R2_PROVIDER
-                  valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
-                      key: RCLONE_CONFIG_R2_PROVIDER
+                  value: Cloudflare
                 - name: RCLONE_CONFIG_R2_ACL
-                  valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
-                      key: RCLONE_CONFIG_R2_ACL
+                  value: private
                 - name: RCLONE_CONFIG_R2_NO_CHECK_BUCKET
-                  valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
-                      key: RCLONE_CONFIG_R2_NO_CHECK_BUCKET
+                  value: "true"
                 - name: RCLONE_CONFIG_R2_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
