@@ -3,6 +3,7 @@ import { join } from "path";
 import type { Plugin } from "@opencode-ai/plugin";
 
 const AGENT_DIR = ".opencode/agent";
+const FREE_TYPES = ["explore", "explorer"];
 const AGENT_MAP: Record<string, string> = {
   "infra-engineer": "infra-engineer.md",
   reviewer: "reviewer.md",
@@ -40,6 +41,9 @@ export default (async ({ directory }) => {
       const toolName = input?.name || input?.tool;
       if (toolName !== "task") return;
 
+      const subagentType = output.args.subagent_type || "general";
+      const isPaid = !FREE_TYPES.includes(subagentType);
+
       const prompt = output.args.prompt || "";
       const description = output.args.description || "";
       const combinedText = `${prompt} ${description}`;
@@ -51,8 +55,9 @@ export default (async ({ directory }) => {
       if (!content) return;
 
       const agentPrompt = extractPrompt(content);
+      const costLabel = isPaid ? "⚠️ PAID" : "✅ FREE";
       output.args.prompt = `[Contexto especializado do agent ${agentFile.replace(".md", "")}:]\n${agentPrompt}\n\n[Task:]\n${prompt}`;
-      output.args.description = `task routed via ${agentFile.replace(".md", "")} agent context`;
+      output.args.description = `[${costLabel}] task routed via ${agentFile.replace(".md", "")} agent context`;
     },
   };
 }) satisfies Plugin;
