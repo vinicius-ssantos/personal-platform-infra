@@ -219,6 +219,48 @@ services:
       NO_PROXY: localhost,127.0.0.1,repo-research-sidecar
     restart: unless-stopped
 
+  job-hunter-scheduler:
+    image: ghcr.io/vinicius-ssantos/jobhunteragent:main
+    profiles: ["job-hunter"]
+    environment:
+      JOB_HUNTER_TELEGRAM_TOKEN: ${JOB_HUNTER_TELEGRAM_TOKEN}
+      JOB_HUNTER_TELEGRAM_CHAT_ID: ${JOB_HUNTER_TELEGRAM_CHAT_ID}
+      JOB_HUNTER_DATABASE_PATH: /app/data/jobs.db
+      JOB_HUNTER_BROWSER_USE_CONFIG_DIR: /app/.browseruse
+      JOB_HUNTER_LINKEDIN_PERSISTENT_PROFILE_DIR: /app/.browseruse/profiles/linkedin-bootstrap
+      JOB_HUNTER_LINKEDIN_STORAGE_STATE_PATH: /app/.browseruse/linkedin-storage-state.json
+      JOB_HUNTER_FAILURE_ARTIFACTS_DIR: /app/.artifacts/linkedin_failures
+      JOB_HUNTER_OLLAMA_URL: ${JOB_HUNTER_OLLAMA_URL:-http://host.docker.internal:11434}
+      JOB_HUNTER_CANDIDATE_PROFILE_PATH: /app/config/candidate_profile.json
+      JOB_HUNTER_SKILL_TAXONOMY_PATH: /app/config/skill_taxonomy.json
+      JOB_HUNTER_LINKEDIN_COMPANY_POLICY_PATH: /app/config/linkedin_company_policy.json
+      JOB_HUNTER_OPERATIONAL_POLICY_PATH: /app/config/operational_policy.json
+      JOB_HUNTER_STRUCTURED_MATCHING_CONFIG_PATH: /app/config/job_target.json
+      JOB_HUNTER_COLLECTION_TIME: 08:00
+      JOB_HUNTER_BROWSER_HEADLESS: "true"
+    volumes:
+      - job-hunter-data:/app/data
+      - job-hunter-browseruse:/app/.browseruse
+      - job-hunter-artifacts:/app/.artifacts
+      - ${JOB_HUNTER_CONFIG_PATH:-./config/job-hunter}:/app/config:ro
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["job-hunter", "ollama"]
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
   central-mcp-gateway:
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
     profiles: ["gateway", "tailscale", "all"]
@@ -342,3 +384,7 @@ services:
 volumes:
   social-data:
   tailscale-gateway-state:
+  job-hunter-data:
+  job-hunter-browseruse:
+  job-hunter-artifacts:
+  ollama-models:

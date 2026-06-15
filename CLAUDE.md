@@ -11,6 +11,20 @@ Guia de contexto para AI assistants que trabalham neste repositório.
 4. Abrir PR via `gh pr create` com descrição clara
 5. Só mergear após aprovação do usuário, a menos que ele peça explicitamente para pular o PR
 
+## Uso dos agents (.opencode/agent/)
+
+**Antes de qualquer ação especializada, leia o agent correspondente:**
+
+| Se for fazer... | Leia antes |
+|---|---|
+| Editar k8s, terraform, ansible, kustomize | `.opencode/agent/infra-engineer.md` |
+| Revisar código, PR, segurança | `.opencode/agent/reviewer.md` |
+| Criar/manter scripts, Justfile, automação | `.opencode/agent/scripter.md` |
+| Smoke test, logs, status, wake/sleep | `.opencode/agent/operations.md` |
+| Investigar algo antes de agir | `.opencode/agent/explorer.md` |
+
+**Modelos:** o `task` tool só spawna `general`/`explore` com o mesmo modelo da sessão. Os agents `.md` são contexto especializado que você DEVE ler antes de executar — não agents autônomos.
+
 ## O que é este repo
 
 Infraestrutura centralizada para uma plataforma pessoal de MCP servers e BFFs.
