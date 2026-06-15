@@ -10,7 +10,7 @@ data:
   GATEWAY_LOG_LEVEL: info
   GATEWAY_OAUTH_CLIENT_ID: chatgpt
   GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read deploy:read social:write sandbox:run repo:read
-  GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status,sandbox.run_code,repo.search,repo.fetch,repo.repository_overview,repo.list_files
+  GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,github.search_issues,deploy.get_status,social.prepare_post,vos.get_studio_status,sandbox.run_code,sandbox.run_command,sandbox.run_file,repo.search,repo.fetch,repo.repository_overview,repo.list_files
   GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp.mcp.svc.cluster.local:8765/mcp
   GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp.mcp.svc.cluster.local:8000/mcp
   GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social.mcp.svc.cluster.local:8080/mcp
