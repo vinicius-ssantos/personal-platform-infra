@@ -9,7 +9,6 @@ resources:
 patches:
   - path: loki-volume-patch.yaml
   - path: runtime-env-vps.yaml
-  - path: backup-config-vps.yaml
 
 # Digest pinning for VPS deployments (docs/image-pinning.md): the base keeps
 # the development-friendly :main tag; this overlay rewrites every app image to

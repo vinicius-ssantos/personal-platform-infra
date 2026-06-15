@@ -5,7 +5,8 @@
 # chain end to end: the object exists, is downloadable, and is a valid,
 # uncorrupted SQLite database — not just that `rclone copy` exited 0.
 #
-# Reuses mcp-social-backup-config and platform-secrets (R2 credentials).
+# R2_ENDPOINT and R2_BUCKET come from the platform-secrets Secret (R2 credentials)
+# alongside R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY.
 # Does NOT touch the live PVC or scale the Deployment.
 #
 # Failures surface via the kube-events → Loki pipeline and the
@@ -69,34 +70,22 @@ spec:
               env:
                 - name: RCLONE_CONFIG_R2_ENDPOINT
                   valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
+                    secretKeyRef:
+                      name: platform-secrets
                       key: R2_ENDPOINT
                 - name: R2_BUCKET
                   valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
+                    secretKeyRef:
+                      name: platform-secrets
                       key: R2_BUCKET
                 - name: RCLONE_CONFIG_R2_TYPE
-                  valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
-                      key: RCLONE_CONFIG_R2_TYPE
+                  value: s3
                 - name: RCLONE_CONFIG_R2_PROVIDER
-                  valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
-                      key: RCLONE_CONFIG_R2_PROVIDER
+                  value: Cloudflare
                 - name: RCLONE_CONFIG_R2_ACL
-                  valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
-                      key: RCLONE_CONFIG_R2_ACL
+                  value: private
                 - name: RCLONE_CONFIG_R2_NO_CHECK_BUCKET
-                  valueFrom:
-                    configMapKeyRef:
-                      name: mcp-social-backup-config
-                      key: RCLONE_CONFIG_R2_NO_CHECK_BUCKET
+                  value: "true"
                 - name: RCLONE_CONFIG_R2_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
