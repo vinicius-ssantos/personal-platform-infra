@@ -32,9 +32,12 @@ kubeconfig
 *.crt
 
 node_modules/
+package.json
+package-lock.json
 dist/
 .wrangler/
 cloudflare/workers/status-page/wrangler.toml
 /.claude/settings.local.json
 /.mcp.json
+.opencode/tui.json
 .terraform.lock.hcl
