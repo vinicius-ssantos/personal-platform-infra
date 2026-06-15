@@ -5,5 +5,5 @@ metadata:
   namespace: bff
 data:
   MCP_URL: "http://github-unified-mcp.mcp.svc.cluster.local:8765"
-  # BFF_ENV, COOKIE_SECURE and FRONTEND_URL are environment-specific and are set
-  # by the overlay: runtime-env-local.yaml (dev) / runtime-env-vps.yaml (prod).
+  # BFF_ENV, COOKIE_SECURE, FRONTEND_URL and ALLOWED_ORIGINS are environment-specific
+  # and are set by the overlay: runtime-env-local.yaml (dev) / runtime-env-vps.yaml (prod).
