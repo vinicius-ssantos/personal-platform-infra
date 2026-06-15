@@ -25,6 +25,18 @@ Guia de contexto para AI assistants que trabalham neste repositório.
 
 **Modelos:** o `task` tool só spawna `general`/`explore` com o mesmo modelo da sessão. Os agents `.md` são contexto especializado que você DEVE ler antes de executar — não agents autônomos.
 
+### Plugin task-router
+
+O plugin `.opencode/plugin/task-router.ts` (auto-descoberto) injeta automaticamente o contexto do agent no `task` tool quando o prompt menciona o nome do agent (ex: `infra-engineer`, `reviewer`).
+
+**Quando o plugin está carregado** (sessão nova pós-restart):
+- Basta mencionar o nome do agent no prompt do `task`
+- O plugin injeta o contexto automaticamente
+- NÃO preciso ler o agent manualmente
+
+**Quando o plugin NÃO está carregado** (sessão atual):
+- Ler o agent manualmente antes de agir (tabela acima)
+
 ## O que é este repo
 
 Infraestrutura centralizada para uma plataforma pessoal de MCP servers e BFFs.
