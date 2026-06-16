@@ -3,6 +3,7 @@ description: Kubernetes, Terraform, Ansible, Kustomize, k8s. Cria e edita deploy
 mode: subagent
 color: "#00BFFF"
 temperature: 0.1
+steps: 50
 permission:
   edit: allow
   bash: allow

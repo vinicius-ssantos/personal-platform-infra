@@ -3,6 +3,7 @@ description: Shell script, PowerShell, automação, Justfile, smoke tests. Cria 
 mode: subagent
 color: "#00FF7F"
 temperature: 0.2
+steps: 50
 permission:
   edit: allow
   bash: allow

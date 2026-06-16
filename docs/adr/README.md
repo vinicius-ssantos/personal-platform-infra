@@ -20,3 +20,4 @@
 | [0016](0016-scale-to-zero-via-keda-http-add-on.md) | Scale-to-zero via KEDA HTTP Add-on | Accepted |
 | [0017](0017-kubernetes-ownership-in-infra-repo.md) | Kubernetes ownership lives in personal-platform-infra | Accepted |
 | [0018](0018-ci-runner-boundary.md) | CI runner infrastructure lives in ci-self-hosted-runner | Accepted |
+| [0019](0019-ai-subagent-workflow-for-development-automation.md) | AI subagent workflow for development automation | Accepted (Phase 1); Phases 2–4 proposed |

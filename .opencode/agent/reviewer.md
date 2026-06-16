@@ -3,6 +3,7 @@ description: Revisor / code review / security review. Verifica segurança, boas 
 mode: subagent
 color: "#FF8C00"
 temperature: 0.1
+steps: 30
 permission:
   edit: deny
   bash: ask
