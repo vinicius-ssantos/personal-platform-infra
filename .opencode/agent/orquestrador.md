@@ -3,6 +3,7 @@ description: CEO / orchestrator / planner. Planeja, quebra em sub-tarefas e usa 
 mode: primary
 color: "#FFD700"
 temperature: 0.2
+steps: 20
 permission:
   edit: ask
   bash: ask

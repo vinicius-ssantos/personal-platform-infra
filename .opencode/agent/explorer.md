@@ -3,6 +3,7 @@ description: Investigador / pesquisa / read-only. Pesquisa código, configuraç�
 mode: subagent
 color: "#C0C0C0"
 temperature: 0.3
+steps: 30
 permission:
   edit: deny
   bash: ask
