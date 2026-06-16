@@ -1,0 +1,26 @@
+[agents]
+max_threads = 4
+max_depth   = 1
+
+approval_policy = "on-request"
+sandbox_mode    = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = false
+writable_roots = []
+
+[shell_environment_policy]
+inherit  = "core"
+exclude  = [
+  "*TOKEN*",
+  "*SECRET*",
+  "*KEY*",
+  "CLOUDFLARE_*",
+  "GH_TOKEN",
+  "GITHUB_TOKEN",
+  "SOPS_*",
+  "AGE_*",
+]
+
+[history]
+persistence = "none"

@@ -291,6 +291,9 @@ smoke-keda-http:
 create-ghcr-secret:
 	bash scripts/create-ghcr-pull-secret.sh
 
+ai-dx-check:
+	bash scripts/ai-dx-check.sh
+
 secrets-backup:
 	@echo "=== age public key ==="
 	@grep "^# public key:" ~/.age/personal-platform.txt 2>/dev/null || age-keygen -y ~/.age/personal-platform.txt 2>/dev/null || echo "(key not found at ~/.age/personal-platform.txt)"
