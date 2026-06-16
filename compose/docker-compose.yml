@@ -321,8 +321,8 @@ services:
       # gateway resolves to ClusterIPs, and enabling this setting would allow SSRF
       # to any internal k8s endpoint. The k8s ConfigMap intentionally omits this key.
       GATEWAY_CONFIRM_CHANNEL: telegram
-      GATEWAY_CONFIRM_TELEGRAM_TOKEN: 
-      GATEWAY_CONFIRM_TELEGRAM_CHAT_ID: 
+      GATEWAY_CONFIRM_TELEGRAM_TOKEN: ${GATEWAY_CONFIRM_TELEGRAM_TOKEN}
+      GATEWAY_CONFIRM_TELEGRAM_CHAT_ID: ${GATEWAY_CONFIRM_TELEGRAM_CHAT_ID}
       GATEWAY_ALLOW_PRIVATE_UPSTREAM_URLS: "true"
     depends_on:
       redis:
