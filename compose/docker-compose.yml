@@ -218,6 +218,12 @@ services:
       HTTPS_PROXY: ${WARP_PROXY:-}
       HTTP_PROXY: ${WARP_PROXY:-}
       NO_PROXY: localhost,127.0.0.1,repo-research-sidecar
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 8081)); s.close()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   job-hunter-scheduler:
