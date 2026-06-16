@@ -90,6 +90,20 @@ if [ -f ".codex/config.toml" ]; then
 fi
 
 echo ""
+info "--- Claude Code hooks ---"
+check_file "settings.json (PreToolUse hook)" ".claude/settings.json"
+check_file "ai-guardrail-check.sh"           "scripts/ai-guardrail-check.sh"
+if [ -f ".claude/settings.json" ]; then
+  if grep -q 'ai-guardrail-check' .claude/settings.json; then
+    ok "PreToolUse hook wired to ai-guardrail-check.sh"
+    PASS=$((PASS + 1))
+  else
+    error "PreToolUse hook in settings.json does not reference ai-guardrail-check.sh"
+    FAIL=$((FAIL + 1))
+  fi
+fi
+
+echo ""
 info "--- AI rules ---"
 check_file ".AGENTS.md" ".AGENTS.md"
 
