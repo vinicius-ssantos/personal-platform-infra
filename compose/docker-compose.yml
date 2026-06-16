@@ -301,12 +301,13 @@ services:
       GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE: 20
       GATEWAY_TRUSTED_PROXY_COUNT: 1
       GATEWAY_IDEMPOTENCY_TTL_SECONDS: 300
-      GATEWAY_OWNER_MODE_ENABLED: "true"
-      GATEWAY_OWNER_BEARER_TOKEN: ${GATEWAY_OWNER_BEARER_TOKEN}
-      GATEWAY_OWNER_CLIENT_IDS: chatgpt
-      GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES: "true"
-      GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: "true"
-      GATEWAY_OWNER_DRY_RUN: "false"
+      # Owner Mode desabilitado — causava loop de CONFIRMATION_REQUIRED sem confirm_channel
+      GATEWAY_OWNER_MODE_ENABLED: "false"
+      # GATEWAY_OWNER_BEARER_TOKEN: not set
+      # GATEWAY_OWNER_CLIENT_IDS: not set
+      # GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES: not set
+      # GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: not set
+      # GATEWAY_OWNER_DRY_RUN: not set
       GATEWAY_REDIS_URL: redis://redis:6379/0
       # DEV ONLY — allows the gateway to call upstream services at private/loopback
       # URLs (the Docker Compose service DNS names). Must NOT be set to "true" in
