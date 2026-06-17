@@ -44,3 +44,4 @@ cloudflare/workers/status-page/wrangler.toml
 /docs/backlog-snapshot.md
 /.tmp-backlog/cache.json
 /docs/snapshot-with-prs.md
+/.tmp-backlog/

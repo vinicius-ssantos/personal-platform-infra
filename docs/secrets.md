@@ -21,7 +21,11 @@ Never commit real secrets in plain text.
 
 ## Sensitive values
 
-- `GITHUB_TOKEN` — GitHub PAT (scopes: `repo`, `read:packages`)
+- `GITHUB_TOKEN` — GitHub PAT (scopes: `repo`, `read:packages`, `project` — the
+  `project` scope is required for `github-unified-mcp`'s Projects V2 tools
+  (`project_add_issue`, `project_list_fields`, etc.); locally this can be the
+  `gh` CLI's own OAuth token via `gh auth token`, refreshed with
+  `gh auth refresh -s gist,read:org,repo,workflow,project`)
 - `MCP_BEARER_TOKEN` — bearer token for MCP auth; generate with `openssl rand -hex 32`
 - `MCP_SERVER_API_KEY` — API key for deploy-orchestrator; generate with `openssl rand -hex 32`
 - `SOCIAL_MCP_ACCESS_TOKEN` — platform token for mcp-social
