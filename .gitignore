@@ -42,4 +42,6 @@ cloudflare/workers/status-page/wrangler.toml
 .opencode/tui.json
 .terraform.lock.hcl
 /docs/backlog-snapshot.md
+/.tmp-backlog/cache.json
+/docs/snapshot-with-prs.md
 /.tmp-backlog/

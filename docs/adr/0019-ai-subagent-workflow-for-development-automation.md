@@ -548,9 +548,11 @@ This table maps directly to the gateway risk classification in Phase 2+.
 
 Phase 2 cannot start until:
 
-- [ ] `just ai-dx-check` passes locally and in CI.
-- [ ] Guardrail tests cover secret file reads, destructive `kubectl`, force push
-      on main, and VPS-context detection.
+- [x] `just ai-dx-check` passes locally and in CI — confirmed 2026-06-17
+      (21/21 local, CI run green on `main` at `9bbd211`).
+- [x] Guardrail tests cover secret file reads, destructive `kubectl`, force push
+      on main, and VPS-context detection — confirmed 2026-06-17
+      (`scripts/test-ai-guardrail.sh`, 18/18 local; same CI run).
 - [x] At least one multi-subagent orchestration (manual `.claude/agents/*.md`
       calls) has been used successfully without gateway exposure — done
       2026-06-17, ad hoc platform audit (explorer → reviewer + explorer in
