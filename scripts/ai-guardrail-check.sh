@@ -7,10 +7,38 @@ set -uo pipefail
 
 INPUT=$(cat)
 
-# Extract command safely — fall back to empty string if parsing fails
-COMMAND=$(printf '%s' "$INPUT" \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('command',''))" \
-  2>/dev/null) || COMMAND=""
+# Extract the "command" field from the JSON tool_input.
+# Uses sed as the primary parser (no runtime deps, handles all guardrail patterns).
+# Tries jq/python only if sed returns empty (edge cases with escaped chars).
+# Falls back to empty string — a parsing miss is a non-block (fail open).
+_extract_command() {
+  local raw=$1
+  local result
+
+  # sed — works for any command that does not contain escaped double-quotes
+  result=$(printf '%s' "$raw" \
+    | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    | head -1)
+  [ -n "$result" ] && { printf '%s' "$result"; return; }
+
+  # jq — validate it actually runs before using it
+  if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
+    printf '%s' "$raw" | jq -r '.tool_input.command // empty' 2>/dev/null
+    return
+  fi
+
+  # python3/python — validate they actually import sys (guards against OS stubs)
+  for py in python3 python; do
+    if command -v "$py" >/dev/null 2>&1 && "$py" -c "import sys" >/dev/null 2>&1; then
+      printf '%s' "$raw" \
+        | "$py" -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('command',''))" \
+        2>/dev/null
+      return
+    fi
+  done
+}
+
+COMMAND=$(_extract_command "$INPUT")
 
 [ -z "$COMMAND" ] && exit 0
 

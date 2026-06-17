@@ -43,6 +43,12 @@ jobs:
         run: |
           find scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
+      - name: Validate AI DX config (Phase 1 gates)
+        run: bash scripts/ai-dx-check.sh
+
+      - name: Validate AI guardrail rules
+        run: bash scripts/test-ai-guardrail.sh
+
       - name: Validate PowerShell scripts parse
         shell: pwsh
         run: |
@@ -175,6 +181,12 @@ jobs:
       - name: Validate shell scripts parse
         run: |
           find scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
+
+      - name: Validate AI DX config (Phase 1 gates)
+        run: bash scripts/ai-dx-check.sh
+
+      - name: Validate AI guardrail rules
+        run: bash scripts/test-ai-guardrail.sh
 
       - name: Validate PowerShell scripts parse
         shell: pwsh
