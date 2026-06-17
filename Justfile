@@ -294,6 +294,12 @@ create-ghcr-secret:
 ai-dx-check:
 	bash scripts/ai-dx-check.sh
 
+# Fetch all open issues across platform repos and save as markdown snapshot.
+# Output is gitignored — regenerate when needed.
+# Supports: --ttl N (cache min), --prs (include PRs)
+backlog *args:
+	bash scripts/fetch-backlog.sh {{args}}
+
 secrets-backup:
 	@echo "=== age public key ==="
 	@grep "^# public key:" ~/.age/personal-platform.txt 2>/dev/null || age-keygen -y ~/.age/personal-platform.txt 2>/dev/null || echo "(key not found at ~/.age/personal-platform.txt)"

@@ -9,6 +9,17 @@ warn()  { echo "[WARN]  $*"; }
 PASS=0
 FAIL=0
 
+PYTHON_BIN=""
+if [[ -n "${PYTHON:-}" ]]; then
+  PYTHON_BIN="$PYTHON"
+elif command -v python3 >/dev/null 2>&1 && python3 -c "" >/dev/null 2>&1; then
+  PYTHON_BIN="python3"
+elif command -v python >/dev/null 2>&1 && python -c "" >/dev/null 2>&1; then
+  PYTHON_BIN="python"
+elif command -v py >/dev/null 2>&1; then
+  PYTHON_BIN="py -3"
+fi
+
 check_file() {
   local label=$1
   local path=$2
@@ -90,6 +101,25 @@ fi
 echo ""
 info "--- AI rules ---"
 check_file ".AGENTS.md" ".AGENTS.md"
+
+echo ""
+info "--- Backlog config ---"
+check_file "repo list (backlog source of truth)" "docs/repos.json"
+if [ -f "docs/repos.json" ]; then
+  if [ -z "$PYTHON_BIN" ]; then
+    warn "no python interpreter found — skipping docs/repos.json validation"
+  elif $PYTHON_BIN -c "import json; json.load(open('docs/repos.json'))" 2>/dev/null; then
+    ok "docs/repos.json is valid JSON"
+    PASS=$((PASS + 1))
+    OWNER=$($PYTHON_BIN -c "import json; print(json.load(open('docs/repos.json'))['owner'])" 2>/dev/null)
+    COUNT=$($PYTHON_BIN -c "import json; print(len(json.load(open('docs/repos.json'))['repos']))" 2>/dev/null)
+    ok "Owner: $OWNER, Repos: $COUNT"
+    PASS=$((PASS + 1))
+  else
+    error "docs/repos.json is not valid JSON"
+    FAIL=$((FAIL + 1))
+  fi
+fi
 
 echo ""
 echo "============================================"
