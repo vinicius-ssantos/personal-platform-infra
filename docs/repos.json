@@ -1,0 +1,21 @@
+{
+  "owner": "vinicius-ssantos",
+  "repos": [
+    "personal-platform-infra",
+    "central-mcp-gateway",
+    "github-unified-mcp",
+    "github-unified-mcp-bff",
+    "github-unified-mcp-frontend",
+    "deploy-orchestrator-mcp",
+    "deploy-orchestrator-mcp-frontend",
+    "mcp-social",
+    "vos-studio-mcp",
+    "vos-studio-bff",
+    "mcp-code-sandbox",
+    "repo-research-mcp",
+    "repo-ops-api",
+    "WorkflowEngine",
+    "ci-self-hosted-runner",
+    "jobHunterAgent"
+  ]
+}
