@@ -223,6 +223,7 @@ just tunnel
 - **Grafana usa o Secret `grafana-admin`** (namespace `monitoring`, via `secretKeyRef`) — crie-o antes de subir o monitoring: local com `just grafana-secret`, VPS pelo fluxo SOPS (`secrets/platform-secrets-vps.enc.yaml`). Sem o Secret o pod entra em crashloop.
 - **Alguns ConfigMaps ainda têm placeholders** — valores como `REPLACE_WITH_FRONTEND_URL` devem ser substituídos em overlay/secret de VPS antes de produção.
 - **`vos-studio-mcp` ainda usa `/health` como liveness/readiness** — idealmente o app upstream deve expor `/live` separado de checks pesados de dependência.
+- **Nunca rodar `docker compose` cru neste repo** — todo serviço em `compose/docker-compose.yml` está atrás de `profiles:`. Sem `--profile all` (ou `COMPOSE_PROFILES=all`), comandos como `up --force-recreate <serviço>` recriam o container com env quase vazio (faltam `GATEWAY_UPSTREAM_*`, `GATEWAY_REDIS_URL` etc. no gateway) sem erro nenhum — o serviço sobe "healthy" mas quebrado silenciosamente. Use sempre `just compose-up`/`just compose-up-profile` ou inclua `--profile all` manualmente.
 
 ## Decisões arquiteturais relevantes
 
