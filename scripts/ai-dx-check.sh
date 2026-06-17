@@ -21,18 +21,6 @@ check_file() {
   fi
 }
 
-check_dir() {
-  local label=$1
-  local path=$2
-  if [ -d "$path" ]; then
-    ok "$label: $path"
-    PASS=$((PASS + 1))
-  else
-    error "$label: $path (MISSING)"
-    FAIL=$((FAIL + 1))
-  fi
-}
-
 info "=== AI DX Check — Phase 1 ==="
 echo ""
 
@@ -41,10 +29,6 @@ check_file "explorer agent"      ".claude/agents/explorer.md"
 check_file "infra-engineer agent" ".claude/agents/infra-engineer.md"
 check_file "reviewer agent"      ".claude/agents/reviewer.md"
 check_file "scripter agent"      ".claude/agents/scripter.md"
-check_dir  "workflows dir"       ".claude/workflows"
-check_file "audit workflow"      ".claude/workflows/audit-platform-infra.js"
-check_file "add-upstream workflow" ".claude/workflows/add-new-mcp-upstream.js"
-check_file "release-readiness workflow" ".claude/workflows/review-release-readiness.js"
 
 echo ""
 info "--- OpenCode commands ---"

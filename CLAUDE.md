@@ -45,6 +45,24 @@ Leia o arquivo `.md` do agent manualmente antes de agir:
 | Smoke test, logs, status, wake/sleep | `.opencode/agent/operations.md` |
 | Investigar algo antes de agir | `.opencode/agent/explorer.md` |
 
+### Quando usar Dynamic Workflows (Claude Code)
+
+Dynamic Workflows é um recurso do Claude Code (GA jun/2026): Claude escreve um script
+de orquestração em runtime que dispara dezenas/centenas de subagents em paralelo.
+Acionado pedindo diretamente ("crie um workflow para X") ou via `/effort ultracode`.
+
+- **Use** para tarefas read-heavy genuinamente largas e paralelizáveis: auditoria
+  cruzada com os repos upstream de aplicação, investigação de incidente espalhado por
+  vários serviços/logs, ou replicar mecanicamente um padrão já decidido em muitos
+  serviços independentes (ex: aplicar KEDA scale-to-zero nos 8 serviços de uma vez,
+  depois de provado em um).
+- **Não use** para implementar uma feature nova — decisões de design são sequenciais
+  e não paralelizam bem; agentes paralelos podem divergir em escolhas de design. Prefira
+  `EnterPlanMode` + implementação direta ou um único subagent (`infra-engineer`/`scripter`).
+- **Não use** para tarefas que uma a quatro chamadas manuais de `Agent` já resolvem
+  (ex: o audit padrão deste repo) — o overhead de gerar e validar um script de
+  orquestração supera o ganho.
+
 ## O que é este repo
 
 Infraestrutura centralizada para uma plataforma pessoal de MCP servers e BFFs.

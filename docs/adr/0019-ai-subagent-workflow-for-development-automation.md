@@ -107,11 +107,16 @@ code-reviewer). Not configured per-project yet.
   manually. Different from built-in orchestration types (Explore, Plan).
 - **`.claude/skills/<name>/SKILL.md`** — repeatable procedure or checklist,
   invoked as a slash command. (`.claude/commands/` is deprecated.)
-- **`.claude/workflows/*.js`** — Dynamic Workflows: JavaScript scripts that
-  orchestrate many subagents at scale. Suitable for repository-wide audits,
-  large migrations, and cross-checked research. Saved at project level in
-  `.claude/workflows/` and invoked as `/workflow-name`. Available in Claude Code
-  v2.1.154+.
+- **Dynamic Workflows** — a Claude Code feature (GA June 2026), not a file format
+  you author by hand. Claude writes the orchestration script itself, at runtime,
+  when asked directly ("create a workflow for X") or when the `ultracode` effort
+  level is active (`/effort ultracode`) and Claude judges the task warrants it.
+  A workflow can be saved for reuse by pressing `s` in the workflow menu during a
+  run, which checks it into `~/.claude/workflows` (user-level). For project-level
+  repeatable orchestration, use `.claude/agents/*.md` + manually-invoked subagents
+  (Phase 1, section C below), or a `.claude/skills/<name>/SKILL.md` that instructs
+  the same multi-step sequence in prose. See CLAUDE.md, "Quando usar Dynamic
+  Workflows", for when each approach is worth the cost.
 - **`CLAUDE.md`** — project context loaded at session start. Hierarchical:
   subdirectory files load on demand when Claude reads files in that subtree.
 
@@ -360,7 +365,6 @@ check .opencode/skills/*/SKILL.md
 check .opencode/commands/*.md
 check .claude/agents/*.md
 check .claude/skills/*/SKILL.md
-check .claude/workflows/*.js      # warn only if missing (optional)
 check .codex/agents/*.toml        # warn only if missing (optional)
 check .agents/skills/*/SKILL.md   # warn only if missing (optional)
 check .codex/config.toml
@@ -377,7 +381,6 @@ Skills standard shared by all three tools:
   .claude/
     agents/          ← specialized roles (Claude Code)
     skills/          ← repeatable procedures (Claude Code)
-    workflows/       ← scripted multi-subagent orchestration (Claude Code)
   .opencode/
     agent/           ← specialized roles (OpenCode)
     skills/          ← repeatable procedures (OpenCode)
@@ -397,20 +400,18 @@ Distinction by use case:
 |---|---|
 | `agents/` | You need a reusable specialized role or persona |
 | `skills/` | You need a repeatable procedure or step-by-step checklist |
-| `workflows/` (Claude only) | You need scripted orchestration across many subagents at scale |
+| Dynamic Workflows (Claude only, ephemeral) | A one-off task needs scripted orchestration across many subagents at scale; ask Claude directly or use `ultracode` effort — not a directory you populate by hand |
 
-Initial project workflows for this repo (`.claude/workflows/`):
-
-| Workflow | Purpose |
-|---|---|
-| `audit-platform-infra.js` | Cross-check k8s, compose, terraform, scripts, docs, and ADR compliance |
-| `add-new-mcp-upstream.js` | Guide the full process of adding a new MCP service to the platform |
-| `review-release-readiness.js` | Check smokes, manifests, runtime contracts, secrets, and docs before release |
+Repeatable multi-step orchestration for this repo (explorer → reviewer/infra-engineer
+in sequence or parallel, then synthesize) should be run by hand via the `Agent` tool,
+or turned into a `.claude/skills/<name>/SKILL.md` prompt if needed repeatedly. Reserve
+Dynamic Workflows for the cases in CLAUDE.md's "Quando usar Dynamic Workflows".
 
 **What Phase 1 does not include:**
 - No new services, no gateway changes, no infrastructure changes.
 - Codex CLI is not wired as a gateway upstream yet.
-- `.claude/workflows/` scripts are local DX only — no autonomous writes, no gateway exposure, no VPS execution.
+- Local orchestration (manual subagent calls or Dynamic Workflows) is local DX only —
+  no autonomous writes, no gateway exposure, no VPS execution.
 
 ---
 
@@ -500,7 +501,7 @@ cwd allowlist, and diff-preview gate all validated in production.
 | Project context | `.AGENTS.md` + `CLAUDE.md` | `.AGENTS.md` + `CLAUDE.md` | `.AGENTS.md` + `.codex/config.toml` |
 | Custom agents | `.opencode/agent/*.md` | `.claude/agents/*.md` | `.codex/agents/*.toml` |
 | Repeatable skills | `.opencode/skills/<name>/SKILL.md` | `.claude/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` |
-| Scripted workflows | plugin/task router | `.claude/workflows/*.js` | skill + agents + `codex exec` |
+| Scripted workflows | plugin/task router | manual `Agent` calls, or Dynamic Workflows (ephemeral, not file-based) | skill + agents + `codex exec` |
 | Custom commands | `.opencode/commands/*.md` | `.claude/skills/` (slash) | — |
 | Plugin/hook system | `@opencode-ai/plugin` | `.claude/settings.json` hooks | `.codex/config.toml` hooks |
 | Safety guardrails | `context-guard.ts` plugin | `PreToolUse` hook | `shell_environment_policy` |
@@ -515,7 +516,7 @@ cwd allowlist, and diff-preview gate all validated in production.
 | Tool | Min validated version | Key features required |
 |---|---|---|
 | OpenCode | TBD | `.opencode/agent/`, `.opencode/skills/`, `.opencode/commands/`, `.opencode/plugin/`, `steps` field |
-| Claude Code | >= 2.1.154 | `.claude/agents/`, `.claude/skills/`, `.claude/workflows/`, hooks, worktrees |
+| Claude Code | TBD (Dynamic Workflows GA June 2026) | `.claude/agents/`, `.claude/skills/`, hooks, worktrees |
 | Codex CLI | TBD | `.codex/agents/`, `.agents/skills/`, `codex exec`, `codex mcp-server`, `shell_environment_policy` |
 
 `just ai-dx-check` should print installed versions alongside config validation.
@@ -536,8 +537,9 @@ This table maps directly to the gateway risk classification in Phase 2+.
 
 1. Use OpenCode for normal interactive development in this repo.
 2. Use `/review-diff` before committing.
-3. Use Claude Code workflows (`.claude/workflows/`) only for broad audits,
-   migrations, or cross-repo analysis.
+3. In Claude Code, use manual `.claude/agents/*.md` subagent calls (or, for
+   genuinely large one-off tasks, ask for a Dynamic Workflow / `ultracode`) for
+   broad audits, migrations, or cross-repo analysis.
 4. Use `codex exec` only for explicit local reports or scripted checks.
 5. Run `just ai-dx-check` before changing AI configuration files.
 6. Never run AI write tasks against VPS/production contexts.
@@ -549,8 +551,10 @@ Phase 2 cannot start until:
 - [ ] `just ai-dx-check` passes locally and in CI.
 - [ ] Guardrail tests cover secret file reads, destructive `kubectl`, force push
       on main, and VPS-context detection.
-- [ ] At least one local workflow (`.claude/workflows/`) has been used
-      successfully without gateway exposure.
+- [x] At least one multi-subagent orchestration (manual `.claude/agents/*.md`
+      calls) has been used successfully without gateway exposure — done
+      2026-06-17, ad hoc platform audit (explorer → reviewer + explorer in
+      parallel → synthesis).
 - [ ] Codex `sandbox_mode` and `network_access = false` behavior has been
       manually validated against a test repo.
 - [ ] Phase 1 config files are reviewed and committed to all affected repos.
@@ -574,9 +578,8 @@ Phase 2 cannot start until:
 
 - **Memory hygiene:** `CLAUDE.md` must contain only stable project facts and
   conventions (commands, layout, service table, ADR references). Move
-  step-by-step procedures to `.claude/skills/`, broad orchestration to
-  `.claude/workflows/`, subtree rules to `.claude/rules/`. A bloated `CLAUDE.md`
-  increases token cost on every session.
+  step-by-step procedures to `.claude/skills/`, subtree rules to
+  `.claude/rules/`. A bloated `CLAUDE.md` increases token cost on every session.
 - **Hook decision policy:** hooks have two modes — block and annotate.
   - **Block:** secret file reads, destructive VPS `kubectl delete`, `git push --force` on main, direct writes to SOPS-encrypted material.
   - **Annotate/audit:** `kubectl get`, `terraform plan`, `kustomize build`, smoke tests, `gh pr view`.
