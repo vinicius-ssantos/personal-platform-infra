@@ -15,22 +15,34 @@ patches:
 # an immutable digest. Renovate (docker:pinDigests + kubernetes manager) keeps
 # these digests updated via PRs.
 #
-# Digests resolved from ghcr.io :main on 2026-06-12.
+# Digests resolved from ghcr.io :main on 2026-06-12, refreshed 2026-06-18 for
+# github-unified-mcp, deploy-orchestrator-mcp, mcp-social, central-mcp-gateway,
+# vos-studio-mcp, and repo-research-mcp (ADR 0016 tool-contract rollout — see
+# each repo's feat/adopt-mcp-tool-contract PR). github-unified-mcp-bff and
+# vos-studio-bff are unchanged, still pinned to their 2026-06-12 digests.
+#
+# repo-research-mcp (deployed here as repo-research-sidecar) had no digest
+# override before this change — it rode the base manifest's :main tag with
+# imagePullPolicy: IfNotPresent, which would have kept serving a stale image
+# indefinitely once the node had any :main image cached. Pinning it here closes
+# that gap and brings it in line with the other five services' policy.
 images:
   - name: ghcr.io/vinicius-ssantos/github-unified-mcp
-    digest: sha256:9aba04cf993b0f1b784eb9d01450a590ccb4bacf6c762d57c5063c0f79b64434
+    digest: sha256:3e9b2c22a7cd531abda4c2e838f72f482ea28fcd37db62b9716e47e5461e9d8d
   - name: ghcr.io/vinicius-ssantos/deploy-orchestrator-mcp
-    digest: sha256:c92217ee5b895f50a599ecc694b36cc8b14c771692e51406c752513995ca6c40
+    digest: sha256:7822d5efb4afe9a176fb6e2cce5e6eefbbe856434a735df1c6f91a37522140af
   - name: ghcr.io/vinicius-ssantos/mcp-social
-    digest: sha256:de99f024c7dc29e792cff6a488ca6124885058752e7870df56957b41b464466b
+    digest: sha256:6c2e4964770a13ddc3ee3173c521e562d4d2b0102b8b959ddb97206b0f887a6c
   - name: ghcr.io/vinicius-ssantos/central-mcp-gateway
-    digest: sha256:01ff97bc5ccd4090b1356d785c576eb5c7509d5e8c461c459233ce84de314051
+    digest: sha256:c0a6e5e51521ead1d19d17046aab859ce7db50c58801a4332e4e4e6793f9af84
   - name: ghcr.io/vinicius-ssantos/github-unified-mcp-bff
     digest: sha256:98722b696f414d06a487e7e437319a93158db4488b3a93b305880e8351201a94
   - name: ghcr.io/vinicius-ssantos/vos-studio-mcp
-    digest: sha256:f09eaba1e1afdb18e63ee1bb50073e59082fb8dd76efe9982680f71c367253d9
+    digest: sha256:ea53e5f1278d1db2c6d7e60302fd43846e722bcbeea064b13db16eb5368ae87b
   - name: ghcr.io/vinicius-ssantos/vos-studio-bff
     digest: sha256:d0b99d9ac726e20ac7eb2e0eba52012cea62f6d4461ca2e084e96e4fb33de15d
+  - name: ghcr.io/vinicius-ssantos/repo-research-mcp
+    digest: sha256:7e8b805c269e8cea82fae165d4398e4da3cf3c73d1e2ca5cbf6b7b173713ccda
 
 # VPS overlay keeps workloads at replicas=0 (ADR 0001).
 # Wake scripts or kubectl scale bring services up on demand.
