@@ -158,6 +158,7 @@ services:
     ports:
       - "127.0.0.1:8766:8766"
     environment:
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
       SANDBOX_API_KEY: ${SANDBOX_API_KEY}
       SANDBOX_TRANSPORT: streamable-http
       SANDBOX_HOST: 0.0.0.0
@@ -176,8 +177,6 @@ services:
       SANDBOX_CPU_PERIOD: ${SANDBOX_CPU_PERIOD:-100000}
       SANDBOX_CPU_QUOTA: ${SANDBOX_CPU_QUOTA:-50000}
       SANDBOX_PIDS_LIMIT: ${SANDBOX_PIDS_LIMIT:-128}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       mcp-code-sandbox-images:
         condition: service_completed_successfully
