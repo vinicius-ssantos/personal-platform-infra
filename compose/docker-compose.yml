@@ -223,7 +223,10 @@ services:
 
   workflow-engine:
     image: ${WORKFLOW_ENGINE_IMAGE:-ghcr.io/vinicius-ssantos/workflow-engine:main}
-    profiles: ["workflow-engine", "all"]
+    profiles: ["workflow-engine"]
+    # NOTE: não está no profile "all" porque a imagem ainda não existe no GHCR
+    # (WorkflowEngine CI só faz build + artifact upload). Remova este comentário
+    # e adicione "all" ao array quando a imagem for publicada.
     ports:
       - "127.0.0.1:8081:8080"
     environment:
