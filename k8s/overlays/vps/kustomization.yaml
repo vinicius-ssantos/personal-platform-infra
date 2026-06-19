@@ -43,6 +43,10 @@ images:
     digest: sha256:d0b99d9ac726e20ac7eb2e0eba52012cea62f6d4461ca2e084e96e4fb33de15d
   - name: ghcr.io/vinicius-ssantos/repo-research-mcp
     digest: sha256:7e8b805c269e8cea82fae165d4398e4da3cf3c73d1e2ca5cbf6b7b173713ccda
+  # workflow-engine: imagem ainda não publicada no GHCR (CI do repositório upstream
+  # só faz build + artifact upload, sem Docker image). Pular digest pinning por
+  # enquanto — o deployment fica em replicas=0 (ADR 0001) até a imagem existir.
+  # Adicionar entry aqui quando o WorkflowEngine publicar a primeira imagem.
 
 # VPS overlay keeps workloads at replicas=0 (ADR 0001).
 # Wake scripts or kubectl scale bring services up on demand.

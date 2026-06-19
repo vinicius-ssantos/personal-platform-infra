@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workflow-engine-config
+  namespace: mcp
+data:
+  SERVER_PORT: "8080"
+  SPRING_PROFILES_ACTIVE: jpa

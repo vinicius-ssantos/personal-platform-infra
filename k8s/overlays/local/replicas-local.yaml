@@ -61,3 +61,11 @@ metadata:
   namespace: bff
 spec:
   replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-engine
+  namespace: mcp
+spec:
+  replicas: 1

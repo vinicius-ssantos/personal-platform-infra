@@ -11,6 +11,7 @@ resources:
   - apps/github-unified-mcp-bff
   - apps/vos-studio-mcp
   - apps/vos-studio-bff
+  - apps/workflow-engine
 
 # Baseline container hardening (see securitycontext-patch.yaml for rationale).
 # Applied per-namespace so it covers every app Deployment; in monitoring it

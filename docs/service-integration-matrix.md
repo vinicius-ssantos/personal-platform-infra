@@ -25,6 +25,7 @@ operator scripts.
 | `vos-studio-bff` | `vinicius-ssantos/vos-studio-bff` | BFF for VOS Studio flows | upstream | `ghcr.io/vinicius-ssantos/vos-studio-bff:main` configured and verified | yes, profile `vos` | yes, `VOS_STUDIO_BFF_IMAGE` | `just smoke-vos` | `just smoke-k3d` | yes | ready | none | Depends on `vos-studio-mcp` at `http://vos-studio-mcp:8000`. k3d port-forward: 18030. |
 | `job-hunter-agent` | `vinicius-ssantos/jobHunterAgent` | Automated job search agent | upstream | `ghcr.io/vinicius-ssantos/jobhunteragent:main` | yes, profile `job-hunter` | yes, `JOB_HUNTER_IMAGE` | `just smoke-job-hunter` | not enabled | no | ready | #117 | CLI scheduler/worker (no HTTP port). Requires Ollama for LLM features. Profile includes optional `ollama` service. Config via bind-mount. |
 | `github-unified-mcp-frontend` | `vinicius-ssantos/github-unified-mcp-frontend` | Frontend SPA for GitHub MCP | upstream | n/a (Cloudflare Pages) | n/a (CDN-hosted) | `FRONTEND_URL` in BFF overlays | n/a | n/a | no (ADR 0003) | wired | #119 | Hosted on Cloudflare Pages per ADR 0003. No k8s manifest, no compose entry. BFF overlays contain `FRONTEND_URL` and `ALLOWED_ORIGINS`. |
+| `workflow-engine` | `vinicius-ssantos/WorkflowEngine` | Event-driven workflow orchestration engine | ❌ missing | ❌ missing | no | no | no | no | no | blocked | #118 | Java 21 / Spring Boot 4.0.6. Port 8080, health `/actuator/health`. Requires PostgreSQL + Redis + Redpanda/Kafka. Needs Dockerfile + GHCR publish workflow first. |
 
 ## Validation checklist
 
