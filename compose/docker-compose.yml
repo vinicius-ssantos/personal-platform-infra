@@ -275,7 +275,7 @@ services:
     restart: unless-stopped
 
   job-hunter-scheduler:
-    image: ghcr.io/vinicius-ssantos/jobhunteragent:main
+    image: ${JOB_HUNTER_IMAGE:-ghcr.io/vinicius-ssantos/jobhunteragent:main}
     profiles: ["job-hunter"]
     environment:
       JOB_HUNTER_TELEGRAM_TOKEN: ${JOB_HUNTER_TELEGRAM_TOKEN}
@@ -286,13 +286,13 @@ services:
       JOB_HUNTER_LINKEDIN_STORAGE_STATE_PATH: /app/.browseruse/linkedin-storage-state.json
       JOB_HUNTER_FAILURE_ARTIFACTS_DIR: /app/.artifacts/linkedin_failures
       JOB_HUNTER_OLLAMA_URL: ${JOB_HUNTER_OLLAMA_URL:-http://host.docker.internal:11434}
-      JOB_HUNTER_CANDIDATE_PROFILE_PATH: /app/config/candidate_profile.json
+      JOB_HUNTER_CANDIDATE_PROFILE_PATH: ${JOB_HUNTER_CANDIDATE_PROFILE_PATH:-/app/config/candidate_profile.json}
       JOB_HUNTER_SKILL_TAXONOMY_PATH: /app/config/skill_taxonomy.json
       JOB_HUNTER_LINKEDIN_COMPANY_POLICY_PATH: /app/config/linkedin_company_policy.json
       JOB_HUNTER_OPERATIONAL_POLICY_PATH: /app/config/operational_policy.json
       JOB_HUNTER_STRUCTURED_MATCHING_CONFIG_PATH: /app/config/job_target.json
-      JOB_HUNTER_COLLECTION_TIME: 08:00
-      JOB_HUNTER_BROWSER_HEADLESS: "true"
+      JOB_HUNTER_COLLECTION_TIME: ${JOB_HUNTER_COLLECTION_TIME:-08:00}
+      JOB_HUNTER_BROWSER_HEADLESS: ${JOB_HUNTER_BROWSER_HEADLESS:-true}
     volumes:
       - job-hunter-data:/app/data
       - job-hunter-browseruse:/app/.browseruse
@@ -362,13 +362,13 @@ services:
       GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES: "true"
       GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: "true"
       GATEWAY_OWNER_DRY_RUN: "false"
-      GATEWAY_REDIS_URL: redis://redis:6379/0
+      GATEWAY_REDIS_URL: ${GATEWAY_REDIS_URL:-redis://redis:6379/0}
       # DEV ONLY — allows the gateway to call upstream services at private/loopback
       # URLs (the Docker Compose service DNS names). Must NOT be set to "true" in
       # production (k8s): upstream URLs there use cluster-internal DNS which the
       # gateway resolves to ClusterIPs, and enabling this setting would allow SSRF
       # to any internal k8s endpoint. The k8s ConfigMap intentionally omits this key.
-      GATEWAY_CONFIRM_CHANNEL: telegram
+      GATEWAY_CONFIRM_CHANNEL: ${GATEWAY_CONFIRM_CHANNEL:-telegram}
       GATEWAY_CONFIRM_TELEGRAM_TOKEN: ${GATEWAY_CONFIRM_TELEGRAM_TOKEN}
       GATEWAY_CONFIRM_TELEGRAM_CHAT_ID: ${GATEWAY_CONFIRM_TELEGRAM_CHAT_ID}
       GATEWAY_ALLOW_PRIVATE_UPSTREAM_URLS: "true"
