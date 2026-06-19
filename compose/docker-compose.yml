@@ -402,6 +402,8 @@ services:
       GATEWAY_OWNER_CLIENT_IDS: chatgpt
       GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES: "true"
       GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: "true"
+      GATEWAY_OWNER_ALLOW_PAID_OPERATIONS: "true"
+      GATEWAY_OWNER_MAX_PAID_CALLS_PER_DAY: "10"
       GATEWAY_OWNER_DRY_RUN: "false"
       GATEWAY_REDIS_URL: ${GATEWAY_REDIS_URL:-redis://redis:6379/0}
       # DEV ONLY — allows the gateway to call upstream services at private/loopback
