@@ -44,6 +44,16 @@ spec:
                   number: 8080
     # Public OAuth edge for ChatGPT. Served directly (gateway runs its own
     # bearer/OAuth auth) and kept OUT of Cloudflare Access — see terraform/cloudflare.
+    - host: workflow-engine.__VPS_DOMAIN__
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: workflow-engine
+                port:
+                  number: 8080
     - host: mcp-gateway.__VPS_DOMAIN__
       http:
         paths:

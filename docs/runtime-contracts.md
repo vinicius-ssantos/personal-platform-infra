@@ -157,6 +157,25 @@ O sandbox não roda em container dentro desta infra porque precisa falar com o D
 | Upstream | vos-studio-mcp via `MCP_URL` |
 | Namespace k8s | `bff` |
 
+### WorkflowEngine
+
+| Atributo | Valor |
+|---|---|
+| Repositório | `vinicius-ssantos/WorkflowEngine` |
+| Imagem | ❌ **Ainda não publica imagem GHCR** — precisa de Dockerfile + workflow de build |
+| Porta | 8080 |
+| Health path | `/actuator/health` |
+| Readiness path | `/actuator/health` |
+| Auth | JWT bearer token + `X-Tenant-Id` header |
+| Variáveis obrigatórias | `SPRING_PROFILES_ACTIVE`, `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `REDIS_URL`, `KAFKA_BOOTSTRAP_SERVERS` |
+| Dependências externas | PostgreSQL (obrigatório para persistência), Redis (locks/cache/rate-limit), Redpanda/Kafka (async messaging) |
+| Build | Gradle (Kotlin DSL) / Java 21 / Spring Boot 4.0.6 |
+| Módulos | `api`, `application`, `domain`, `infrastructure`, `worker` |
+| API Base path | `/api` (REST) |
+| Headers comuns | `Authorization: Bearer <jwt>`, `X-Tenant-Id`, `X-Correlation-Id`, `Idempotency-Key` |
+| Modo seguro | Multi-tenant desde o início; JWT com roles (OWNER, ADMIN, DEVELOPER, VIEWER); audit logging |
+| Namespace k8s | `mcp` (candidato) |
+
 ## Regra operacional
 
 ### Antes de mudar wiring neste repositório

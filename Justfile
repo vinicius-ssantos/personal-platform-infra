@@ -231,6 +231,9 @@ wake-deploy:
 wake-social:
 	./scripts/wake-social.sh
 
+wake-workflow-engine:
+	./scripts/wake-workflow-engine.sh
+
 wake-all:
 	./scripts/wake-all.sh
 
