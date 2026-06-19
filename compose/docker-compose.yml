@@ -126,6 +126,44 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # Scoped Docker API access for mcp-code-sandbox (which executes arbitrary
+  # user-submitted code). The sandbox server only ever needs to create/start/
+  # kill/remove/log containers and manage its own scratch volumes — never
+  # exec into other containers, build/pull images, touch networks, or any
+  # Swarm/secrets/system endpoint. Mounting the raw host docker.sock instead
+  # would hand the sandbox process unrestricted, root-equivalent control over
+  # every container and the daemon itself; this proxy is the least-privilege
+  # alternative (see image-pinning.md for why we don't grant group_add: ["0"]
+  # here). POST=1 is the proxy's global write gate — without it every
+  # resource flag below is read-only regardless of value.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.4.2
+    profiles: ["sandbox", "gateway", "tailscale", "all"]
+    environment:
+      CONTAINERS: 1
+      VOLUMES: 1
+      PING: 1
+      POST: 1
+      IMAGES: 0
+      EXEC: 0
+      NETWORKS: 0
+      BUILD: 0
+      COMMIT: 0
+      SERVICES: 0
+      SWARM: 0
+      SECRETS: 0
+      NODES: 0
+      PLUGINS: 0
+      CONFIGS: 0
+      TASKS: 0
+      SYSTEM: 0
+      DISTRIBUTION: 0
+      AUTH: 0
+      SESSION: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
   mcp-code-sandbox-images:
     image: docker:27-cli
     profiles: ["sandbox", "gateway", "tailscale", "all"]
@@ -158,6 +196,10 @@ services:
     ports:
       - "127.0.0.1:8766:8766"
     environment:
+      # Talk to the Docker daemon through docker-socket-proxy instead of
+      # mounting /var/run/docker.sock directly — see the proxy service
+      # comment above. docker.from_env() in the Python SDK picks this up
+      # automatically.
       DOCKER_HOST: tcp://docker-socket-proxy:2375
       SANDBOX_API_KEY: ${SANDBOX_API_KEY}
       SANDBOX_TRANSPORT: streamable-http
@@ -178,6 +220,8 @@ services:
       SANDBOX_CPU_QUOTA: ${SANDBOX_CPU_QUOTA:-50000}
       SANDBOX_PIDS_LIMIT: ${SANDBOX_PIDS_LIMIT:-128}
     depends_on:
+      docker-socket-proxy:
+        condition: service_started
       mcp-code-sandbox-images:
         condition: service_completed_successfully
     healthcheck:
