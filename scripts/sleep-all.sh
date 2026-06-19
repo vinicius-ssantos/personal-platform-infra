@@ -7,3 +7,4 @@ kubectl scale deploy/mcp-social -n mcp --replicas=0 || true
 kubectl scale deploy/github-unified-mcp-bff -n bff --replicas=0 || true
 kubectl scale deploy/vos-studio-mcp -n vos --replicas=0 || true
 kubectl scale deploy/vos-studio-bff -n bff --replicas=0 || true
+kubectl scale deploy/workflow-engine -n mcp --replicas=0 || true

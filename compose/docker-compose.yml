@@ -196,6 +196,11 @@ services:
     ports:
       - "127.0.0.1:8766:8766"
     environment:
+      # Talk to the Docker daemon through docker-socket-proxy instead of
+      # mounting /var/run/docker.sock directly — see the proxy service
+      # comment above. docker.from_env() in the Python SDK picks this up
+      # automatically.
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
       SANDBOX_API_KEY: ${SANDBOX_API_KEY}
       SANDBOX_TRANSPORT: streamable-http
       SANDBOX_HOST: 0.0.0.0
@@ -214,11 +219,6 @@ services:
       SANDBOX_CPU_PERIOD: ${SANDBOX_CPU_PERIOD:-100000}
       SANDBOX_CPU_QUOTA: ${SANDBOX_CPU_QUOTA:-50000}
       SANDBOX_PIDS_LIMIT: ${SANDBOX_PIDS_LIMIT:-128}
-      # Talk to the Docker daemon through docker-socket-proxy instead of
-      # mounting /var/run/docker.sock directly — see the proxy service
-      # comment above. docker.from_env() in the Python SDK picks this up
-      # automatically.
-      DOCKER_HOST: tcp://docker-socket-proxy:2375
     depends_on:
       docker-socket-proxy:
         condition: service_started
@@ -234,7 +234,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    profiles: ["gateway", "tailscale", "all"]
+    profiles: ["gateway", "workflow-engine", "tailscale", "all"]
     command: redis-server --save "" --appendonly no
     ports:
       - "127.0.0.1:6379:6379"
@@ -244,6 +244,55 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+    restart: unless-stopped
+
+  postgres-workflow-engine:
+    image: postgres:17-alpine
+    profiles: ["workflow-engine", "all"]
+    environment:
+      POSTGRES_DB: workflow_engine
+      POSTGRES_USER: workflow
+      POSTGRES_PASSWORD: workflow
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workflow -d workflow_engine"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - postgres-workflow-engine-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  workflow-engine:
+    image: ${WORKFLOW_ENGINE_IMAGE:-ghcr.io/vinicius-ssantos/workflow-engine:main}
+    profiles: ["workflow-engine"]
+    # NOTE: não está no profile "all" porque a imagem ainda não existe no GHCR
+    # (WorkflowEngine CI só faz build + artifact upload). Remova este comentário
+    # e adicione "all" ao array quando a imagem for publicada.
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: jpa
+      DATABASE_URL: jdbc:postgresql://postgres-workflow-engine:5432/workflow_engine
+      DATABASE_USERNAME: workflow
+      DATABASE_PASSWORD: workflow
+      REDIS_URL: redis://redis:6379
+      KAFKA_BOOTSTRAP_SERVERS: ${WORKFLOW_ENGINE_KAFKA_BOOTSTRAP_SERVERS:-}
+    depends_on:
+      postgres-workflow-engine:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Alpine BusyBox wget: --spider não suportado. Usar wget -q -O /dev/null.
+      test: ["CMD-SHELL", "wget -q http://localhost:8080/actuator/health -O /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
     restart: unless-stopped
 
   repo-research-sidecar:
@@ -270,7 +319,7 @@ services:
     restart: unless-stopped
 
   job-hunter-scheduler:
-    image: ghcr.io/vinicius-ssantos/jobhunteragent:main
+    image: ${JOB_HUNTER_IMAGE:-ghcr.io/vinicius-ssantos/jobhunteragent:main}
     profiles: ["job-hunter"]
     environment:
       JOB_HUNTER_TELEGRAM_TOKEN: ${JOB_HUNTER_TELEGRAM_TOKEN}
@@ -281,13 +330,13 @@ services:
       JOB_HUNTER_LINKEDIN_STORAGE_STATE_PATH: /app/.browseruse/linkedin-storage-state.json
       JOB_HUNTER_FAILURE_ARTIFACTS_DIR: /app/.artifacts/linkedin_failures
       JOB_HUNTER_OLLAMA_URL: ${JOB_HUNTER_OLLAMA_URL:-http://host.docker.internal:11434}
-      JOB_HUNTER_CANDIDATE_PROFILE_PATH: /app/config/candidate_profile.json
+      JOB_HUNTER_CANDIDATE_PROFILE_PATH: ${JOB_HUNTER_CANDIDATE_PROFILE_PATH:-/app/config/candidate_profile.json}
       JOB_HUNTER_SKILL_TAXONOMY_PATH: /app/config/skill_taxonomy.json
       JOB_HUNTER_LINKEDIN_COMPANY_POLICY_PATH: /app/config/linkedin_company_policy.json
       JOB_HUNTER_OPERATIONAL_POLICY_PATH: /app/config/operational_policy.json
       JOB_HUNTER_STRUCTURED_MATCHING_CONFIG_PATH: /app/config/job_target.json
-      JOB_HUNTER_COLLECTION_TIME: 08:00
-      JOB_HUNTER_BROWSER_HEADLESS: "true"
+      JOB_HUNTER_COLLECTION_TIME: ${JOB_HUNTER_COLLECTION_TIME:-08:00}
+      JOB_HUNTER_BROWSER_HEADLESS: ${JOB_HUNTER_BROWSER_HEADLESS:-true}
     volumes:
       - job-hunter-data:/app/data
       - job-hunter-browseruse:/app/.browseruse
@@ -357,13 +406,13 @@ services:
       GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES: "true"
       GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: "true"
       GATEWAY_OWNER_DRY_RUN: "false"
-      GATEWAY_REDIS_URL: redis://redis:6379/0
+      GATEWAY_REDIS_URL: ${GATEWAY_REDIS_URL:-redis://redis:6379/0}
       # DEV ONLY — allows the gateway to call upstream services at private/loopback
       # URLs (the Docker Compose service DNS names). Must NOT be set to "true" in
       # production (k8s): upstream URLs there use cluster-internal DNS which the
       # gateway resolves to ClusterIPs, and enabling this setting would allow SSRF
       # to any internal k8s endpoint. The k8s ConfigMap intentionally omits this key.
-      GATEWAY_CONFIRM_CHANNEL: telegram
+      GATEWAY_CONFIRM_CHANNEL: ${GATEWAY_CONFIRM_CHANNEL:-telegram}
       GATEWAY_CONFIRM_TELEGRAM_TOKEN: ${GATEWAY_CONFIRM_TELEGRAM_TOKEN}
       GATEWAY_CONFIRM_TELEGRAM_CHAT_ID: ${GATEWAY_CONFIRM_TELEGRAM_CHAT_ID}
       GATEWAY_ALLOW_PRIVATE_UPSTREAM_URLS: "true"
@@ -442,3 +491,4 @@ volumes:
   job-hunter-browseruse:
   job-hunter-artifacts:
   ollama-models:
+  postgres-workflow-engine-data:
