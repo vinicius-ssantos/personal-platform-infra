@@ -26,6 +26,13 @@ patches:
 # imagePullPolicy: IfNotPresent, which would have kept serving a stale image
 # indefinitely once the node had any :main image cached. Pinning it here closes
 # that gap and brings it in line with the other five services' policy.
+#
+# workflow-engine: the upstream repo now publishes ghcr.io/vinicius-ssantos/
+# workflow-engine:main (closing one #118 blocker), but the published image has
+# a known bug — Redis env var binding, fixed in WorkflowEngine PR #91 — that
+# fails its healthcheck. Pin a digest here once #91 merges and republishes
+# :main; pinning the current broken digest would lock the VPS overlay to a
+# known-bad image. Deployment stays at replicas=0 (ADR 0001) in the meantime.
 images:
   - name: ghcr.io/vinicius-ssantos/github-unified-mcp
     digest: sha256:3e9b2c22a7cd531abda4c2e838f72f482ea28fcd37db62b9716e47e5461e9d8d
@@ -43,10 +50,6 @@ images:
     digest: sha256:d0b99d9ac726e20ac7eb2e0eba52012cea62f6d4461ca2e084e96e4fb33de15d
   - name: ghcr.io/vinicius-ssantos/repo-research-mcp
     digest: sha256:7e8b805c269e8cea82fae165d4398e4da3cf3c73d1e2ca5cbf6b7b173713ccda
-  # workflow-engine: imagem ainda não publicada no GHCR (CI do repositório upstream
-  # só faz build + artifact upload, sem Docker image). Pular digest pinning por
-  # enquanto — o deployment fica em replicas=0 (ADR 0001) até a imagem existir.
-  # Adicionar entry aqui quando o WorkflowEngine publicar a primeira imagem.
 
 # VPS overlay keeps workloads at replicas=0 (ADR 0001).
 # Wake scripts or kubectl scale bring services up on demand.

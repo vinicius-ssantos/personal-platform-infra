@@ -162,7 +162,7 @@ O sandbox não roda em container dentro desta infra porque precisa falar com o D
 | Atributo | Valor |
 |---|---|
 | Repositório | `vinicius-ssantos/WorkflowEngine` |
-| Imagem | ❌ **Ainda não publica imagem GHCR** — precisa de Dockerfile + workflow de build |
+| Imagem | `ghcr.io/vinicius-ssantos/workflow-engine:main`, publicada via CI (`publish-image` job). O `:main` atual ainda não inclui o fix de binding de `REDIS_URL`/`KAFKA_BOOTSTRAP_SERVERS` (upstream PR #91) — falha o healthcheck até o merge. |
 | Porta | 8080 |
 | Health path | `/actuator/health` |
 | Readiness path | `/actuator/health` |
@@ -174,7 +174,7 @@ O sandbox não roda em container dentro desta infra porque precisa falar com o D
 | API Base path | `/api` (REST) |
 | Headers comuns | `Authorization: Bearer <jwt>`, `X-Tenant-Id`, `X-Correlation-Id`, `Idempotency-Key` |
 | Modo seguro | Multi-tenant desde o início; JWT com roles (OWNER, ADMIN, DEVELOPER, VIEWER); audit logging |
-| Namespace k8s | `mcp` (candidato) |
+| Namespace k8s | `mcp` |
 
 ## Regra operacional
 

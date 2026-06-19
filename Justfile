@@ -155,6 +155,9 @@ smoke-vos:
 smoke-gateway:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-central-mcp-gateway.ps1
 
+smoke-workflow-engine:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/smoke-workflow-engine.ps1
+
 smoke-all:
 	just smoke-github
 	just smoke-deploy
@@ -180,6 +183,9 @@ smoke-vos-sh:
 
 smoke-gateway-sh:
 	bash scripts/smoke-central-mcp-gateway.sh
+
+smoke-workflow-engine-sh:
+	bash scripts/smoke-workflow-engine.sh
 
 smoke-all-sh:
 	just smoke-github-sh
