@@ -162,7 +162,7 @@ O sandbox não roda em container dentro desta infra porque precisa falar com o D
 | Atributo | Valor |
 |---|---|
 | Repositório | `vinicius-ssantos/WorkflowEngine` |
-| Imagem | `ghcr.io/vinicius-ssantos/workflow-engine:main`, publicada via CI (`publish-image` job). O `:main` atual ainda não inclui o fix de binding de `REDIS_URL`/`KAFKA_BOOTSTRAP_SERVERS` (upstream PR #91) — falha o healthcheck até o merge. |
+| Imagem | `ghcr.io/vinicius-ssantos/workflow-engine:main`, publicada via CI (`publish-image` job). Verificada saudável (`/actuator/health` -> `UP`) após o fix de binding de `REDIS_URL`/`KAFKA_BOOTSTRAP_SERVERS` (upstream PR #91, mergeado). |
 | Porta | 8080 |
 | Health path | `/actuator/health` |
 | Readiness path | `/actuator/health` |
