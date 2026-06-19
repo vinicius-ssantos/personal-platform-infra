@@ -8,4 +8,5 @@ data:
   FASTMCP_PORT: "8765"
   MCP_AUTH_ENABLED: "true"
   MCP_AUTH_MODE: bearer
-  GITHUB_READ_ONLY: "true"
+  GITHUB_READ_ONLY: "false"
+  GITHUB_ENABLE_DANGEROUS_TOOLS: "true"
