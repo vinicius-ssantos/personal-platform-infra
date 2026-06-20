@@ -272,7 +272,7 @@ echo "Timeout de execucao: ${SOLVE_TIMEOUT}s"
 echo ""
 
 set +e
-run_opencode "$SOLVE_TIMEOUT" "$SELECTED_MODEL" "$PROMPT"
+run_opencode_agent "$SOLVE_TIMEOUT" "$SELECTED_MODEL" "$PROMPT"
 rc=$?
 set -e
 
