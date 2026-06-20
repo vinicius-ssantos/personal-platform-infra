@@ -15,7 +15,8 @@ just ai-solve-issue 211
 Equivalent OpenCode invocation:
 
 ```bash
-opencode run --command solve-issue "211"
+opencode run --model opencode/deepseek-v4-flash --agent orquestrador \
+  "Siga docs/ai-solve-issue-workflow.md para trabalhar a issue #211 ate abrir PR."
 ```
 
 ## Flow
