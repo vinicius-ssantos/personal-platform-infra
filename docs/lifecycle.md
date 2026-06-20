@@ -36,6 +36,10 @@ just sleep-all
 # Restart sem troca de imagem (ortogonal à ownership de réplicas)
 just rollout-restart all
 
+# O patch de graceful shutdown tambem cobre monitoring, mas rollout-restart all
+# atinge apenas os apps principais (mcp, bff, vos). Para monitoring:
+# kubectl rollout restart deploy -n monitoring --all
+
 # Derrubar cluster
 just k8s-local-down
 ```
