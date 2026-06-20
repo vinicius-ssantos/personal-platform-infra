@@ -21,6 +21,9 @@ patches:
   - path: update-strategy-patch.yaml
     target:
       kind: Deployment
+  - path: graceful-shutdown-patch.yaml
+    target:
+      kind: Deployment
   - path: securitycontext-patch.yaml
     target:
       kind: Deployment

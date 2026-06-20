@@ -49,6 +49,22 @@ just k8s-local-up
 just sleep-all
 ```
 
+## Rollout-restart workloads
+
+Rolling restart de pods sem troca de imagem. Útil para aplicar patches de manifest,
+recuperar pods travados ou rotacionar secrets montados.
+
+Não é o caminho para deploy de código novo — esse é coberto pelo bump de digest
+via Renovate (ver `docs/image-pinning.md`).
+
+```bash
+# Restart todos os serviços
+just rollout-restart
+
+# Restart serviço específico
+just rollout-restart github-unified-mcp
+```
+
 ## Wake GitHub MCP stack
 
 ```bash
