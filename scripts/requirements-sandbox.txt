@@ -1,0 +1,4 @@
+# Dependencies for scripts/repo_sandbox_run.py (issue #221 local prototype).
+# Install: pip install -r scripts/requirements-sandbox.txt
+pyyaml>=6.0
+pytest>=8.0

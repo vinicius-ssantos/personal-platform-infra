@@ -5,6 +5,9 @@
 
 .sandbox/env.safe
 
+__pycache__/
+.pytest_cache/
+
 *.tfstate
 *.tfstate.*
 .terraform/

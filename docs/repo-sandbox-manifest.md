@@ -7,14 +7,51 @@ This repo's `.sandbox/manifest.yaml` is the first implementation of the
 
 ## Current scope
 
-Only the **declarative manifest and the underlying check scripts** exist
-today. There is no sandbox isolation yet — `scripts/sandbox-preflight.sh`
-and `scripts/sandbox-test.sh` run directly on whatever machine invokes them,
-the same as any other script in `scripts/`. Implementing the actual isolated
-execution (`repo_sandbox.run` calling `mcp-code-sandbox`'s `run_workspace`)
-is tracked separately in #221 — see ADR 0020's "Phased rollout plan". The
+The declarative manifest, the underlying check scripts, and a local
+prototype orchestrator (`scripts/repo_sandbox_run.py`, #221) exist today.
+There is **no container isolation yet** — neither the plain scripts nor the
+orchestrator call `mcp-code-sandbox`. `run_workspace`, the tool ADR 0020
+proposes adding to `mcp-code-sandbox` to provide that isolation, does not
+exist yet; wiring it in is explicit follow-up work, not assumed here. The
 manifest's shape does not change when that lands; it just gains a real
 isolated executor behind the same `commands` it already declares.
+
+## Orchestrator prototype: `repo_sandbox_run.py`
+
+```bash
+pip install -r scripts/requirements-sandbox.txt
+python scripts/repo_sandbox_run.py --repository . --command-group preflight
+python scripts/repo_sandbox_run.py --repository . --command-group test
+```
+
+This is the `repo_sandbox.run` MVP from #221: it checks out a repo at a ref
+(or accepts a local path directly, as above), reads `.sandbox/manifest.yaml`,
+validates the requested profile/command group, runs the declared command
+with a timeout (subprocess, not yet container-isolated), and returns a
+structured JSON result:
+
+```json
+{
+  "ok": true,
+  "exit_code": 0,
+  "logs_uri": "file:///tmp/repo-sandbox-log-xxxx.log",
+  "artifacts": [],
+  "changed_files": [],
+  "duration_seconds": 3.7,
+  "error": null
+}
+```
+
+It refuses any profile other than `safe-test` and any command group not
+declared in the manifest, rejects manifest `env` values that look
+credential-shaped (`docs/repo-sandbox-security.md` "Secrets policy"),
+enforces `timeout_seconds`, and always destroys its temporary workspace —
+pass, fail, or timeout. It never pushes, merges, publishes, deploys, or
+creates a PR; there is no code path in the script that could.
+
+Tests: `pytest scripts/test_repo_sandbox_run.py -v` — covers a fixture
+repository plus two tests that run for real against this repo's own
+`preflight`/`test` command groups.
 
 ## Profiles
 
