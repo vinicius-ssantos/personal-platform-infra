@@ -135,6 +135,12 @@ Contrato de execucao:
 - Nao altere GitHub Actions, deploy, VPS, secrets ou arquivos sensiveis.
 - Se houver blocker externo, registre no plano/resposta e deixe o diff seguro.
 - Ao final, informe resumo, validacoes e limitacoes.
+- Se ao investigar a issue voce concluir que os criterios de aceite ja estao
+  satisfeitos e nenhuma mudanca de codigo e necessaria, NAO crie um diff
+  artificial so para ter algo a commitar. Em vez disso, termine sua resposta
+  com estas duas linhas, nesta ordem exata, cada uma sozinha em sua linha:
+  SOLVE_ISSUE_RESULT=NOOP
+  <uma frase curta explicando por que a issue ja esta resolvida>
 EOF
 )
 
@@ -301,8 +307,21 @@ if [ "$rc" -ne 0 ]; then
   exit "$rc"
 fi
 
+NOOP_MARKER="SOLVE_ISSUE_RESULT=NOOP"
+
 if [[ -z "$(git status --porcelain --untracked-files=no)" ]]; then
+  if grep -q "^${NOOP_MARKER}$" "$OUTFILE" 2>/dev/null; then
+    NOOP_REASON="$(grep -A1 "^${NOOP_MARKER}$" "$OUTFILE" | tail -n1)"
+    echo ""
+    echo "NOOP: a issue #$ISSUE ja parece estar resolvida — nenhuma mudanca foi necessaria."
+    if [[ -n "$NOOP_REASON" && "$NOOP_REASON" != "$NOOP_MARKER" ]]; then
+      echo "Motivo informado pelo agente: $NOOP_REASON"
+    fi
+    echo "Nenhum commit, push ou PR sera criado."
+    exit 0
+  fi
   echo "opencode concluiu, mas nao deixou alteracoes no working tree." >&2
+  echo "Nenhuma evidencia de NOOP ($NOOP_MARKER) foi encontrada no log." >&2
   exit 1
 fi
 
