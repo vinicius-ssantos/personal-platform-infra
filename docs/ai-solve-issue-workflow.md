@@ -165,6 +165,70 @@ Out of scope for this integration, same as #221's MVP: the sandbox never
 pushes, merges, or creates a PR itself, and only the `safe-test` profile may
 be requested.
 
-## Future GitHub trigger
+## GitHub-triggered solve-issue
 
-After the local command is validated, a later PR may add a GitHub Actions trigger for comments such as `/opencode fix this` or a project-specific label.
+Issue #226's MVP: a manual, auditable `workflow_dispatch` trigger
+(`.github/workflows/ai-solve-issue-trigger.yml`) that runs the exact same
+wrapper (`scripts/ai-solve-issue.sh`) from a GitHub Actions run instead of a
+local shell, for when you want to kick off a run without being at your own
+machine.
+
+### Running it
+
+```bash
+gh workflow run ai-solve-issue-trigger.yml -f issue_number=222
+```
+
+Or from the GitHub UI: Actions → "AI solve-issue (controlled trigger)" → Run
+workflow → enter the issue number.
+
+### Guardrails
+
+- **Actor restriction**: the job only runs when `github.actor` is the
+  repository owner (`if: github.actor == github.repository_owner`). Anyone
+  else triggering it gets a skipped job, not a partial run. This is on top
+  of GitHub's own platform restriction that only accounts with write access
+  can trigger `workflow_dispatch` at all.
+- **Sandbox validation is on by default for CI runs**: the job sets
+  `AI_SOLVE_SANDBOX=1` (see [Sandbox validation](#sandbox-validation)) — a
+  CI runner is exactly the disposable, controlled environment that
+  validation step is for.
+- **Never merges**: the job only ever calls the same wrapper script, which
+  has no merge code path. It pushes a branch and opens a PR at most; a
+  human still merges.
+- **Result comment**: the job always (success, NOOP, high-risk-gate stop,
+  sandbox failure, or any other error) posts a comment on the issue linking
+  the run and, when one was created, the PR — so the trigger is auditable
+  from GitHub alone without checking Actions logs first.
+- **Secrets**: only `GITHUB_TOKEN` (for `gh`/git push/PR) and
+  `OPENROUTER_API_KEY` (one of the model fallbacks `ai-solve-issue.sh`
+  tries) are passed into the job environment. If `OPENROUTER_API_KEY` isn't
+  configured as a repo secret, model preflight still tries the other
+  configured models in `AI_SOLVE_MODEL`/the built-in fallback list first;
+  if none are reachable, the run fails with a clear "no model available"
+  message in the log and a generic failure comment on the issue — it does
+  not fail silently or expose anything.
+
+### Deferred (not in this MVP)
+
+- The `/ai solve` issue-comment trigger described in issue #226 is
+  documented here as the intended next step but **not implemented yet**.
+  Per the issue's own recommended phasing ("start with `workflow_dispatch`,
+  then support `/ai solve` comments"), it needs its own actor-permission
+  check repeated for comment authorship, must not run on PR comments from
+  forks, and must not treat the comment body as a trusted instruction
+  (issue/comment content is already treated as untrusted input by the
+  agent prompt — see [Guardrails](#guardrails) above — but the trigger
+  mechanism itself would need the same fork-safety review before being
+  wired to a `comment` event).
+- Auto-picking issues, running on every new issue, and any merge automation
+  remain explicitly out of scope (same as the local flow).
+
+### Local vs GitHub-triggered
+
+Use the local `just ai-solve-issue <issue>` command (see
+[Local command](#local-command)) for iterative work where you want to watch
+the run, adjust `AI_SOLVE_*` env vars on the fly, or debug a failure
+directly. Use the GitHub-triggered workflow when you want to kick off a run
+from a phone/browser or from a GitHub UI action without a local shell —
+behavior is otherwise identical, since both call the same wrapper script.
