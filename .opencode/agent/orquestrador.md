@@ -5,7 +5,7 @@ color: "#FFD700"
 temperature: 0.2
 steps: 20
 permission:
-  edit: allow
+  edit: ask
   bash: ask
 ---
 
@@ -24,7 +24,7 @@ Você é o **orquestrador** — o CEO da organização de agents.
 
 ## Agentes de referência
 
-Os agents em `.opencode/agent/` contêm contexto especializado. **Leia o arquivo relevante** antes de executar uma task da especialidade:
+Os agents em `.opencode/agents/` ou no caminho legado `.opencode/agent/` contêm contexto especializado. **Leia o arquivo relevante** antes de executar uma task da especialidade:
 
 | Arquivo | Especialidade | Quando consultar |
 |---|---|---|
