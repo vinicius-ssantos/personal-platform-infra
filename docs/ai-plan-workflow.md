@@ -171,3 +171,39 @@ confirmation:
 - `release`
 - `deploy`
 - direct writes to `main` or `master`
+
+## Validated examples
+
+The workflow has been validated on real repository changes after PR #205 added the initial commands and contract.
+
+### PR #206 — infra feature with bounded implementation tasks
+
+Issue #203 was implemented through `plans/issue-203-graceful-shutdown.plan.md`.
+
+The plan split the change into 8 atomic tasks covering Kubernetes manifests, rollout-restart tooling, Justfile integration, documentation, and review. The executor used `opencode/deepseek-v4-flash-free` and completed the planned tasks without needing to re-plan in the middle of the implementation.
+
+This is the ideal shape for plan-first work:
+
+- multiple files and domains;
+- infra or operations impact;
+- explicit validation commands;
+- reviewable task boundaries;
+- clear rollback and safety constraints.
+
+### PR #209 — documentation follow-up with small task set
+
+Issue #207 was implemented through `plans/issue-207-graceful-shutdown-scope-docs.plan.md`.
+
+The plan split the documentation follow-up into 4 atomic tasks and clarified the runtime scope difference between the global graceful shutdown patch and `just rollout-restart all`. The executor again completed the plan without re-planning.
+
+This shows that plan-first can also work for documentation changes when the docs span multiple files or encode an operational decision. For a one-line typo or a single obvious edit, a direct command is still preferred.
+
+## Decision guide
+
+Use plan-first for multi-file work, operational changes, ordered validation, or tasks with external blockers. Prefer a direct command for small and obvious single-file edits.
+
+## External validation blockers
+
+Plans must call out checks that cannot be completed in the current environment. For example, issue #208 requires runtime observation before deciding whether a fallback is needed.
+
+When validation is blocked, state the blocker, the impact, the safe local checks, and the follow-up needed once the environment is available.
