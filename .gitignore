@@ -3,6 +3,8 @@
 !.env.example
 !.env.quick-tunnel.example
 
+.sandbox/env.safe
+
 *.tfstate
 *.tfstate.*
 .terraform/
