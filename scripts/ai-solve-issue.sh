@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -euo pipefail
 
 ISSUE="${1:-}"
 if [[ -z "$ISSUE" ]]; then
@@ -7,9 +7,27 @@ if [[ -z "$ISSUE" ]]; then
   exit 2
 fi
 
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "required command not found: $1" >&2
+    exit 127
+  fi
+}
+
+require_cmd git
+require_cmd gh
+require_cmd opencode
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
 OUTFILE="$(mktemp -t opencode_run.XXXXXX)"
+ISSUE_FILE="$(mktemp -t issue_${ISSUE}.XXXXXX.md)"
+PR_BODY_FILE="$(mktemp -t pr_body_${ISSUE}.XXXXXX.md)"
+
 cleanup() {
   local rc=$?
+  rm -f "$ISSUE_FILE" "$PR_BODY_FILE"
   if [ "$rc" -eq 0 ]; then
     rm -f "$OUTFILE"
   else
@@ -18,6 +36,31 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+slugify() {
+  echo "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' \
+    | cut -c1-60
+}
+
+BASE_BRANCH="${AI_SOLVE_BASE_BRANCH:-main}"
+AGENT="${AI_SOLVE_AGENT:-solve-issue}"
+PREFLIGHT_TIMEOUT="${AI_SOLVE_PREFLIGHT_TIMEOUT:-60}"
+SOLVE_TIMEOUT="${AI_SOLVE_TIMEOUT:-1800}"
+RUN_FORMAT="${OPENCODE_RUN_FORMAT:-default}"
+
+ISSUE_TITLE="$(gh issue view "$ISSUE" --json title --jq '.title')"
+ISSUE_BODY="$(gh issue view "$ISSUE" --json body --jq '.body // ""')"
+ISSUE_LABELS="$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(", ")')"
+ISSUE_URL="$(gh issue view "$ISSUE" --json url --jq '.url')"
+
+SLUG="$(slugify "$ISSUE_TITLE")"
+if [[ -z "$SLUG" ]]; then
+  SLUG="solve"
+fi
+
+TARGET_BRANCH="${AI_SOLVE_BRANCH:-ai/issue-${ISSUE}-${SLUG}}"
 
 if [[ -n "${AI_SOLVE_MODEL:-}" ]]; then
   MODELS=("$AI_SOLVE_MODEL")
@@ -29,10 +72,58 @@ else
   )
 fi
 
-PREFLIGHT_TIMEOUT="${AI_SOLVE_PREFLIGHT_TIMEOUT:-60}"
-SOLVE_TIMEOUT="${AI_SOLVE_TIMEOUT:-1800}"
-RUN_FORMAT="${OPENCODE_RUN_FORMAT:-default}"
-PROMPT="Siga docs/ai-solve-issue-workflow.md para trabalhar a issue #${ISSUE} ate abrir PR."
+cat > "$ISSUE_FILE" <<EOF
+# Issue #$ISSUE — $ISSUE_TITLE
+
+URL: $ISSUE_URL
+Labels: ${ISSUE_LABELS:-none}
+
+## Body
+
+$ISSUE_BODY
+EOF
+
+CURRENT_BRANCH="$(git branch --show-current)"
+if [[ "$CURRENT_BRANCH" != "$TARGET_BRANCH" ]]; then
+  if [[ -n "$(git status --porcelain)" ]]; then
+    echo "working tree has pending changes; commit/stash them before running solve-issue" >&2
+    exit 1
+  fi
+
+  if git show-ref --verify --quiet "refs/heads/$TARGET_BRANCH"; then
+    git checkout "$TARGET_BRANCH"
+  else
+    git fetch origin "$BASE_BRANCH" --quiet || true
+    if git show-ref --verify --quiet "refs/remotes/origin/$BASE_BRANCH"; then
+      git checkout -b "$TARGET_BRANCH" "origin/$BASE_BRANCH"
+    else
+      git checkout -b "$TARGET_BRANCH" "$BASE_BRANCH"
+    fi
+  fi
+fi
+
+PROMPT=$(cat <<EOF
+Voce esta no repositorio personal-platform-infra.
+
+Trabalhe a issue #$ISSUE ate deixar o diff pronto para PR.
+
+Contexto da issue ja foi coletado pelo wrapper:
+
+$(cat "$ISSUE_FILE")
+
+Contrato de execucao:
+- Use docs/ai-solve-issue-workflow.md como guia.
+- Crie ou atualize um plano em plans/ quando fizer sentido.
+- Edite os arquivos necessarios dentro do escopo da issue.
+- Rode apenas validacoes locais permitidas pelo agente.
+- Nao rode git add, git commit, git push ou gh pr create.
+- Nao faca merge.
+- Nao altere GitHub Actions, deploy, VPS, secrets ou arquivos sensiveis.
+- Se houver blocker externo, registre no plano/resposta e deixe o diff seguro.
+- Ao final, informe resumo, validacoes e limitacoes.
+EOF
+)
+
 PREFLIGHT_PROMPT="responda apenas: ok"
 
 run_opencode() {
@@ -40,10 +131,10 @@ run_opencode() {
   local model="$2"
   local prompt="$3"
 
-  if command -v timeout &>/dev/null; then
+  if command -v timeout >/dev/null 2>&1; then
     timeout "$timeout_seconds" opencode run \
       --model "$model" \
-      --agent orquestrador \
+      --agent "$AGENT" \
       --format "$RUN_FORMAT" \
       "$prompt" 2>&1 | tee "$OUTFILE"
     return "${PIPESTATUS[0]}"
@@ -51,20 +142,19 @@ run_opencode() {
 
   opencode run \
     --model "$model" \
-    --agent orquestrador \
+    --agent "$AGENT" \
     --format "$RUN_FORMAT" \
     "$prompt" 2>&1 | tee "$OUTFILE"
   return "${PIPESTATUS[0]}"
 }
 
 SELECTED_MODEL=""
-
 for model in "${MODELS[@]}"; do
   [[ -z "$model" ]] && continue
   : > "$OUTFILE"
 
   echo ""
-  echo "==== Preflight modelo: $model ===="
+  echo "==== Preflight modelo: $model | agente: $AGENT ===="
   echo ""
 
   set +e
@@ -101,7 +191,8 @@ fi
 
 : > "$OUTFILE"
 echo ""
-echo "==== Executando issue #$ISSUE com modelo: $SELECTED_MODEL ===="
+echo "==== Preparando diff da issue #$ISSUE com modelo: $SELECTED_MODEL ===="
+echo "Branch: $TARGET_BRANCH"
 echo "Timeout de execucao: ${SOLVE_TIMEOUT}s"
 echo ""
 
@@ -109,12 +200,6 @@ set +e
 run_opencode "$SOLVE_TIMEOUT" "$SELECTED_MODEL" "$PROMPT"
 rc=$?
 set -e
-
-if [ "$rc" -eq 0 ]; then
-  echo ""
-  echo "OK - Concluido com modelo: $SELECTED_MODEL"
-  exit 0
-fi
 
 if grep -q "ProviderModelNotFoundError" "$OUTFILE" 2>/dev/null; then
   echo "" >&2
@@ -126,10 +211,7 @@ fi
 if [ "$rc" -eq 124 ]; then
   echo "" >&2
   echo "TIMEOUT (${SOLVE_TIMEOUT}s) — execucao da issue nao terminou dentro do prazo." >&2
-  echo "" >&2
-  echo "Isso nao significa que outro modelo resolveria com seguranca." >&2
   echo "Nao houve fallback automatico apos o inicio da execucao para evitar diff parcial inconsistente." >&2
-  echo "" >&2
   echo "Proximos passos:" >&2
   echo "  1. Ver log: cat '$OUTFILE'" >&2
   echo "  2. Aumentar timeout: AI_SOLVE_TIMEOUT=3600 just ai-solve-issue $ISSUE" >&2
@@ -137,7 +219,70 @@ if [ "$rc" -eq 124 ]; then
   exit 124
 fi
 
-echo "" >&2
-echo "ERRO (codigo $rc) durante execucao com modelo $SELECTED_MODEL." >&2
-echo "Veja o log: cat '$OUTFILE'" >&2
-exit "$rc"
+if [ "$rc" -ne 0 ]; then
+  echo "" >&2
+  echo "ERRO (codigo $rc) durante execucao com modelo $SELECTED_MODEL." >&2
+  echo "Veja o log: cat '$OUTFILE'" >&2
+  exit "$rc"
+fi
+
+if [[ -z "$(git status --porcelain)" ]]; then
+  echo "opencode concluiu, mas nao deixou alteracoes no working tree." >&2
+  exit 1
+fi
+
+git diff --check
+
+BLOCKED=0
+while IFS= read -r line; do
+  file="${line:3}"
+  file="${file##* -> }"
+  case "$file" in
+    .env|.env.*|*/.env|*/.env.*|*terraform.tfvars|*kubeconfig*|secrets/*|*/secrets/*)
+      echo "arquivo proibido no diff: $file" >&2
+      BLOCKED=1
+      ;;
+  esac
+done < <(git status --porcelain)
+
+if [ "$BLOCKED" -ne 0 ]; then
+  echo "abortando antes de commit por arquivo proibido" >&2
+  exit 1
+fi
+
+COMMIT_TITLE="${AI_SOLVE_COMMIT_TITLE:-chore(ai): resolve issue #$ISSUE}"
+PR_TITLE="${AI_SOLVE_PR_TITLE:-Resolve issue #$ISSUE: $ISSUE_TITLE}"
+
+git add -A
+git commit -m "$COMMIT_TITLE"
+git push -u origin "$TARGET_BRANCH"
+
+cat > "$PR_BODY_FILE" <<EOF
+## Summary
+
+Automated local solve-issue run for #$ISSUE.
+
+Issue: $ISSUE_URL
+
+## Model
+
+- Agent: $AGENT
+- Model: $SELECTED_MODEL
+
+## Validation
+
+- git diff --check
+- Additional validations are reported by the agent output/log when available.
+
+Closes #$ISSUE
+EOF
+
+if gh pr view "$TARGET_BRANCH" --json url --jq '.url' >/dev/null 2>&1; then
+  PR_URL="$(gh pr view "$TARGET_BRANCH" --json url --jq '.url')"
+else
+  PR_URL="$(gh pr create --base "$BASE_BRANCH" --head "$TARGET_BRANCH" --title "$PR_TITLE" --body-file "$PR_BODY_FILE")"
+fi
+
+echo ""
+echo "PR aberta: $PR_URL"
+echo "Merge manual obrigatório."
