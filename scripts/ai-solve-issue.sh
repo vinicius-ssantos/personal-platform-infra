@@ -238,7 +238,7 @@ while IFS= read -r line; do
   file="${line:3}"
   file="${file##* -> }"
   case "$file" in
-    .env|.env.*|*/.env|*/.env.*|*terraform.tfvars|*kubeconfig*|secrets/*|*/secrets/*)
+    .env|.env.*|*/.env|*/.env.*|*terraform.tfvars|*kubeconfig*|secrets/*|*/secrets/*|.github/workflows/*)
       echo "arquivo proibido no diff: $file" >&2
       BLOCKED=1
       ;;
