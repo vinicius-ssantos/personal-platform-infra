@@ -7,4 +7,7 @@ if [[ -z "$ISSUE" ]]; then
   exit 2
 fi
 
-opencode run --command solve-issue "$ISSUE"
+opencode run \
+  --model opencode/deepseek-v4-flash \
+  --agent orquestrador \
+  "Siga docs/ai-solve-issue-workflow.md para trabalhar a issue #${ISSUE} ate abrir PR."
