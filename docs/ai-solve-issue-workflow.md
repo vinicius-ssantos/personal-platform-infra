@@ -103,6 +103,31 @@ category is recorded in the PR body for non-blocked runs.
 If the heuristic gets it wrong, override it directly instead of editing the
 script: `AI_SOLVE_RISK_OVERRIDE=docs-only just ai-solve-issue 218`.
 
+## PR body outcome
+
+Every PR the wrapper opens uses a standardized structured body instead of a
+minimal note, so a reviewer gets enough context without reading the full run
+log:
+
+- **Summary** — issue number, title, and link.
+- **Risk** — the risk category from [Risk classification](#risk-classification)
+  and a pointer to where external blockers (if any) would be noted.
+- **Agent** — which agent and model produced the diff.
+- **Files changed** — `git diff --stat` between the branch's merge-base with
+  `main` and the new commit.
+- **Validation** — what the wrapper itself checked (`git diff --check` today;
+  more entries land here as sandbox validation (#222) is wired in).
+- **Sandbox result** — explicitly states sandbox validation is not yet
+  enabled, until #218–#222 land.
+- **Limitations** — points the reviewer at the run log instead of guessing;
+  the wrapper does not parse or summarize the agent's freeform output.
+- **Manual review checklist** — a fixed checklist (acceptance criteria match,
+  no out-of-scope changes, risk category sanity check, CI green).
+
+A no-op run (see [NOOP outcome](#noop-outcome)) never reaches this step —
+no PR is created, and the no-op result is reported on its own via the
+wrapper's exit message instead.
+
 ## Future GitHub trigger
 
 After the local command is validated, a later PR may add a GitHub Actions trigger for comments such as `/opencode fix this` or a project-specific label.
