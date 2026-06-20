@@ -5,7 +5,7 @@ color: "#FFD700"
 temperature: 0.2
 steps: 20
 permission:
-  edit: ask
+  edit: allow
   bash: ask
 ---
 

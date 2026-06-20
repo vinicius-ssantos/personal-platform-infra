@@ -2,9 +2,7 @@
 set -euo pipefail
 
 # PATH fallback para GitHub CLI no WSL
-IS_WSL=false
 if uname -s | grep -qi "linux" && grep -qi microsoft /proc/version 2>/dev/null; then
-  IS_WSL=true
   export PATH="$PATH:/mnt/c/Program Files/GitHub CLI"
 fi
 
@@ -146,24 +144,6 @@ run_opencode() {
   local timeout_seconds="$1"
   local model="$2"
   local prompt="$3"
-
-  # Escapa aspas duplas para passar via PowerShell
-  local escaped_prompt
-  escaped_prompt="$(echo "$prompt" | sed 's/"/\\"/g')"
-
-  if $IS_WSL; then
-    # WSL: agent resolve falha via bash, funciona via PowerShell
-    if command -v timeout >/dev/null 2>&1; then
-      timeout "$timeout_seconds" powershell.exe -Command "
-        opencode run --model '$model' --agent '$AGENT' --format '$RUN_FORMAT' \"$escaped_prompt\"
-      " 2>&1 | tee "$OUTFILE"
-      return "${PIPESTATUS[0]}"
-    fi
-    powershell.exe -Command "
-      opencode run --model '$model' --agent '$AGENT' --format '$RUN_FORMAT' \"$escaped_prompt\"
-    " 2>&1 | tee "$OUTFILE"
-    return "${PIPESTATUS[0]}"
-  fi
 
   if command -v timeout >/dev/null 2>&1; then
     timeout "$timeout_seconds" opencode run \
