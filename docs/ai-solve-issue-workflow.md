@@ -49,6 +49,25 @@ The wrapper script is responsible for:
 - Stop when external runtime validation is unavailable.
 - Keep merge as a human action.
 
+## NOOP outcome
+
+A solved/no-op issue and a failed agent run are different outcomes and the
+wrapper reports them differently:
+
+- If the agent concludes the issue's acceptance criteria are already
+  satisfied, it ends its response with two lines, in this exact order, each
+  alone on its own line:
+  ```
+  SOLVE_ISSUE_RESULT=NOOP
+  <a short sentence explaining why the issue is already resolved>
+  ```
+- If `opencode run` exits 0, the working tree is clean, and this marker is
+  present in the run log, the wrapper prints a clear NOOP message and exits
+  `0`. No commit, push, or PR is created.
+- If the working tree is clean and the marker is **not** present, the wrapper
+  still fails conservatively (exit `1`) — a clean tree with no NOOP evidence
+  is treated as an incomplete run, not a success.
+
 ## Future GitHub trigger
 
 After the local command is validated, a later PR may add a GitHub Actions trigger for comments such as `/opencode fix this` or a project-specific label.
