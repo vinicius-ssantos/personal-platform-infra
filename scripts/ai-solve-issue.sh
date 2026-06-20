@@ -140,7 +140,27 @@ EOF
 
 PREFLIGHT_PROMPT="responda apenas: ok"
 
-run_opencode() {
+run_opencode_model() {
+  local timeout_seconds="$1"
+  local model="$2"
+  local prompt="$3"
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$timeout_seconds" opencode run \
+      --model "$model" \
+      --format "$RUN_FORMAT" \
+      "$prompt" 2>&1 | tee "$OUTFILE"
+    return "${PIPESTATUS[0]}"
+  fi
+
+  opencode run \
+    --model "$model" \
+    --format "$RUN_FORMAT" \
+    "$prompt" 2>&1 | tee "$OUTFILE"
+  return "${PIPESTATUS[0]}"
+}
+
+run_opencode_agent() {
   local timeout_seconds="$1"
   local model="$2"
   local prompt="$3"
@@ -162,17 +182,32 @@ run_opencode() {
   return "${PIPESTATUS[0]}"
 }
 
+assert_agent_available() {
+  : > "$OUTFILE"
+  echo ""
+  echo "==== Verificando agente: $AGENT ===="
+  echo ""
+
+  if ! opencode agent list 2>&1 | tee "$OUTFILE" | grep -q "\b${AGENT}\b"; then
+    echo "Agente '$AGENT' nao encontrado pelo OpenCode." >&2
+    echo "Esperado: .opencode/agents/${AGENT}.md" >&2
+    echo "Rode: opencode agent list" >&2
+    echo "Ou teste: opencode run --agent $AGENT --model <model> \"responda apenas: ok\"" >&2
+    exit 1
+  fi
+}
+
 SELECTED_MODEL=""
 for model in "${MODELS[@]}"; do
   [[ -z "$model" ]] && continue
   : > "$OUTFILE"
 
   echo ""
-  echo "==== Preflight modelo: $model | agente: $AGENT ===="
+  echo "==== Preflight modelo: $model ===="
   echo ""
 
   set +e
-  run_opencode "$PREFLIGHT_TIMEOUT" "$model" "$PREFLIGHT_PROMPT"
+  run_opencode_model "$PREFLIGHT_TIMEOUT" "$model" "$PREFLIGHT_PROMPT"
   rc=$?
   set -e
 
@@ -189,18 +224,44 @@ for model in "${MODELS[@]}"; do
   fi
 
   if [ "$rc" -eq 124 ]; then
-    echo "  -> Preflight excedeu ${PREFLIGHT_TIMEOUT}s, tentando proximo modelo..."
+    echo "  -> Preflight de modelo excedeu ${PREFLIGHT_TIMEOUT}s, tentando proximo modelo..."
     continue
   fi
 
-  echo "  -> Preflight falhou com codigo $rc, tentando proximo modelo..."
+  echo "  -> Preflight de modelo falhou com codigo $rc, tentando proximo modelo..."
 done
 
 if [[ -z "$SELECTED_MODEL" ]]; then
-  echo "Nenhum modelo disponivel passou no preflight." >&2
+  echo "Nenhum modelo disponivel passou no preflight de modelo." >&2
   echo "Rode: opencode models opencode --refresh" >&2
   echo "Ou defina AI_SOLVE_MODEL=provider/model com um modelo valido." >&2
   exit 1
+fi
+
+assert_agent_available
+
+: > "$OUTFILE"
+echo ""
+echo "==== Preflight agente: $AGENT | modelo: $SELECTED_MODEL ===="
+echo ""
+
+set +e
+run_opencode_agent "$PREFLIGHT_TIMEOUT" "$SELECTED_MODEL" "$PREFLIGHT_PROMPT"
+rc=$?
+set -e
+
+if [ "$rc" -eq 124 ]; then
+  echo "Preflight do agente '$AGENT' excedeu ${PREFLIGHT_TIMEOUT}s." >&2
+  echo "Isso isola o problema em agent/config/plugin, nao no modelo." >&2
+  echo "Debug sugerido:" >&2
+  echo "  opencode run --pure --print-logs --log-level DEBUG --agent $AGENT --model $SELECTED_MODEL \"responda apenas: ok\"" >&2
+  exit 124
+fi
+
+if [ "$rc" -ne 0 ]; then
+  echo "Preflight do agente '$AGENT' falhou com codigo $rc." >&2
+  echo "Veja o log: cat '$OUTFILE'" >&2
+  exit "$rc"
 fi
 
 : > "$OUTFILE"
