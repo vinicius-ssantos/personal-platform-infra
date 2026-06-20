@@ -249,6 +249,9 @@ sleep-all:
 rollout-restart target="all":
 	./scripts/rollout-restart.sh {{target}}
 
+ai-solve-issue issue:
+	bash scripts/ai-solve-issue.sh {{issue}}
+
 logs target="all":
 	./scripts/logs.sh {{target}}
 
