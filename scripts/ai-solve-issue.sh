@@ -444,26 +444,55 @@ git add -A
 git commit -m "$COMMIT_TITLE"
 git push -u origin "$TARGET_BRANCH"
 
+MERGE_BASE="$(git merge-base HEAD "origin/$BASE_BRANCH" 2>/dev/null || echo "")"
+if [[ -n "$MERGE_BASE" ]]; then
+  FILES_CHANGED="$(git diff --stat "$MERGE_BASE" HEAD)"
+else
+  FILES_CHANGED="$(git show --stat --format='' HEAD)"
+fi
+
 cat > "$PR_BODY_FILE" <<EOF
 ## Summary
 
-Automated local solve-issue run for #$ISSUE.
+Automated solve-issue run for #$ISSUE: $ISSUE_TITLE.
 
 Issue: $ISSUE_URL
 
 ## Risk
 
 - Category: \`$RISK_CATEGORY\` (heuristic classification, see docs/ai-solve-issue-workflow.md)
+- External blockers: see "Limitations" below and the full run log for anything the agent flagged
 
-## Model
+## Agent
 
 - Agent: $AGENT
 - Model: $SELECTED_MODEL
+
+## Files changed
+
+\`\`\`
+$FILES_CHANGED
+\`\`\`
 
 ## Validation
 
 - git diff --check
 - Additional validations are reported by the agent output/log when available.
+
+## Sandbox result
+
+Not enabled for this run. Sandbox-backed validation is tracked separately (#218–#222) and is not yet wired into solve-issue.
+
+## Limitations
+
+See the agent's own response in the run log for anything it flagged as a blocker, assumption, or out-of-scope item. The wrapper does not parse or summarize this automatically.
+
+## Manual review checklist
+
+- [ ] Diff matches the issue's acceptance criteria
+- [ ] No changes outside the issue's stated scope
+- [ ] Risk category above looks correct for what actually changed
+- [ ] CI passes
 
 Closes #$ISSUE
 EOF
