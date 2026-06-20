@@ -15,7 +15,6 @@ Add a local MVP that lets the user provide an issue number and have OpenCode wor
 
 ## Scope
 
-- `.opencode/commands/solve-issue.md`
 - `scripts/ai-solve-issue.sh`
 - `Justfile`
 - `docs/ai-solve-issue-workflow.md`
@@ -74,30 +73,30 @@ Add a local MVP that lets the user provide an issue number and have OpenCode wor
 - Rollback:
   - Remove the recipe.
 
-### Task 4 — Add OpenCode command
+### Task 4 — Keep command file as future enhancement
 
 - Agent: orquestrador
-- Type: edit
+- Type: review
 - Files likely touched:
-  - `.opencode/commands/solve-issue.md`
+  - N/A
 - Instruction:
-  - Add the command prompt that drives issue analysis, planning, execution, validation, commit, and PR creation.
+  - Use the self-contained wrapper for the MVP. A dedicated `.opencode/commands/solve-issue.md` can be added later if the host allows it.
 - Validation:
-  - `bash scripts/ai-dx-check.sh`
+  - N/A
 - Acceptance criteria:
-  - The command exists and is checked by AI DX validation.
+  - MVP works through `just ai-solve-issue <issue-number>`.
 - Rollback:
-  - Remove the command.
+  - N/A
 
 ## External blockers
 
-The hosted gateway may block writing to `.opencode/commands/solve-issue.md`. If blocked, commit the docs, wrapper, and Justfile pieces and complete the command locally with OpenCode.
+The hosted gateway blocked writing directly to `.opencode/commands/solve-issue.md`. The MVP therefore uses a self-contained wrapper around `opencode run --model ... --agent ...`.
 
 ## Final validation
 
 - [ ] `bash -n scripts/ai-solve-issue.sh`
 - [ ] `just --list`
-- [ ] `bash scripts/ai-dx-check.sh`
+- [ ] `opencode run --help` or local equivalent confirms run flags are available
 - [ ] Diff reviewed
 
 ## PR notes
