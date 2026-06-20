@@ -58,12 +58,22 @@ Não é o caminho para deploy de código novo — esse é coberto pelo bump de d
 via Renovate (ver `docs/image-pinning.md`).
 
 ```bash
-# Restart todos os serviços
+# Restart todos os serviços principais
 just rollout-restart
 
 # Restart serviço específico
 just rollout-restart github-unified-mcp
 ```
+
+> **Escopo:** `just rollout-restart all` cobre **apenas os 9 deployments de aplicação**
+> (namespaces `mcp`, `bff`, `vos`). O `graceful-shutdown-patch.yaml` é global e
+> aplica-se também ao namespace `monitoring` (Alloy, Grafana, Loki, Prometheus).
+>
+> Para reiniciar monitoring separadamente:
+> ```bash
+> kubectl rollout restart deploy -n monitoring --all
+> kubectl rollout status deploy -n monitoring --timeout=120s
+> ```
 
 ## Wake GitHub MCP stack
 
