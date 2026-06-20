@@ -252,6 +252,12 @@ rollout-restart target="all":
 ai-solve-issue issue:
 	bash scripts/ai-solve-issue.sh {{issue}}
 
+ai-solve-queue-list:
+	AI_SOLVE_QUEUE_DRY_RUN=1 bash scripts/ai-solve-issue-queue.sh
+
+ai-solve-queue-run:
+	bash scripts/ai-solve-issue-queue.sh
+
 logs target="all":
 	./scripts/logs.sh {{target}}
 

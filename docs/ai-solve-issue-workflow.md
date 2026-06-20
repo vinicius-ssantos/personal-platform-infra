@@ -221,8 +221,11 @@ workflow → enter the issue number.
   agent prompt — see [Guardrails](#guardrails) above — but the trigger
   mechanism itself would need the same fork-safety review before being
   wired to a `comment` event).
-- Auto-picking issues, running on every new issue, and any merge automation
-  remain explicitly out of scope (same as the local flow).
+- Running on every new issue and any merge automation remain explicitly out
+  of scope. Auto-picking a specific issue from a label-based queue exists,
+  but only via the separate, opt-in mechanism in
+  [Low-risk issue queue](#low-risk-issue-queue) below — this trigger itself
+  still only ever acts on the one issue number it's given.
 
 ### Local vs GitHub-triggered
 
@@ -232,3 +235,77 @@ the run, adjust `AI_SOLVE_*` env vars on the fly, or debug a failure
 directly. Use the GitHub-triggered workflow when you want to kick off a run
 from a phone/browser or from a GitHub UI action without a local shell —
 behavior is otherwise identical, since both call the same wrapper script.
+
+## Low-risk issue queue
+
+Issue #227, the last and most autonomous phase: instead of a human naming a
+specific issue, `scripts/ai-solve-issue-queue.sh` picks **at most one**
+eligible issue from a label-based queue and runs it through the same
+`scripts/ai-solve-issue.sh`. This should stay the last phase, not the
+first — it only ever acts on issues a human has already explicitly labeled
+as safe to auto-pick.
+
+```bash
+just ai-solve-queue-list   # dry run: lists eligible issues, runs nothing
+just ai-solve-queue-run    # picks and runs at most one eligible issue
+```
+
+### Eligibility rules
+
+An issue is eligible only if **all** of the following hold:
+
+- it is open
+- it has the `ai:ready` label
+- it has at least one of `ai:risk-low`, `ai:docs-only`, `ai:test-only`
+- it does **not** have the `ai:blocked` label
+- its title/body do not mention forbidden scopes: secrets, credential,
+  password, token, deploy, VPS, release, destroy, or GitHub Actions/
+  `.github/workflows` changes
+
+This label-and-keyword filter
+(`scripts/ai_solve_queue_filter.py`) is a cheap pre-filter, not the only
+safety net — `ai-solve-issue.sh`'s own `classify_issue_risk()` high-risk
+gate still runs afterward and still blocks commit/push/PR for anything it
+classifies as `infra`/`ops-runtime`/`security-sensitive`/`blocked-external`,
+independent of how the issue was selected.
+
+Among eligible issues, the oldest (by `createdAt`) is selected — at most
+one per invocation. There is no built-in scheduler in this repo; running it
+on a timer is left to whatever you choose to invoke `just ai-solve-queue-run`
+from (deliberately not added as a GitHub Actions `schedule:` trigger in this
+PR — see [Deferred](#deferred-not-in-this-mvp-1) below).
+
+### Stricter sandbox requirement than a human-triggered run
+
+Unlike `AI_SOLVE_SANDBOX=1`'s fallback behavior in
+[Sandbox validation](#sandbox-validation) (proceed unvalidated if Python/
+`pyyaml` is missing, because a human explicitly chose that specific issue),
+the queue script refuses to run *at all* if it cannot actually perform
+sandbox validation: missing Python interpreter, missing `pyyaml`, missing
+`.sandbox/manifest.yaml`, or no `safe-test` profile declared in it. An
+issue nobody pointed at by name must not slip through unvalidated. When
+those checks pass, the selected run is always invoked with
+`AI_SOLVE_SANDBOX=1`.
+
+### Flow
+
+1. List eligible issues (`gh issue list --label ai:ready`, filtered further
+   in Python).
+2. Dry run (`AI_SOLVE_QUEUE_DRY_RUN=1` / `just ai-solve-queue-list`) stops
+   here.
+3. Otherwise, select the oldest eligible issue and post a comment on it
+   that an automated run is starting.
+4. Run `scripts/ai-solve-issue.sh <issue>` with `AI_SOLVE_SANDBOX=1` —
+   same guardrails, same NOOP/high-risk/sandbox-failure outcomes as any
+   other solve-issue run.
+5. Merge remains manual, same as every other path in this document.
+
+### Deferred (not in this MVP)
+
+- No GitHub Actions `schedule:` trigger is added here — "periodic" in the
+  issue's proposed flow is satisfied by *being invokable* on a schedule of
+  your choosing (cron, the existing `workflow_dispatch` trigger, a local
+  `just` alias), not by this repo deciding to run unattended on its own
+  timer without that being a deliberate, separate decision.
+- Selecting more than one issue per invocation, running across multiple
+  repositories, and any form of automatic merge remain out of scope.
