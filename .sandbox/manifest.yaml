@@ -1,0 +1,54 @@
+# Repo Sandbox Runner manifest for personal-platform-infra (ADR 0020).
+#
+# Declarative only — what runs, not how isolation is implemented. The
+# runner (#221, not implemented yet) is responsible for enforcing
+# docs/repo-sandbox-security.md against whatever this file declares; this
+# file cannot grant itself more than that policy allows.
+#
+# Until #221 exists, scripts/sandbox-preflight.sh and scripts/sandbox-test.sh
+# can be run directly on a developer machine to exercise the same checks the
+# eventual sandbox run will perform — see docs/repo-sandbox-manifest.md.
+
+version: "1"
+
+runtime:
+  language: generic   # this repo's safe-test checks are bash/shell only — no
+                       # app runtime (node/python/java) needs to be selected.
+  version: "n/a"
+
+profiles:
+  safe-test:
+    env:
+      # Fake/non-production values only — see .sandbox/env.safe.example.
+      # No real GITHUB_TOKEN, kubeconfig, Terraform vars, or VPS secrets are
+      # ever read by this profile.
+      SANDBOX_PROFILE: "safe-test"
+    commands:
+      - name: preflight
+        run: "bash scripts/sandbox-preflight.sh"
+      - name: test
+        run: "bash scripts/sandbox-test.sh"
+    timeout_seconds: 300
+    network: none
+    output_files: []
+
+  mock:
+    env: {}
+    commands:
+      - name: preflight
+        run: "bash scripts/sandbox-preflight.sh"
+    timeout_seconds: 60
+    network: none
+    output_files: []
+
+security:
+  # Mirrors the forbidden-file diff check already enforced in
+  # scripts/ai-solve-issue.sh — kept here too so the sandbox policy is
+  # self-contained and doesn't only exist inside that one script.
+  block_paths:
+    - .env
+    - .env.*
+    - secrets/**
+    - "**/terraform.tfvars"
+    - "**/kubeconfig*"
+    - .github/workflows/**
