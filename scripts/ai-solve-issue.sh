@@ -437,6 +437,103 @@ if is_high_risk_category "$RISK_CATEGORY" && [[ "${AI_SOLVE_ALLOW_HIGH_RISK:-}" 
   exit 3
 fi
 
+# Sandbox validation (issue #222). Opt-in: runs the diff already sitting in
+# the working tree through repo_sandbox.run's local prototype
+# (scripts/repo_sandbox_run.py, #221) before anything is committed. If the
+# tool itself is unavailable (no python3, no pyyaml) this falls back to
+# current behavior instead of blocking — AI_SOLVE_SANDBOX=1 means "validate
+# if possible", not "require sandbox tooling to exist".
+AI_SOLVE_SANDBOX="${AI_SOLVE_SANDBOX:-0}"
+SANDBOX_RESULT_SUMMARY="Not enabled for this run. Set AI_SOLVE_SANDBOX=1 to validate the diff via repo_sandbox.run (profile=safe-test) before commit/push/PR."
+
+if [[ "$AI_SOLVE_SANDBOX" == "1" ]]; then
+  echo ""
+  echo "==== Validacao de sandbox (AI_SOLVE_SANDBOX=1) ===="
+
+  SANDBOX_PY=""
+  if [[ -n "${PYTHON:-}" ]]; then
+    SANDBOX_PY="$PYTHON"
+  elif command -v python3 >/dev/null 2>&1 && python3 -c "" >/dev/null 2>&1; then
+    SANDBOX_PY="python3"
+  elif command -v python >/dev/null 2>&1 && python -c "" >/dev/null 2>&1; then
+    SANDBOX_PY="python"
+  elif command -v py >/dev/null 2>&1; then
+    # Windows: bare `python3`/`python` can resolve to a non-functional
+    # Microsoft Store alias even when a real interpreter is installed via
+    # the py launcher (see scripts/ai-dx-check.sh for the same fallback).
+    SANDBOX_PY="py -3"
+  fi
+
+  if [[ -z $SANDBOX_PY ]]; then
+    echo "AI_SOLVE_SANDBOX=1 mas nenhum interpretador python foi encontrado no PATH; pulando validacao de sandbox (fallback)." >&2
+    SANDBOX_RESULT_SUMMARY="Requested (AI_SOLVE_SANDBOX=1) but skipped: no python interpreter found on PATH. Falling back to unvalidated commit/push/PR."
+  elif ! $SANDBOX_PY -c "import yaml" >/dev/null 2>&1; then
+    echo "AI_SOLVE_SANDBOX=1 mas pyyaml nao esta instalado; pulando validacao de sandbox (fallback)." >&2
+    echo "Instale com: pip install -r scripts/requirements-sandbox.txt" >&2
+    SANDBOX_RESULT_SUMMARY="Requested (AI_SOLVE_SANDBOX=1) but skipped: pyyaml not installed (pip install -r scripts/requirements-sandbox.txt). Falling back to unvalidated commit/push/PR."
+  else
+    SANDBOX_FAILED=0
+    SANDBOX_REPORT=""
+    for group in preflight test; do
+      echo "  -> repo_sandbox.run profile=safe-test command_group=$group"
+      set +e
+      SANDBOX_JSON="$($SANDBOX_PY scripts/repo_sandbox_run.py --repository "$REPO_ROOT" --command-group "$group" 2>/dev/null)"
+      set -e
+
+      SANDBOX_OK="$(printf '%s' "$SANDBOX_JSON" | $SANDBOX_PY -c 'import json,sys
+try:
+    d=json.load(sys.stdin)
+    print("true" if d.get("ok") else "false")
+except Exception:
+    print("false")' 2>/dev/null || echo "false")"
+      SANDBOX_EXIT="$(printf '%s' "$SANDBOX_JSON" | $SANDBOX_PY -c 'import json,sys
+try:
+    d=json.load(sys.stdin)
+    print(d.get("exit_code"))
+except Exception:
+    print("unknown")' 2>/dev/null || echo "unknown")"
+      SANDBOX_LOGS="$(printf '%s' "$SANDBOX_JSON" | $SANDBOX_PY -c 'import json,sys
+try:
+    d=json.load(sys.stdin)
+    print(d.get("logs_uri") or "")
+except Exception:
+    pass' 2>/dev/null || echo "")"
+      SANDBOX_ERR="$(printf '%s' "$SANDBOX_JSON" | $SANDBOX_PY -c 'import json,sys
+try:
+    d=json.load(sys.stdin)
+    print(d.get("error") or "")
+except Exception:
+    pass' 2>/dev/null || echo "")"
+
+      SANDBOX_REPORT="${SANDBOX_REPORT}- \`$group\`: ok=$SANDBOX_OK exit_code=$SANDBOX_EXIT"
+      [[ -n "$SANDBOX_LOGS" ]] && SANDBOX_REPORT="${SANDBOX_REPORT} logs=$SANDBOX_LOGS"
+      [[ -n "$SANDBOX_ERR" ]] && SANDBOX_REPORT="${SANDBOX_REPORT} error=$SANDBOX_ERR"
+      SANDBOX_REPORT="${SANDBOX_REPORT}"$'\n'
+
+      if [[ "$SANDBOX_OK" != "true" ]]; then
+        SANDBOX_FAILED=1
+        echo "  -> FALHOU: command_group=$group ok=$SANDBOX_OK exit_code=$SANDBOX_EXIT" >&2
+        [[ -n "$SANDBOX_ERR" ]] && echo "     error: $SANDBOX_ERR" >&2
+        [[ -n "$SANDBOX_LOGS" ]] && echo "     logs: $SANDBOX_LOGS" >&2
+      fi
+    done
+
+    if [[ "$SANDBOX_FAILED" -ne 0 ]]; then
+      echo "" >&2
+      echo "Validacao de sandbox falhou (AI_SOLVE_SANDBOX=1) — abortando antes de commit/push/PR." >&2
+      printf '%s' "$SANDBOX_REPORT" >&2
+      echo "O diff preparado pelo agente permanece no working tree (branch: $TARGET_BRANCH) para revisao manual." >&2
+      echo "Logs preservados nos caminhos logs= acima — nao sao apagados pelo cleanup deste script." >&2
+      exit 4
+    fi
+
+    echo "Validacao de sandbox passou (preflight + test)."
+    SANDBOX_RESULT_SUMMARY="Enabled (AI_SOLVE_SANDBOX=1). All command groups passed:
+
+${SANDBOX_REPORT}"
+  fi
+fi
+
 COMMIT_TITLE="${AI_SOLVE_COMMIT_TITLE:-chore(ai): resolve issue #$ISSUE}"
 PR_TITLE="${AI_SOLVE_PR_TITLE:-Resolve issue #$ISSUE: $ISSUE_TITLE}"
 
@@ -481,7 +578,7 @@ $FILES_CHANGED
 
 ## Sandbox result
 
-Not enabled for this run. Sandbox-backed validation is tracked separately (#218–#222) and is not yet wired into solve-issue.
+$SANDBOX_RESULT_SUMMARY
 
 ## Limitations
 

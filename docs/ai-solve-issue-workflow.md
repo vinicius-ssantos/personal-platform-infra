@@ -116,9 +116,9 @@ log:
 - **Files changed** — `git diff --stat` between the branch's merge-base with
   `main` and the new commit.
 - **Validation** — what the wrapper itself checked (`git diff --check` today;
-  more entries land here as sandbox validation (#222) is wired in).
-- **Sandbox result** — explicitly states sandbox validation is not yet
-  enabled, until #218–#222 land.
+  more entries land here as sandbox validation expands).
+- **Sandbox result** — see [Sandbox validation](#sandbox-validation) below;
+  states whether it ran, was skipped (fallback), or is disabled for the run.
 - **Limitations** — points the reviewer at the run log instead of guessing;
   the wrapper does not parse or summarize the agent's freeform output.
 - **Manual review checklist** — a fixed checklist (acceptance criteria match,
@@ -127,6 +127,43 @@ log:
 A no-op run (see [NOOP outcome](#noop-outcome)) never reaches this step —
 no PR is created, and the no-op result is reported on its own via the
 wrapper's exit message instead.
+
+## Sandbox validation
+
+Opt-in (issue #222): set `AI_SOLVE_SANDBOX=1` to validate the diff already
+sitting in the working tree through `repo_sandbox.run`'s local prototype
+(`scripts/repo_sandbox_run.py`, see [`docs/repo-sandbox-manifest.md`](repo-sandbox-manifest.md))
+before commit/push/PR. The wrapper runs both declared command groups for the
+`safe-test` profile, in order:
+
+1. `repo_sandbox.run(profile=safe-test, command_group=preflight)`
+2. `repo_sandbox.run(profile=safe-test, command_group=test)`
+
+This happens after the diff guardrails (forbidden-file check, high-risk
+category gate) and before the commit is created.
+
+- **Sandbox failure** (either command group returns `ok: false`, including
+  timeout) blocks commit/push/PR. The wrapper exits `4`, prints the failing
+  command group(s) with `exit_code`/`error`/`logs_uri` to stderr, and leaves
+  the diff in the working tree on the target branch for manual review. The
+  sandbox's own log file lives outside the wrapper's temp files and is not
+  deleted by this script's cleanup, so it is still readable after the run
+  fails.
+- **Sandbox success** records a short `ok`/`exit_code`/`logs_uri` summary per
+  command group in the PR body's "Sandbox result" section.
+- **Fallback**: if `AI_SOLVE_SANDBOX=1` is set but no usable Python
+  interpreter or `pyyaml` is found, the wrapper logs a warning, records that
+  in the PR body's "Sandbox result" section, and proceeds with the
+  pre-#222 behavior (unvalidated commit/push/PR) instead of blocking — the
+  flag means "validate if the tooling is available", not "require it to
+  exist". Install with `pip install -r scripts/requirements-sandbox.txt` to
+  make validation actually run.
+- **Default** (`AI_SOLVE_SANDBOX` unset or `0`): unchanged from before #222 —
+  no sandbox call is made at all.
+
+Out of scope for this integration, same as #221's MVP: the sandbox never
+pushes, merges, or creates a PR itself, and only the `safe-test` profile may
+be requested.
 
 ## Future GitHub trigger
 
