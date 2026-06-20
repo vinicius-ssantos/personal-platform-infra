@@ -21,3 +21,4 @@
 | [0017](0017-kubernetes-ownership-in-infra-repo.md) | Kubernetes ownership lives in personal-platform-infra | Accepted |
 | [0018](0018-ci-runner-boundary.md) | CI runner infrastructure lives in ci-self-hosted-runner | Accepted |
 | [0019](0019-ai-subagent-workflow-for-development-automation.md) | AI subagent workflow for development automation | Accepted (Phase 1); Phases 2–4 proposed |
+| [0020](0020-repo-sandbox-runner.md) | Repo Sandbox Runner architecture | Proposed |
