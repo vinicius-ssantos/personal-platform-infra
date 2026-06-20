@@ -51,6 +51,12 @@ check_file "plan-feature command"   ".opencode/commands/plan-feature.md"
 check_file "execute-plan command"   ".opencode/commands/execute-plan.md"
 
 echo ""
+info "--- OpenCode solve-issue workflow ---"
+check_file "solve-issue agent"       ".opencode/agents/solve-issue.md"
+check_file "solve-issue wrapper"     "scripts/ai-solve-issue.sh"
+check_file "solve-issue docs"        "docs/ai-solve-issue-workflow.md"
+
+echo ""
 info "--- OpenCode agents (steps limits) ---"
 for agent in explorer reviewer orquestrador operations scripter infra-engineer; do
   path=".opencode/agent/${agent}.md"
