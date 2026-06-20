@@ -201,3 +201,9 @@ This shows that plan-first can also work for documentation changes when the docs
 ## Decision guide
 
 Use plan-first for multi-file work, operational changes, ordered validation, or tasks with external blockers. Prefer a direct command for small and obvious single-file edits.
+
+## External validation blockers
+
+Plans must call out checks that cannot be completed in the current environment. For example, issue #208 requires runtime observation before deciding whether a fallback is needed.
+
+When validation is blocked, state the blocker, the impact, the safe local checks, and the follow-up needed once the environment is available.
