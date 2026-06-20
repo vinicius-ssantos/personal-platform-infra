@@ -33,6 +33,9 @@ just wake-vos
 # Colocar tudo para dormir
 just sleep-all
 
+# Restart sem troca de imagem (ortogonal à ownership de réplicas)
+just rollout-restart all
+
 # Derrubar cluster
 just k8s-local-down
 ```

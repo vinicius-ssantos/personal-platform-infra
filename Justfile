@@ -246,6 +246,9 @@ wake-all:
 sleep-all:
 	./scripts/sleep-all.sh
 
+rollout-restart target="all":
+	./scripts/rollout-restart.sh {{target}}
+
 logs target="all":
 	./scripts/logs.sh {{target}}
 

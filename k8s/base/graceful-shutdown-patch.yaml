@@ -1,0 +1,9 @@
+- op: add
+  path: /spec/template/spec/terminationGracePeriodSeconds
+  value: 30
+- op: add
+  path: /spec/template/spec/containers/0/lifecycle
+  value:
+    preStop:
+      exec:
+        command: ["/bin/sh", "-c", "sleep 5"]
