@@ -68,6 +68,41 @@ wrapper reports them differently:
   still fails conservatively (exit `1`) — a clean tree with no NOOP evidence
   is treated as an incomplete run, not a success.
 
+## Risk classification
+
+Before model preflight, the wrapper classifies the issue into one risk
+category and prints it. This is a **heuristic** over the issue's own
+title/body/labels — there is no diff yet at this point, so it cannot know the
+real blast radius, only guess from what the issue says it's about.
+
+Categories, in matching precedence order (first match wins):
+
+| Category | Signal | Behavior |
+|---|---|---|
+| `security-sensitive` | body/title mentions secret, credential, token, auth, vulnerability, CVE, RBAC, etc., or title uses the `security(...):`/`security:` conventional-commit prefix | does not auto-create a PR |
+| `blocked-external` | title/body mentions an external blocker ("blocked on", "waiting on", "depends on external") | does not auto-create a PR |
+| `ops-runtime` | title/body mentions production incident, rollback, on-call, canary deploy | does not auto-create a PR |
+| `infra` | title/body mentions terraform, kubernetes/k8s, ansible, VPS, kustomize, helm, docker-compose, Dockerfile, UFW, `.github/workflows` | does not auto-create a PR |
+| `test-only` | title uses the `test(...):`/`test:` conventional-commit prefix, or mentions "test-only" | can execute to PR |
+| `docs-only` | title uses the `docs(...):`/`doc(...):` conventional-commit prefix, or mentions "documentation only" | can execute to PR |
+| `code-medium` | title/body mentions refactor, migrate, rewrite, redesign, breaking change | can execute to PR, with stricter review expectations |
+| `code-small` | default — none of the above matched | can execute to PR |
+
+`infra`, `ops-runtime`, `security-sensitive`, and `blocked-external` are the
+**high-risk categories**. For these, the wrapper still lets the agent prepare
+a diff (or a plan-only response), but stops before commit/push/PR creation —
+the prepared work stays in the working tree on the target branch for manual
+review. Set `AI_SOLVE_ALLOW_HIGH_RISK=1` to opt into automatic PR creation
+for a specific run anyway.
+
+The classification is also injected into the agent's prompt, and for
+high-risk categories the agent is told to prefer leaving a clear plan in
+`plans/` over assuming a PR will be opened automatically. The selected
+category is recorded in the PR body for non-blocked runs.
+
+If the heuristic gets it wrong, override it directly instead of editing the
+script: `AI_SOLVE_RISK_OVERRIDE=docs-only just ai-solve-issue 218`.
+
 ## Future GitHub trigger
 
 After the local command is validated, a later PR may add a GitHub Actions trigger for comments such as `/opencode fix this` or a project-specific label.

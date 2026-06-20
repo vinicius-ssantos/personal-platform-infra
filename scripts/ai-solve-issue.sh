@@ -69,6 +69,80 @@ ISSUE_BODY="$("$GH_CMD" issue view "$ISSUE" --json body --jq '.body // ""')"
 ISSUE_LABELS="$("$GH_CMD" issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(", ")')"
 ISSUE_URL="$("$GH_CMD" issue view "$ISSUE" --json url --jq '.url')"
 
+# Execution-risk classification (issue #223). This is a heuristic over the
+# issue's own title/body/labels, run before any agent work starts — there is
+# no diff yet to inspect, so it cannot know the real blast radius, only guess
+# from what the issue says it's about. AI_SOLVE_RISK_OVERRIDE lets a human
+# correct a wrong guess without editing this script.
+#
+# Categories, in matching precedence order (first match wins):
+#   security-sensitive, blocked-external, ops-runtime, infra,
+#   test-only, docs-only, code-medium, code-small (default)
+classify_issue_risk() {
+  local text title_lower title_type
+  text="$(printf '%s\n%s\n%s' "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" | tr '[:upper:]' '[:lower:]')"
+  title_lower="$(printf '%s' "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]')"
+  # Conventional-commit prefix, e.g. "docs(adr): ..." -> "docs", "security(sandbox): ..." -> "security".
+  # This repo's issue titles consistently follow this convention; it is a far
+  # more reliable signal than scanning the body for loose keywords.
+  title_type="$(printf '%s' "$title_lower" | sed -nE 's/^([a-z]+)(\([^)]*\))?:.*/\1/p')"
+
+  if echo "$text" | grep -qE '(^|[^a-z])(secret|credential|password|token|auth[a-z]*|vulnerab[a-z]*|cve[-_][0-9]|rbac|privilege escalation|exploit|prompt injection|\bsops\b|age key)([^a-z]|$)'; then
+    echo "security-sensitive"
+    return
+  fi
+  if [[ "$title_type" == "security" ]]; then
+    echo "security-sensitive"
+    return
+  fi
+  if echo "$text" | grep -qE 'blocked.on|blocked-external|waiting.on|depends.on.external|external.blocker'; then
+    echo "blocked-external"
+    return
+  fi
+  if echo "$text" | grep -qE 'ops-runtime|production incident|\brollback\b|on-call|canary deploy'; then
+    echo "ops-runtime"
+    return
+  fi
+  if echo "$text" | grep -qE 'terraform|kubernetes|\bk8s\b|\bansible\b|\bvps\b|kustomize|\bhelm\b|docker-compose|dockerfile|\binfra\b|\bufw\b|deploy-vps|\.github/workflows'; then
+    echo "infra"
+    return
+  fi
+  if [[ "$title_type" == "test" ]] || echo "$text" | grep -qE '(^|[^a-z])test-only([^a-z]|$)'; then
+    echo "test-only"
+    return
+  fi
+  if [[ "$title_type" == "docs" || "$title_type" == "doc" ]] || echo "$text" | grep -qE 'docs-only|documentation only'; then
+    echo "docs-only"
+    return
+  fi
+  if echo "$text" | grep -qE '\brefactor\b|\bmigrate\b|\brewrite\b|\bredesign\b|breaking change'; then
+    echo "code-medium"
+    return
+  fi
+  echo "code-small"
+}
+
+# Categories that must not auto-create a PR without explicit operator opt-in
+# (AI_SOLVE_ALLOW_HIGH_RISK=1). Matches the routing table in issue #223.
+HIGH_RISK_CATEGORIES=(infra ops-runtime security-sensitive blocked-external)
+
+is_high_risk_category() {
+  local category="$1" c
+  for c in "${HIGH_RISK_CATEGORIES[@]}"; do
+    [[ "$c" == "$category" ]] && return 0
+  done
+  return 1
+}
+
+RISK_CATEGORY="${AI_SOLVE_RISK_OVERRIDE:-$(classify_issue_risk)}"
+
+echo ""
+echo "==== Risk classification: $RISK_CATEGORY ===="
+if is_high_risk_category "$RISK_CATEGORY"; then
+  echo "High-risk category — will not auto-create a PR unless AI_SOLVE_ALLOW_HIGH_RISK=1 is set."
+fi
+echo ""
+
 SLUG="$(slugify "$ISSUE_TITLE")"
 if [[ -z "$SLUG" ]]; then
   SLUG="solve"
@@ -124,6 +198,17 @@ Trabalhe a issue #$ISSUE ate deixar o diff pronto para PR.
 Contexto da issue ja foi coletado pelo wrapper:
 
 $(cat "$ISSUE_FILE")
+
+Classificacao de risco (heuristica do wrapper, baseada no titulo/corpo/labels
+da issue, antes de qualquer mudanca real): $RISK_CATEGORY
+$(if is_high_risk_category "$RISK_CATEGORY"; then cat <<RISK
+Esta e uma categoria de alto risco. O wrapper NAO vai criar PR
+automaticamente para este resultado, mesmo com diff valido, a menos que o
+operador defina AI_SOLVE_ALLOW_HIGH_RISK=1. Priorize deixar um plano claro em
+plans/ explicando o que seria feito e por que precisa de revisao humana antes
+de qualquer commit, em vez de assumir que o PR sera aberto automaticamente.
+RISK
+fi)
 
 Contrato de execucao:
 - Use docs/ai-solve-issue-workflow.md como guia.
@@ -344,6 +429,14 @@ if [ "$BLOCKED" -ne 0 ]; then
   exit 1
 fi
 
+if is_high_risk_category "$RISK_CATEGORY" && [[ "${AI_SOLVE_ALLOW_HIGH_RISK:-}" != "1" ]]; then
+  echo "" >&2
+  echo "Categoria de risco '$RISK_CATEGORY' nao cria PR automaticamente." >&2
+  echo "O diff preparado pelo agente permanece no working tree (branch: $TARGET_BRANCH) para revisao manual." >&2
+  echo "Para permitir PR automatico nesta categoria: AI_SOLVE_ALLOW_HIGH_RISK=1 just ai-solve-issue $ISSUE" >&2
+  exit 3
+fi
+
 COMMIT_TITLE="${AI_SOLVE_COMMIT_TITLE:-chore(ai): resolve issue #$ISSUE}"
 PR_TITLE="${AI_SOLVE_PR_TITLE:-Resolve issue #$ISSUE: $ISSUE_TITLE}"
 
@@ -357,6 +450,10 @@ cat > "$PR_BODY_FILE" <<EOF
 Automated local solve-issue run for #$ISSUE.
 
 Issue: $ISSUE_URL
+
+## Risk
+
+- Category: \`$RISK_CATEGORY\` (heuristic classification, see docs/ai-solve-issue-workflow.md)
 
 ## Model
 
