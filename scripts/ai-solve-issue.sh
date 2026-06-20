@@ -8,88 +8,136 @@ if [[ -z "$ISSUE" ]]; then
 fi
 
 OUTFILE="$(mktemp -t opencode_run.XXXXXX)"
-# Só limpa em caso de sucesso. Timeout/erro mantém o log para diagnóstico.
 cleanup() {
   local rc=$?
-  if [ $rc -eq 0 ]; then
+  if [ "$rc" -eq 0 ]; then
     rm -f "$OUTFILE"
   else
-    echo ""
+    echo "" >&2
     echo "Log salvo em: $OUTFILE" >&2
   fi
 }
 trap cleanup EXIT
 
-# Fallback de modelos gratuitos. O primeiro que funcionar é usado.
-# Para forçar um modelo específico: AI_SOLVE_MODEL=provider/model
-MODELS=(
-  "${AI_SOLVE_MODEL:-}"
-  "opencode/deepseek-v4-flash-free"
-  "openrouter/deepseek/deepseek-v4-flash-free"
-  "deepseek-v4-flash-free"
-)
+if [[ -n "${AI_SOLVE_MODEL:-}" ]]; then
+  MODELS=("$AI_SOLVE_MODEL")
+else
+  MODELS=(
+    "opencode/deepseek-v4-flash-free"
+    "openrouter/deepseek/deepseek-v4-flash-free"
+    "deepseek-v4-flash-free"
+  )
+fi
 
+PREFLIGHT_TIMEOUT="${AI_SOLVE_PREFLIGHT_TIMEOUT:-60}"
+SOLVE_TIMEOUT="${AI_SOLVE_TIMEOUT:-1800}"
+RUN_FORMAT="${OPENCODE_RUN_FORMAT:-default}"
 PROMPT="Siga docs/ai-solve-issue-workflow.md para trabalhar a issue #${ISSUE} ate abrir PR."
+PREFLIGHT_PROMPT="responda apenas: ok"
 
-for m in "${MODELS[@]}"; do
-  [[ -z "$m" ]] && continue
+run_opencode() {
+  local timeout_seconds="$1"
+  local model="$2"
+  local prompt="$3"
 
-  echo ""
-  echo "==== Modelo: $m | Issue: #$ISSUE ===="
-  echo ""
-
-  # Timeout padrão: 5 minutos. Ajuste com AI_SOLVE_TIMEOUT (segundos).
-  TIMEOUT="${AI_SOLVE_TIMEOUT:-300}"
-
-  # Roda mostrando saída ao vivo (tee) e salva em $OUTFILE
-  # para detectar erro de modelo automaticamente.
-  set +e
   if command -v timeout &>/dev/null; then
-    timeout "$TIMEOUT" opencode run --model "$m" --agent orquestrador "$PROMPT" 2>&1 | tee "$OUTFILE"
-    RC=${PIPESTATUS[0]}
-  else
-    opencode run --model "$m" --agent orquestrador "$PROMPT" 2>&1 | tee "$OUTFILE"
-    RC=${PIPESTATUS[0]}
+    timeout "$timeout_seconds" opencode run \
+      --model "$model" \
+      --agent orquestrador \
+      --format "$RUN_FORMAT" \
+      "$prompt" 2>&1 | tee "$OUTFILE"
+    return "${PIPESTATUS[0]}"
   fi
+
+  opencode run \
+    --model "$model" \
+    --agent orquestrador \
+    --format "$RUN_FORMAT" \
+    "$prompt" 2>&1 | tee "$OUTFILE"
+  return "${PIPESTATUS[0]}"
+}
+
+SELECTED_MODEL=""
+
+for model in "${MODELS[@]}"; do
+  [[ -z "$model" ]] && continue
+  : > "$OUTFILE"
+
+  echo ""
+  echo "==== Preflight modelo: $model ===="
+  echo ""
+
+  set +e
+  run_opencode "$PREFLIGHT_TIMEOUT" "$model" "$PREFLIGHT_PROMPT"
+  rc=$?
   set -e
 
-  if [ $RC -eq 0 ]; then
+  if [ "$rc" -eq 0 ]; then
+    SELECTED_MODEL="$model"
     echo ""
-    echo "OK - Concluido com modelo: $m"
-    exit 0
+    echo "Modelo selecionado: $SELECTED_MODEL"
+    break
   fi
 
-  # Se for erro de modelo não encontrado, tenta próximo automaticamente
   if grep -q "ProviderModelNotFoundError" "$OUTFILE" 2>/dev/null; then
     echo "  -> Modelo nao disponivel, tentando proximo..."
     continue
   fi
 
-  # Timeout — mudar o modelo não vai resolver (todos usam o mesmo provider)
-  if [ $RC -eq 124 ]; then
-    echo ""
-    echo "TIMEOUT (5min) — opencode run nao completou dentro do prazo."
-    echo ""
-    echo "Possiveis causas:"
-    echo "  1. A execucao realmente levou mais de 5 min"
-    echo "     -> Aumente o timeout: AI_SOLVE_TIMEOUT=600 just ai-solve-issue $ISSUE"
-    echo ""
-    echo "  2. O opencode run travou esperando API ou confirmacao"
-    echo "     -> Veja o log: cat '$OUTFILE'"
-    echo "     -> Rode manualmente para ver onde trava:"
-    echo "        opencode run --agent orquestrador \"$PROMPT\""
-    echo ""
-    echo "  3. O orquestrador entrou em loop ou requereu input"
-    echo "     -> Nesse caso, o workflow doc pode precisar de mais约束"
-    exit 124
+  if [ "$rc" -eq 124 ]; then
+    echo "  -> Preflight excedeu ${PREFLIGHT_TIMEOUT}s, tentando proximo modelo..."
+    continue
   fi
 
-  # Outro erro: mostra e morre
-  echo ""
-  echo "ERRO (codigo $RC) com modelo $m. Nao e erro de modelo - abortando."
-  exit $RC
+  echo "  -> Preflight falhou com codigo $rc, tentando proximo modelo..."
 done
 
-echo "Nenhum modelo disponível funcionou." >&2
-echo "Defina AI_SOLVE_MODEL=provider/model com um modelo válido." >&2
-exit 1
+if [[ -z "$SELECTED_MODEL" ]]; then
+  echo "Nenhum modelo disponivel passou no preflight." >&2
+  echo "Rode: opencode models opencode --refresh" >&2
+  echo "Ou defina AI_SOLVE_MODEL=provider/model com um modelo valido." >&2
+  exit 1
+fi
+
+: > "$OUTFILE"
+echo ""
+echo "==== Executando issue #$ISSUE com modelo: $SELECTED_MODEL ===="
+echo "Timeout de execucao: ${SOLVE_TIMEOUT}s"
+echo ""
+
+set +e
+run_opencode "$SOLVE_TIMEOUT" "$SELECTED_MODEL" "$PROMPT"
+rc=$?
+set -e
+
+if [ "$rc" -eq 0 ]; then
+  echo ""
+  echo "OK - Concluido com modelo: $SELECTED_MODEL"
+  exit 0
+fi
+
+if grep -q "ProviderModelNotFoundError" "$OUTFILE" 2>/dev/null; then
+  echo "" >&2
+  echo "Modelo deixou de estar disponivel durante a execucao: $SELECTED_MODEL" >&2
+  echo "Rode: opencode models opencode --refresh" >&2
+  exit 1
+fi
+
+if [ "$rc" -eq 124 ]; then
+  echo "" >&2
+  echo "TIMEOUT (${SOLVE_TIMEOUT}s) — execucao da issue nao terminou dentro do prazo." >&2
+  echo "" >&2
+  echo "Isso nao significa que outro modelo resolveria com seguranca." >&2
+  echo "Nao houve fallback automatico apos o inicio da execucao para evitar diff parcial inconsistente." >&2
+  echo "" >&2
+  echo "Proximos passos:" >&2
+  echo "  1. Ver log: cat '$OUTFILE'" >&2
+  echo "  2. Aumentar timeout: AI_SOLVE_TIMEOUT=3600 just ai-solve-issue $ISSUE" >&2
+  echo "  3. Debug em JSON: OPENCODE_RUN_FORMAT=json just ai-solve-issue $ISSUE" >&2
+  exit 124
+fi
+
+echo "" >&2
+echo "ERRO (codigo $rc) durante execucao com modelo $SELECTED_MODEL." >&2
+echo "Veja o log: cat '$OUTFILE'" >&2
+exit "$rc"
