@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# PATH fallback para GitHub CLI no WSL
+IS_WSL=false
+if uname -s | grep -qi "linux" && grep -qi microsoft /proc/version 2>/dev/null; then
+  IS_WSL=true
+  export PATH="$PATH:/mnt/c/Program Files/GitHub CLI"
+fi
+
 ISSUE="${1:-}"
 if [[ -z "$ISSUE" ]]; then
   echo "usage: scripts/ai-solve-issue.sh <issue-number>" >&2
@@ -15,8 +22,17 @@ require_cmd() {
 }
 
 require_cmd git
-require_cmd gh
 require_cmd opencode
+
+# WSL: gh pode ser apenas gh.exe (binfmt_misc nao resolve bare name)
+if command -v gh >/dev/null 2>&1; then
+  GH_CMD="gh"
+elif command -v gh.exe >/dev/null 2>&1; then
+  GH_CMD="gh.exe"
+else
+  echo "required command not found: gh" >&2
+  exit 127
+fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
@@ -50,10 +66,10 @@ PREFLIGHT_TIMEOUT="${AI_SOLVE_PREFLIGHT_TIMEOUT:-60}"
 SOLVE_TIMEOUT="${AI_SOLVE_TIMEOUT:-1800}"
 RUN_FORMAT="${OPENCODE_RUN_FORMAT:-default}"
 
-ISSUE_TITLE="$(gh issue view "$ISSUE" --json title --jq '.title')"
-ISSUE_BODY="$(gh issue view "$ISSUE" --json body --jq '.body // ""')"
-ISSUE_LABELS="$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(", ")')"
-ISSUE_URL="$(gh issue view "$ISSUE" --json url --jq '.url')"
+ISSUE_TITLE="$("$GH_CMD" issue view "$ISSUE" --json title --jq '.title')"
+ISSUE_BODY="$("$GH_CMD" issue view "$ISSUE" --json body --jq '.body // ""')"
+ISSUE_LABELS="$("$GH_CMD" issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(", ")')"
+ISSUE_URL="$("$GH_CMD" issue view "$ISSUE" --json url --jq '.url')"
 
 SLUG="$(slugify "$ISSUE_TITLE")"
 if [[ -z "$SLUG" ]]; then
@@ -85,7 +101,7 @@ EOF
 
 CURRENT_BRANCH="$(git branch --show-current)"
 if [[ "$CURRENT_BRANCH" != "$TARGET_BRANCH" ]]; then
-  if [[ -n "$(git status --porcelain)" ]]; then
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
     echo "working tree has pending changes; commit/stash them before running solve-issue" >&2
     exit 1
   fi
@@ -130,6 +146,24 @@ run_opencode() {
   local timeout_seconds="$1"
   local model="$2"
   local prompt="$3"
+
+  # Escapa aspas duplas para passar via PowerShell
+  local escaped_prompt
+  escaped_prompt="$(echo "$prompt" | sed 's/"/\\"/g')"
+
+  if $IS_WSL; then
+    # WSL: agent resolve falha via bash, funciona via PowerShell
+    if command -v timeout >/dev/null 2>&1; then
+      timeout "$timeout_seconds" powershell.exe -Command "
+        opencode run --model '$model' --agent '$AGENT' --format '$RUN_FORMAT' \"$escaped_prompt\"
+      " 2>&1 | tee "$OUTFILE"
+      return "${PIPESTATUS[0]}"
+    fi
+    powershell.exe -Command "
+      opencode run --model '$model' --agent '$AGENT' --format '$RUN_FORMAT' \"$escaped_prompt\"
+    " 2>&1 | tee "$OUTFILE"
+    return "${PIPESTATUS[0]}"
+  fi
 
   if command -v timeout >/dev/null 2>&1; then
     timeout "$timeout_seconds" opencode run \
@@ -226,7 +260,7 @@ if [ "$rc" -ne 0 ]; then
   exit "$rc"
 fi
 
-if [[ -z "$(git status --porcelain)" ]]; then
+if [[ -z "$(git status --porcelain --untracked-files=no)" ]]; then
   echo "opencode concluiu, mas nao deixou alteracoes no working tree." >&2
   exit 1
 fi
@@ -243,7 +277,7 @@ while IFS= read -r line; do
       BLOCKED=1
       ;;
   esac
-done < <(git status --porcelain)
+done < <(git status --porcelain --untracked-files=no)
 
 if [ "$BLOCKED" -ne 0 ]; then
   echo "abortando antes de commit por arquivo proibido" >&2
@@ -277,10 +311,10 @@ Issue: $ISSUE_URL
 Closes #$ISSUE
 EOF
 
-if gh pr view "$TARGET_BRANCH" --json url --jq '.url' >/dev/null 2>&1; then
-  PR_URL="$(gh pr view "$TARGET_BRANCH" --json url --jq '.url')"
+if "$GH_CMD" pr view "$TARGET_BRANCH" --json url --jq '.url' >/dev/null 2>&1; then
+  PR_URL="$("$GH_CMD" pr view "$TARGET_BRANCH" --json url --jq '.url')"
 else
-  PR_URL="$(gh pr create --base "$BASE_BRANCH" --head "$TARGET_BRANCH" --title "$PR_TITLE" --body-file "$PR_BODY_FILE")"
+  PR_URL="$("$GH_CMD" pr create --base "$BASE_BRANCH" --head "$TARGET_BRANCH" --title "$PR_TITLE" --body-file "$PR_BODY_FILE")"
 fi
 
 echo ""
