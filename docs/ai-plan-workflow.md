@@ -197,3 +197,7 @@ Issue #207 was implemented through `plans/issue-207-graceful-shutdown-scope-docs
 The plan split the documentation follow-up into 4 atomic tasks and clarified the runtime scope difference between the global graceful shutdown patch and `just rollout-restart all`. The executor again completed the plan without re-planning.
 
 This shows that plan-first can also work for documentation changes when the docs span multiple files or encode an operational decision. For a one-line typo or a single obvious edit, a direct command is still preferred.
+
+## Decision guide
+
+Use plan-first for multi-file work, operational changes, ordered validation, or tasks with external blockers. Prefer a direct command for small and obvious single-file edits.
