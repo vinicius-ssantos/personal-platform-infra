@@ -1,0 +1,113 @@
+name: AI solve-issue (controlled trigger)
+
+# Manual, auditable trigger for the local `just ai-solve-issue <issue>` flow
+# (docs/ai-solve-issue-workflow.md), issue #226. MVP scope per the issue:
+# workflow_dispatch only — no automatic issue pickup, no `/ai solve` comment
+# trigger yet (deferred, see docs). Never merges; scripts/ai-solve-issue.sh
+# has no code path that could.
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to run solve-issue against"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-solve-issue-${{ github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  solve:
+    name: Run solve-issue for issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Defense in depth: workflow_dispatch already requires write access to
+    # trigger via the GitHub UI/API. This additionally restricts execution
+    # to the repo owner specifically, matching the "only repo owner/
+    # maintainer can trigger" guardrail in issue #226. A non-matching actor
+    # gets a skipped job, not a partial run.
+    if: github.actor == github.repository_owner
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      AI_SOLVE_SANDBOX: "1"
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "ai-solve-issue-bot"
+          git config user.email "ai-solve-issue-bot@users.noreply.github.com"
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+
+      - name: Install opencode CLI
+        run: npm install -g opencode-ai@latest
+
+      - name: Install sandbox validation dependencies
+        run: python3 -m pip install -r scripts/requirements-sandbox.txt
+
+      - name: Run solve-issue
+        id: solve
+        run: |
+          set +e
+          bash scripts/ai-solve-issue.sh "${{ github.event.inputs.issue_number }}"
+          rc=$?
+          set -e
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+
+      - name: Find resulting PR
+        if: always()
+        id: find_pr
+        run: |
+          pr_url="$(gh pr list --state open --json url,headRefName \
+            -q ".[] | select(.headRefName | startswith(\"ai/issue-${{ github.event.inputs.issue_number }}-\")) | .url" \
+            | head -n1)"
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
+      # Always posts a status comment on the issue so the trigger is
+      # auditable from GitHub alone, regardless of outcome (issue #226
+      # acceptance criteria: "Trigger posts a result comment or run
+      # summary"). Never merges in any branch — solve-issue.sh has no
+      # merge code path, and this step only ever comments.
+      - name: Post result comment on issue
+        if: always()
+        env:
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EXIT_CODE: ${{ steps.solve.outputs.exit_code }}
+          PR_URL: ${{ steps.find_pr.outputs.pr_url }}
+        run: |
+          case "$EXIT_CODE" in
+            0)
+              if [ -n "$PR_URL" ]; then
+                body="AI solve-issue run completed: PR opened at $PR_URL. Merge remains manual — review before merging. Run: $RUN_URL"
+              else
+                body="AI solve-issue run completed: no changes were needed (NOOP), no PR created. Run: $RUN_URL"
+              fi
+              ;;
+            3)
+              body="AI solve-issue run prepared a diff but stopped before commit/push/PR: this issue's risk category requires manual review. The diff is on a branch in this checkout, not pushed. Run: $RUN_URL"
+              ;;
+            4)
+              body="AI solve-issue run stopped: sandbox validation (AI_SOLVE_SANDBOX=1) failed before commit/push/PR. See the run log for which command group failed and why. Run: $RUN_URL"
+              ;;
+            *)
+              body="AI solve-issue run failed (exit code ${EXIT_CODE:-unknown}). See the run log for details. Run: $RUN_URL"
+              ;;
+          esac
+          gh issue comment "$ISSUE_NUMBER" --body "$body"
