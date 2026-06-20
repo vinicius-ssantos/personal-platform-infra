@@ -122,7 +122,36 @@ One short paragraph describing the expected end state.
 - Summary bullets.
 - Tests run.
 - Known limitations.
+
+## Execution outcome
+
+Filled after `/execute-plan` completes. Records what happened during plan execution.
+
+- Executor model:
+- Tasks total:
+- Tasks completed:
+- Re-planning: yes | no
+  - Reason (if yes):
+- Validation result: pass | fail | partial
+- PR:
+  - URL:
+  - Status: open | merged | closed
+- Merge commit:
+- Notes:
 ```
+
+## Execution outcome
+
+The `## Execution outcome` section is filled by the executor after `/execute-plan`
+completes. It captures what actually happened during execution, including the model
+used, task completion counts, whether re-planning was needed, validation results,
+and the final PR status.
+
+This section turns the plan into a persistent record of the execution, enabling
+post-mortem analysis, model cost tracking, and workflow improvement over time.
+
+Existing plan files are not retroactively updated — the outcome section applies to
+plans created after this contract change.
 
 ## Task sizing rules
 
