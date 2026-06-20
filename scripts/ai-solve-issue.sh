@@ -8,7 +8,17 @@ if [[ -z "$ISSUE" ]]; then
 fi
 
 OUTFILE="$(mktemp -t opencode_run.XXXXXX)"
-trap 'rm -f "$OUTFILE"' EXIT
+# Só limpa em caso de sucesso. Timeout/erro mantém o log para diagnóstico.
+cleanup() {
+  local rc=$?
+  if [ $rc -eq 0 ]; then
+    rm -f "$OUTFILE"
+  else
+    echo ""
+    echo "Log salvo em: $OUTFILE" >&2
+  fi
+}
+trap cleanup EXIT
 
 # Fallback de modelos gratuitos. O primeiro que funcionar é usado.
 # Para forçar um modelo específico: AI_SOLVE_MODEL=provider/model
@@ -53,6 +63,25 @@ for m in "${MODELS[@]}"; do
   if grep -q "ProviderModelNotFoundError" "$OUTFILE" 2>/dev/null; then
     echo "  -> Modelo nao disponivel, tentando proximo..."
     continue
+  fi
+
+  # Timeout — mudar o modelo não vai resolver (todos usam o mesmo provider)
+  if [ $RC -eq 124 ]; then
+    echo ""
+    echo "TIMEOUT (5min) — opencode run nao completou dentro do prazo."
+    echo ""
+    echo "Possiveis causas:"
+    echo "  1. A execucao realmente levou mais de 5 min"
+    echo "     -> Aumente o timeout: AI_SOLVE_TIMEOUT=600 just ai-solve-issue $ISSUE"
+    echo ""
+    echo "  2. O opencode run travou esperando API ou confirmacao"
+    echo "     -> Veja o log: cat '$OUTFILE'"
+    echo "     -> Rode manualmente para ver onde trava:"
+    echo "        opencode run --agent orquestrador \"$PROMPT\""
+    echo ""
+    echo "  3. O orquestrador entrou em loop ou requereu input"
+    echo "     -> Nesse caso, o workflow doc pode precisar de mais约束"
+    exit 124
   fi
 
   # Outro erro: mostra e morre
