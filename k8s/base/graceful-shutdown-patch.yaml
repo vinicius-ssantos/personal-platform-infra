@@ -1,3 +1,7 @@
+# Depends on /bin/sh existing in the image (exec preStop hook below). All
+# images currently in k8s/base/apps and k8s/base/monitoring have it — see
+# docs/graceful-shutdown-distroless-fallback.md (issue #208) for the check
+# and the shell-free `sleep` action fallback if that ever changes.
 - op: add
   path: /spec/template/spec/terminationGracePeriodSeconds
   value: 30
