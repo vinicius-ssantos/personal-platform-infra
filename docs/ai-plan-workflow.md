@@ -179,6 +179,38 @@ to be executed without re-planning.
 If the free model is unavailable or performs poorly, use the cheapest reliable
 paid executor model rather than changing the workflow.
 
+### Model choices by task type
+
+These are the models actually wired into the current commands
+(`.opencode/commands/plan-feature.md`, `.opencode/commands/execute-plan.md`):
+
+| Task type | Model | Why |
+|---|---|---|
+| Planning (`/plan-feature`) | `opencode/deepseek-v4-flash` (paid) | architecture reasoning, scope control, and risk assessment benefit from the stronger model; planning runs once per feature, not per task, so the cost is bounded |
+| Execution (`/execute-plan`), default | `opencode/deepseek-v4-flash-free` | one bounded, already-scoped task at a time against an explicit plan — exactly where a cheaper/free model is reliable |
+| Execution, free model unavailable or visibly struggling | `opencode/deepseek-v4-flash` (paid) | same model family as planning, so behavior stays predictable; see fallback chain below |
+| Execution, plan/task touches sensitive or private environment data | `opencode/deepseek-v4-flash` (paid), never the free tier | see [Security policy](#security-policy) |
+
+This table reflects what the commands already do; it does not introduce new
+model names. If a command's `model:` frontmatter changes, update this table
+in the same change.
+
+### Fallback chain: free executor → paid executor
+
+`/execute-plan` defaults to `opencode/deepseek-v4-flash-free`. Per its own
+"Model/cost rules", if that model is unavailable or too weak for the task,
+**stop and recommend rerunning with `opencode/deepseek-v4-flash`** (the same
+paid model used for planning) instead of continuing with a struggling free
+model or silently changing the workflow's structure. This is a stop-and-ask
+fallback, not an automatic retry — the user decides whether to pay for the
+rerun.
+
+This is deliberately a different fallback shape from `scripts/ai-solve-issue.sh`
+(see [`docs/ai-solve-issue-workflow.md`](ai-solve-issue-workflow.md)), which
+tries multiple **free** model name/provider variants in sequence and has no
+paid fallback today — that script is a separate workflow with its own model
+policy; this document only covers `/plan-feature` and `/execute-plan`.
+
 ## Security policy
 
 The executor must avoid sensitive files by default:
@@ -200,6 +232,23 @@ confirmation:
 - `release`
 - `deploy`
 - direct writes to `main` or `master`
+
+### Free executor must not handle sensitive or private environment data
+
+If a plan or an individual task involves reading, generating, or reasoning
+about real secrets, production/VPS credentials, customer data, or any other
+private environment data — even read-only, even just to describe it — use
+the paid model (`opencode/deepseek-v4-flash`), not the free executor
+(`opencode/deepseek-v4-flash-free`). Free-tier routing does not carry the
+same data-handling guarantees as a paid tier, regardless of how bounded or
+"execution-only" the task looks.
+
+This is on top of, not instead of, the file-avoidance rule above: avoiding
+`.env`/kubeconfig/etc. by path is necessary but not sufficient — a task can
+touch private environment data without opening one of those specific files
+(e.g. describing a live cluster's actual configuration, or summarizing a
+real incident's details). When in doubt about whether a task counts as
+"sensitive", treat it as sensitive and use the paid model.
 
 ## Validated examples
 
@@ -230,6 +279,10 @@ This shows that plan-first can also work for documentation changes when the docs
 ## Decision guide
 
 Use plan-first for multi-file work, operational changes, ordered validation, or tasks with external blockers. Prefer a direct command for small and obvious single-file edits.
+
+Once you're in plan-first, see [Model policy](#model-policy) above for which
+model to use at each step and the [Security policy](#security-policy)
+sensitive-data rule before running `/execute-plan`.
 
 ## External validation blockers
 
