@@ -39,6 +39,11 @@ Model/cost rules:
 - Do not perform broad architecture exploration if the plan is sufficient.
 - Use `explorer` only for bounded read-only lookups.
 - Use `reviewer` before final summary.
+- If any task involves reading, generating, or reasoning about real secrets,
+  production/VPS credentials, customer data, or other private environment
+  data — even read-only — stop before running that task and tell the user
+  to rerun with `opencode/deepseek-v4-flash` (paid) instead. Do not continue
+  on the free model for that task. When in doubt, treat it as sensitive.
 
 Final validation:
 
