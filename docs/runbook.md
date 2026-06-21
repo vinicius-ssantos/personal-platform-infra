@@ -68,6 +68,10 @@ just rollout-restart github-unified-mcp
 > **Escopo:** `just rollout-restart all` cobre **apenas os 9 deployments de aplicação**
 > (namespaces `mcp`, `bff`, `vos`). O `graceful-shutdown-patch.yaml` é global e
 > aplica-se também ao namespace `monitoring` (Alloy, Grafana, Loki, Prometheus).
+> O patch usa `preStop.exec` com `/bin/sh` — ver
+> [`docs/graceful-shutdown-distroless-fallback.md`](graceful-shutdown-distroless-fallback.md)
+> para o fallback sem shell (`preStop.sleep`) caso uma imagem distroless seja
+> adicionada no futuro.
 >
 > Para reiniciar monitoring separadamente:
 > ```bash
