@@ -97,6 +97,19 @@ services:
       MCP_SERVER_PORT: 8000
       PORT: 8000
       MCP_PUBLIC_BASE_URL: http://vos-studio-mcp:8000
+      DATABASE_URL: ${DATABASE_URL}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-r2}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
+      STORAGE_BUCKET: ${STORAGE_BUCKET}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
+      STORAGE_PUBLIC_BASE_URL: ${STORAGE_PUBLIC_BASE_URL}
+      SOCIAL_MCP_ENABLED: ${SOCIAL_MCP_ENABLED:-false}
+      SOCIAL_MCP_URL: ${SOCIAL_MCP_URL:-}
+      SOCIAL_MCP_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN:-}
+      REDIS_URL: ${VOS_REDIS_URL:-redis://redis:6379/1}
+      CELERY_BROKER_URL: ${VOS_CELERY_BROKER_URL:-redis://redis:6379/1}
+      CELERY_RESULT_BACKEND: ${VOS_CELERY_RESULT_BACKEND:-redis://redis:6379/1}
     healthcheck:
       # Temporary liveness proxy until vos-studio-mcp exposes a lightweight /live endpoint.
       # /health performs dependency diagnostics and can be slower when DB/Redis/Celery are absent locally.
@@ -251,13 +264,13 @@ services:
     image: postgres:17-alpine
     profiles: ["workflow-engine", "all"]
     environment:
-      POSTGRES_DB: workflow_engine
-      POSTGRES_USER: workflow
-      POSTGRES_PASSWORD: workflow
+      POSTGRES_DB: ${POSTGRES_DB:-workflow_engine}
+      POSTGRES_USER: ${POSTGRES_USER:-workflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-workflow}
     ports:
       - "127.0.0.1:5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U workflow -d workflow_engine"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-workflow} -d ${POSTGRES_DB:-workflow_engine}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -274,10 +287,10 @@ services:
     environment:
       SERVER_PORT: 8080
       SPRING_PROFILES_ACTIVE: jpa
-      DATABASE_URL: jdbc:postgresql://postgres-workflow-engine:5432/workflow_engine
-      DATABASE_USERNAME: workflow
-      DATABASE_PASSWORD: workflow
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${WORKFLOW_ENGINE_DATABASE_URL:-jdbc:postgresql://postgres-workflow-engine:5432/workflow_engine}
+      DATABASE_USERNAME: ${WORKFLOW_ENGINE_DATABASE_USERNAME:-workflow}
+      DATABASE_PASSWORD: ${WORKFLOW_ENGINE_DATABASE_PASSWORD:-workflow}
+      REDIS_URL: ${WORKFLOW_ENGINE_REDIS_URL:-redis://redis:6379}
       KAFKA_BOOTSTRAP_SERVERS: ${WORKFLOW_ENGINE_KAFKA_BOOTSTRAP_SERVERS:-}
     depends_on:
       postgres-workflow-engine:
@@ -380,8 +393,8 @@ services:
       GATEWAY_ADMIN_UI_ENABLED: ${CENTRAL_MCP_GATEWAY_ADMIN_UI_ENABLED}
       GATEWAY_DYNAMIC_UPSTREAMS_ENABLED: ${CENTRAL_MCP_GATEWAY_DYNAMIC_UPSTREAMS_ENABLED}
       GATEWAY_ADMIN_TOKEN: ${CENTRAL_MCP_GATEWAY_ADMIN_TOKEN}
-      GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read github:write deploy:read social:write sandbox:run repo:read repo-research:read
-      GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.create_draft,social.publish_post,social.get_post_status,social.get_post_metrics,social.list_scheduled_posts,social.cancel_scheduled_post,social.update_post_caption,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command,repo.search,repo.fetch,repo.repository_overview,repo.list_files
+      GATEWAY_OAUTH_DEFAULT_SCOPES: ${GATEWAY_OAUTH_DEFAULT_SCOPES:-gateway:read github:read github:write deploy:read social:write sandbox:run repo:read repo-research:read vos:read vos:write}
+      GATEWAY_TOOL_ALLOWLIST: ${GATEWAY_TOOL_ALLOWLIST:-gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.create_draft,social.publish_post,social.get_post_status,social.get_post_metrics,social.list_scheduled_posts,social.cancel_scheduled_post,social.update_post_caption,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command,repo.search,repo.fetch,repo.repository_overview,repo.list_files}
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp/
