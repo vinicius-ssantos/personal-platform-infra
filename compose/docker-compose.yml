@@ -98,18 +98,34 @@ services:
       PORT: 8000
       MCP_PUBLIC_BASE_URL: http://vos-studio-mcp:8000
       DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
       STORAGE_PROVIDER: ${STORAGE_PROVIDER:-r2}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
       STORAGE_BUCKET: ${STORAGE_BUCKET}
       STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
       STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
       STORAGE_PUBLIC_BASE_URL: ${STORAGE_PUBLIC_BASE_URL}
+      HIGGSFIELD_API_KEY: ${HIGGSFIELD_API_KEY:-}
+      FREEPIK_API_KEY: ${FREEPIK_API_KEY:-}
+      MAGNIFIC_API_KEY: ${MAGNIFIC_API_KEY:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_IMAGE_PROVIDER: ${HF_IMAGE_PROVIDER:-hf-inference}
+      HF_IMAGE_MODEL: ${HF_IMAGE_MODEL:-black-forest-labs/FLUX.1-schnell}
+      HF_VIDEO_PROVIDER: ${HF_VIDEO_PROVIDER:-fal-ai}
+      HF_VIDEO_MODEL: ${HF_VIDEO_MODEL:-meituan-longcat/LongCat-Video}
+      WEBHOOK_SECRET_HIGGSFIELD: ${WEBHOOK_SECRET_HIGGSFIELD:-}
+      WEBHOOK_SECRET_FREEPIK: ${WEBHOOK_SECRET_FREEPIK:-}
+      WEBHOOK_SECRET_MAGNIFIC: ${WEBHOOK_SECRET_MAGNIFIC:-}
+      HIGGSFIELD_MCP_ENABLED: ${HIGGSFIELD_MCP_ENABLED:-false}
+      HIGGSFIELD_MCP_URL: ${HIGGSFIELD_MCP_URL:-https://mcp.higgsfield.ai/mcp}
+      HIGGSFIELD_MCP_ACCESS_TOKEN: ${HIGGSFIELD_MCP_ACCESS_TOKEN:-}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      PROVIDER_DAILY_LIMIT_USD: ${PROVIDER_DAILY_LIMIT_USD:-1.0}
       SOCIAL_MCP_ENABLED: ${SOCIAL_MCP_ENABLED:-false}
       SOCIAL_MCP_URL: ${SOCIAL_MCP_URL:-}
       SOCIAL_MCP_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN:-}
-      REDIS_URL: ${VOS_REDIS_URL:-redis://redis:6379/1}
-      CELERY_BROKER_URL: ${VOS_CELERY_BROKER_URL:-redis://redis:6379/1}
-      CELERY_RESULT_BACKEND: ${VOS_CELERY_RESULT_BACKEND:-redis://redis:6379/1}
     healthcheck:
       # Temporary liveness proxy until vos-studio-mcp exposes a lightweight /live endpoint.
       # /health performs dependency diagnostics and can be slower when DB/Redis/Celery are absent locally.
