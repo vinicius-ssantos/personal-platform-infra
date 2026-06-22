@@ -9,7 +9,7 @@ data:
   GATEWAY_PORT: "8080"
   GATEWAY_LOG_LEVEL: info
   GATEWAY_OAUTH_CLIENT_ID: chatgpt
-  GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read deploy:read social:write sandbox:run repo:read
+  GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read github:write deploy:read social:write sandbox:run repo:read repo-research:read vos:read vos:write
   GATEWAY_TOOL_ALLOWLIST: gateway.status,gateway.delivery_status,gateway.upstream_capabilities,github.search_issues,deploy.get_status,social.create_draft,social.publish_post,social.get_post_status,social.get_post_metrics,social.list_scheduled_posts,social.cancel_scheduled_post,social.update_post_caption,vos.get_studio_status,sandbox.run_code,sandbox.run_command,sandbox.run_file,repo.search,repo.fetch,repo.repository_overview,repo.list_files
   GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp.mcp.svc.cluster.local:8765/mcp
   GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp.mcp.svc.cluster.local:8000/mcp
@@ -19,6 +19,7 @@ data:
   GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE: "20"
   GATEWAY_TRUSTED_PROXY_COUNT: "1"
   GATEWAY_IDEMPOTENCY_TTL_SECONDS: "300"
+  GATEWAY_REDIS_URL: redis://redis:6379/0
   # GATEWAY_ENVIRONMENT, GATEWAY_PUBLIC_BASE_URL and GATEWAY_OAUTH_ISSUER (plus the
   # local-only GATEWAY_ADMIN_* / GATEWAY_DYNAMIC_UPSTREAMS_ENABLED) are
   # environment-specific and are set by the overlay:

@@ -21,6 +21,67 @@ spec:
           envFrom:
             - configMapRef:
                 name: vos-studio-mcp-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: DATABASE_URL
+            - name: STORAGE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: STORAGE_ENDPOINT
+            - name: STORAGE_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: STORAGE_BUCKET
+            - name: STORAGE_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: STORAGE_ACCESS_KEY
+            - name: STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: STORAGE_SECRET_KEY
+            - name: STORAGE_PUBLIC_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: STORAGE_PUBLIC_BASE_URL
+            - name: SOCIAL_MCP_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: SOCIAL_MCP_ENABLED
+            - name: SOCIAL_MCP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: SOCIAL_MCP_URL
+            - name: SOCIAL_MCP_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: SOCIAL_MCP_ACCESS_TOKEN
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: VOS_REDIS_URL
+            - name: CELERY_BROKER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: VOS_CELERY_BROKER_URL
+            - name: CELERY_RESULT_BACKEND
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: VOS_CELERY_RESULT_BACKEND
           ports:
             - containerPort: 8000
           livenessProbe:
