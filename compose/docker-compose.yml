@@ -410,11 +410,11 @@ services:
       GATEWAY_DYNAMIC_UPSTREAMS_ENABLED: ${CENTRAL_MCP_GATEWAY_DYNAMIC_UPSTREAMS_ENABLED}
       GATEWAY_ADMIN_TOKEN: ${CENTRAL_MCP_GATEWAY_ADMIN_TOKEN}
       GATEWAY_OAUTH_DEFAULT_SCOPES: ${GATEWAY_OAUTH_DEFAULT_SCOPES:-gateway:read github:read github:write deploy:read social:write sandbox:run repo:read repo-research:read vos:read vos:write}
-      GATEWAY_TOOL_ALLOWLIST: ${GATEWAY_TOOL_ALLOWLIST:-gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.create_draft,social.publish_post,social.get_post_status,social.get_post_metrics,social.list_scheduled_posts,social.cancel_scheduled_post,social.update_post_caption,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command,repo.search,repo.fetch,repo.repository_overview,repo.list_files}
+      GATEWAY_TOOL_ALLOWLIST: ${GATEWAY_TOOL_ALLOWLIST:-gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.create_draft,social.publish_post,social.get_post_status,social.get_post_metrics,social.list_scheduled_posts,social.cancel_scheduled_post,social.update_post_caption,social.get_instagram_account_health,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command,repo.search,repo.fetch,repo.repository_overview,repo.list_files}
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp/
-      GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp
+      GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp/
       GATEWAY_UPSTREAM_SANDBOX_URL: ${GATEWAY_UPSTREAM_SANDBOX_URL}
       GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar:8081/mcp
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
