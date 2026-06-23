@@ -15,8 +15,9 @@ spec:
   failedJobsHistoryLimit: 5
   jobTemplate:
     spec:
-      # No automatic retries: a failure leaves mcp-social at replicas=0 and
-      # fires a Grafana alert. Trigger a manual re-run after investigating:
+      # No automatic retries: a failure still restores replicas via the EXIT
+      # trap, but fires a Grafana alert. Trigger a manual re-run after
+      # investigating:
       #   kubectl create job --from=cronjob/mcp-social-backup manual-$(date +%Y%m%d) -n mcp
       backoffLimit: 0
       # Hard ceiling: covers even slow R2 uploads.
@@ -28,20 +29,20 @@ spec:
         spec:
           serviceAccountName: mcp-social-backup
           restartPolicy: Never
+          terminationGracePeriodSeconds: 60
           securityContext:
             seccompProfile:
               type: RuntimeDefault
-          initContainers:
-            # Step 1 — scale mcp-social to 0.
-            # Records the current replica count so step 3 can restore it.
-            # With no writer on the PVC, the SQLite snapshot in step 2 is
-            # guaranteed to be internally consistent.
-            - name: scale-down
+          # Single container with EXIT/TERM/INT traps so replicas are restored
+          # after normal backup failures. SIGKILL or forced pod deletion can
+          # still bypass traps, so this is best-effort for hard termination.
+          containers:
+            - name: backup
               image: bitnami/kubectl:1.29.4
               imagePullPolicy: IfNotPresent
               securityContext:
                 allowPrivilegeEscalation: false
-                runAsNonRoot: true
+                runAsNonRoot: false
                 capabilities:
                   drop:
                     - ALL
@@ -49,60 +50,66 @@ spec:
               args:
                 - |
                   set -euo pipefail
+
                   PREV=$(kubectl get deployment mcp-social -n mcp \
                     -o jsonpath='{.spec.replicas}')
-                  printf '%s' "$PREV" > /state/prev-replicas
+
+                  restore_replicas() {
+                    echo "Restoring mcp-social to ${PREV:-0} replicas."
+                    kubectl scale deployment mcp-social -n mcp \
+                      --replicas="${PREV:-0}" || true
+                  }
+
+                  on_signal() {
+                    restore_replicas
+                    trap - EXIT TERM INT
+                    exit 143
+                  }
+
+                  trap restore_replicas EXIT
+                  trap on_signal TERM INT
+
                   echo "mcp-social replicas: $PREV — scaling to 0"
                   kubectl scale deployment mcp-social -n mcp --replicas=0
-                  # Returns immediately if no pod matches (already at 0).
                   kubectl wait pod -l app=mcp-social -n mcp \
                     --for=delete --timeout=60s \
                     && echo "Pod terminated." \
                     || echo "No running pod found — proceeding."
-              volumeMounts:
-                - name: state
-                  mountPath: /state
-              resources:
-                requests:
-                  cpu: 10m
-                  memory: 32Mi
-                limits:
-                  cpu: 100m
-                  memory: 64Mi
 
-            # Step 2 — copy SQLite files to R2.
-            # The Deployment is at replicas=0; the PVC has no writer.
-            # rclone/rclone runs as root by default; runAsNonRoot is omitted so
-            # it can read the PVC files regardless of their ownership.
-            - name: backup
-              image: rclone/rclone:1.68.2
-              imagePullPolicy: IfNotPresent
-              securityContext:
-                allowPrivilegeEscalation: false
-                capabilities:
-                  drop:
-                    - ALL
-              command: ["/bin/sh", "-c"]
-              args:
-                - |
-                  set -euo pipefail
+                  RCLONE_VERSION="1.68.2"
+                  RCLONE_ARCHIVE="rclone-v${RCLONE_VERSION}-linux-amd64.tar.gz"
+                  RCLONE_BASE_URL="https://downloads.rclone.org/v${RCLONE_VERSION}"
+
+                  wget -q -O "/tmp/${RCLONE_ARCHIVE}" \
+                    "${RCLONE_BASE_URL}/${RCLONE_ARCHIVE}"
+                  wget -q -O /tmp/SHA256SUMS "${RCLONE_BASE_URL}/SHA256SUMS"
+                  grep -E "[ *]${RCLONE_ARCHIVE}$" /tmp/SHA256SUMS \
+                    > "/tmp/${RCLONE_ARCHIVE}.sha256"
+                  (cd /tmp && sha256sum -c "${RCLONE_ARCHIVE}.sha256")
+
+                  tar xzf "/tmp/${RCLONE_ARCHIVE}" -C /tmp
+                  cp "/tmp/rclone-v${RCLONE_VERSION}-linux-amd64/rclone" /tmp/rclone
+                  chmod 0755 /tmp/rclone
+
                   DATE=$(date +%Y-%m-%d)
                   DEST="r2:${R2_BUCKET}/mcp-social/${DATE}/"
+
                   echo "Backing up /data/social.db* → ${DEST}"
-                  rclone copy /data "${DEST}" \
+                  /tmp/rclone copy /data "${DEST}" \
                     --include "social.db*" \
                     --use-server-modtime \
                     --verbose
+
                   echo "Pruning snapshots older than 30 days..."
-                  rclone delete "r2:${R2_BUCKET}/mcp-social/" \
+                  /tmp/rclone delete "r2:${R2_BUCKET}/mcp-social/" \
                     --min-age 31d \
                     --use-server-modtime \
                     --rmdirs \
                     --verbose
+
                   echo "Backup complete."
+
                   # Optional dead-man's-switch ping (healthchecks.io or similar).
-                  # A missed daily ping raises an external alert even if the
-                  # whole cluster (and Grafana with it) is down.
                   if [ -n "${HEALTHCHECKS_BACKUP_URL:-}" ]; then
                     wget -q -T 10 -O /dev/null "$HEALTHCHECKS_BACKUP_URL" \
                       && echo "Pinged healthchecks endpoint." \
@@ -147,50 +154,15 @@ spec:
                 - name: data
                   mountPath: /data
                   readOnly: true
-                - name: state
-                  mountPath: /state
               resources:
                 requests:
-                  cpu: 50m
-                  memory: 64Mi
-                limits:
-                  cpu: 200m
-                  memory: 128Mi
-
-          # Step 3 — restore replica count.
-          # Runs only after both init containers succeed; skipped on any failure.
-          containers:
-            - name: scale-up
-              image: bitnami/kubectl:1.29.4
-              imagePullPolicy: IfNotPresent
-              securityContext:
-                allowPrivilegeEscalation: false
-                runAsNonRoot: true
-                capabilities:
-                  drop:
-                    - ALL
-              command: ["/bin/sh", "-c"]
-              args:
-                - |
-                  set -euo pipefail
-                  PREV=$(cat /state/prev-replicas 2>/dev/null || echo "0")
-                  echo "Restoring mcp-social to ${PREV} replicas."
-                  kubectl scale deployment mcp-social -n mcp --replicas="${PREV}"
-                  echo "Done."
-              volumeMounts:
-                - name: state
-                  mountPath: /state
-              resources:
-                requests:
-                  cpu: 10m
-                  memory: 32Mi
-                limits:
                   cpu: 100m
-                  memory: 64Mi
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
 
           volumes:
-            - name: state
-              emptyDir: {}
             - name: data
               persistentVolumeClaim:
                 claimName: mcp-social-data
