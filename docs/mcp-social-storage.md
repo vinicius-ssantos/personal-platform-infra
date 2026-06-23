@@ -38,7 +38,7 @@ and resize (see below) before it fills.
 
 The `mcp-social-backup` CronJob (`k8s/base/apps/mcp-social/backup-cronjob.yaml`)
 runs daily at **03:00 UTC** and uploads `social.db*` to Cloudflare R2 using
-`rclone`. Daily snapshots are kept for **7 days**; older ones are pruned
+`rclone`. Daily snapshots are kept for **30 days**; older ones are pruned
 automatically.
 
 ### Prerequisites
