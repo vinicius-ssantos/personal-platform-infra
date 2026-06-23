@@ -21,6 +21,9 @@ Fill these values before starting services:
   REPO_RESEARCH_ALLOWED_REPOSITORIES - JSON array repo allowlist, e.g. '["owner/repo"]'
   CENTRAL_MCP_GATEWAY_ADMIN_TOKEN - local Admin UI token, e.g. openssl rand -hex 32
 
+Most upstream image repos are private — authenticate Docker before pulling:
+  docker login ghcr.io -u <github-username> -p <token-with-read:packages-scope>
+
 Then run:
   just check-env
   just compose-up

@@ -58,12 +58,22 @@ repositories:
 - `ghcr.io/vinicius-ssantos/github-unified-mcp-bff:main`
 - `ghcr.io/vinicius-ssantos/vos-studio-mcp:main`
 - `ghcr.io/vinicius-ssantos/vos-studio-bff:main`
+- `ghcr.io/vinicius-ssantos/central-mcp-gateway:main`
+- `ghcr.io/vinicius-ssantos/workflow-engine:main`
+
+Most of these source repositories (and their GHCR packages) are private —
+authenticate Docker before pulling:
+
+```bash
+docker login ghcr.io -u <github-username> -p <token-with-read:packages-scope>
+```
 
 To test a different image locally, edit only your uncommitted `.env` file and
 override the matching `*_IMAGE` variable.
 
-If GHCR returns `denied` for an image, confirm that the package exists, the tag
-is published, and Docker is logged in with access to the package.
+If GHCR returns `denied` for an image, this is expected when not logged in —
+run `docker login` as above, then confirm the package exists, the tag is
+published, and your token has `read:packages` for it.
 
 To smoke-test only the GitHub MCP service:
 
