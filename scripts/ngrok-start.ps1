@@ -103,10 +103,10 @@ try {
     $proxyOk = $true
 } catch {
     # Docker Desktop on Windows can swallow HTTP responses through port-forwarding even when
-    # the container is healthy — fall back to checking container state directly.
+    # the container is healthy - fall back to checking container state directly.
     $containerRunning = & docker inspect compose-ngrok-proxy-1 --format '{{.State.Running}}' 2>$null
     if ($containerRunning -eq "true") {
-        Write-Host "  (HTTP healthz failed; container is running — proceeding)"
+        Write-Host "  (HTTP healthz failed; container is running - proceeding)"
         $proxyOk = $true
     }
 }
