@@ -520,7 +520,7 @@ services:
     image: caddy:2.8-alpine
     profiles: ["ngrok", "all"]
     ports:
-      - "127.0.0.1:8088:8080"
+      - "0.0.0.0:8088:8080"
     environment:
       PUBLIC_EDGE_TOKEN: ${PUBLIC_EDGE_TOKEN}
     volumes:
