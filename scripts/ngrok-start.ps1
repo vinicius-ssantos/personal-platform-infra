@@ -97,15 +97,27 @@ $staticDomain = $currentEnv["NGROK_STATIC_DOMAIN"]
 
 # Verify Caddy proxy is reachable before starting ngrok
 Write-Host "Checking local proxy is up (localhost:8088)..."
+$proxyOk = $false
 try {
     Invoke-RestMethod -Uri "http://localhost:8088/healthz" -TimeoutSec 5 | Out-Null
+    $proxyOk = $true
 } catch {
+    # Docker Desktop on Windows can swallow HTTP responses through port-forwarding even when
+    # the container is healthy — fall back to checking container state directly.
+    $containerRunning = & docker inspect compose-ngrok-proxy-1 --format '{{.State.Running}}' 2>$null
+    if ($containerRunning -eq "true") {
+        Write-Host "  (HTTP healthz failed; container is running — proceeding)"
+        $proxyOk = $true
+    }
+}
+if (-not $proxyOk) {
     throw "Caddy proxy not reachable at http://localhost:8088. Run 'just compose-up' first."
 }
 
 $ngrokArgs = @("http", "http://localhost:8088", "--log", "stdout")
 if (-not [string]::IsNullOrWhiteSpace($staticDomain)) {
     $ngrokArgs += "--domain=$staticDomain"
+    $ngrokArgs += "--pooling-enabled"
 }
 
 Write-Host "Starting ngrok..."
