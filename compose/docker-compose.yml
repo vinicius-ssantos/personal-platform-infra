@@ -120,6 +120,7 @@ services:
       WEBHOOK_SECRET_MAGNIFIC: ${WEBHOOK_SECRET_MAGNIFIC:-}
       HIGGSFIELD_MCP_ENABLED: ${HIGGSFIELD_MCP_ENABLED:-false}
       HIGGSFIELD_MCP_URL: ${HIGGSFIELD_MCP_URL:-https://mcp.higgsfield.ai/mcp}
+      HIGGSFIELD_FACADE_URL: http://higgsfield-facade:8080/mcp
       HIGGSFIELD_MCP_ACCESS_TOKEN: ${HIGGSFIELD_MCP_ACCESS_TOKEN:-}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       PROVIDER_DAILY_LIMIT_USD: ${PROVIDER_DAILY_LIMIT_USD:-1.0}
@@ -127,13 +128,14 @@ services:
       SOCIAL_MCP_URL: ${SOCIAL_MCP_URL:-}
       SOCIAL_MCP_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN:-}
     healthcheck:
-      # Temporary liveness proxy until vos-studio-mcp exposes a lightweight /live endpoint.
-      # /health performs dependency diagnostics and can be slower when DB/Redis/Celery are absent locally.
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=10).read()\""]
+      # TCP port check only — /health performs DB diagnostics and blocks when Supabase is
+      # unreachable from Docker (e.g. behind NordLynx VPN). App-level health is less critical
+      # than compose startup succeeding.
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 8000)); s.close()\""]
       interval: 10s
-      timeout: 12s
-      retries: 5
-      start_period: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
   vos-studio-bff:
@@ -256,6 +258,25 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('localhost', 8766), timeout=3); s.close()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  higgsfield-facade:
+    image: ${HIGGSFIELD_FACADE_IMAGE}
+    profiles: ["gateway", "tailscale", "all"]
+    ports:
+      - "127.0.0.1:8085:8080"
+    environment:
+      HIGGSFIELD_MCP_URL: https://mcp.higgsfield.ai/mcp
+      HIGGSFIELD_MCP_ACCESS_TOKEN: ${HIGGSFIELD_MCP_ACCESS_TOKEN:-}
+      FACADE_HOST: 0.0.0.0
+      FACADE_PORT: "8080"
+      FACADE_LOG_LEVEL: ${FACADE_LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 8080)); s.close()\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -410,19 +431,21 @@ services:
       GATEWAY_DYNAMIC_UPSTREAMS_ENABLED: ${CENTRAL_MCP_GATEWAY_DYNAMIC_UPSTREAMS_ENABLED}
       GATEWAY_ADMIN_TOKEN: ${CENTRAL_MCP_GATEWAY_ADMIN_TOKEN}
       GATEWAY_OAUTH_DEFAULT_SCOPES: ${GATEWAY_OAUTH_DEFAULT_SCOPES:-gateway:read github:read github:write deploy:read social:write sandbox:run repo:read repo-research:read vos:read vos:write}
-      GATEWAY_TOOL_ALLOWLIST: ${GATEWAY_TOOL_ALLOWLIST:-gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.create_draft,social.publish_post,social.get_post_status,social.get_post_metrics,social.list_scheduled_posts,social.cancel_scheduled_post,social.update_post_caption,social.get_instagram_account_health,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command,repo.search,repo.fetch,repo.repository_overview,repo.list_files}
+      GATEWAY_TOOL_ALLOWLIST: ${GATEWAY_TOOL_ALLOWLIST:-gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,github.search_issues,deploy.get_status,social.create_draft,social.publish_post,social.get_post_status,social.get_post_metrics,social.list_scheduled_posts,social.cancel_scheduled_post,social.update_post_caption,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command,repo.search,repo.fetch,repo.repository_overview,repo.list_files,higgsfield.catalog,higgsfield.models_explore,higgsfield.show_generations,higgsfield.balance,higgsfield.job_display,higgsfield.animation_actions,higgsfield.presets_show,higgsfield.show_medias,higgsfield.list_voices,higgsfield.transactions,higgsfield.list_workspaces,higgsfield.show_marketing_studio_generations}
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp/
       GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp/
       GATEWAY_UPSTREAM_SANDBOX_URL: ${GATEWAY_UPSTREAM_SANDBOX_URL}
       GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar:8081/mcp
+      GATEWAY_UPSTREAM_HIGGSFIELD_URL: http://higgsfield-facade:8080/mcp
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
       GATEWAY_GITHUB_TOKEN: ${GITHUB_TOKEN}
       GATEWAY_DEPLOY_API_KEY: ${MCP_SERVER_API_KEY}
       GATEWAY_SOCIAL_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN}
       GATEWAY_SANDBOX_API_KEY: ${SANDBOX_API_KEY}
       GATEWAY_REPO_RESEARCH_API_KEY: ${REPO_RESEARCH_SIDECAR_API_KEY}
+      GATEWAY_HIGGSFIELD_ACCESS_TOKEN: ${HIGGSFIELD_MCP_ACCESS_TOKEN:-}
       GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE: ${GATEWAY_RATE_LIMIT_PER_TOOL_PER_MINUTE:-20}
       GATEWAY_TRUSTED_PROXY_COUNT: ${GATEWAY_TRUSTED_PROXY_COUNT:-1}
       GATEWAY_IDEMPOTENCY_TTL_SECONDS: ${GATEWAY_IDEMPOTENCY_TTL_SECONDS:-300}
@@ -458,6 +481,8 @@ services:
         condition: service_healthy
       repo-research-sidecar:
         condition: service_started
+      higgsfield-facade:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=3).read()\""]
       interval: 10s

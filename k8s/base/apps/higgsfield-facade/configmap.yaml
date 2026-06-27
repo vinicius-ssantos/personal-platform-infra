@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: higgsfield-facade-config
+  namespace: mcp
+data:
+  HIGGSFIELD_MCP_URL: https://mcp.higgsfield.ai/mcp
+  FACADE_HOST: "0.0.0.0"
+  FACADE_PORT: "8080"
+  FACADE_LOG_LEVEL: INFO

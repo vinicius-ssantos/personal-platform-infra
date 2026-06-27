@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: higgsfield-facade
+  namespace: mcp
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: higgsfield-facade
+  template:
+    metadata:
+      labels:
+        app: higgsfield-facade
+    spec:
+      serviceAccountName: platform-puller
+      containers:
+        - name: higgsfield-facade
+          image: ghcr.io/vinicius-ssantos/higgsfield-safety-mcp:main
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: higgsfield-facade-config
+          env:
+            - name: HIGGSFIELD_MCP_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: HIGGSFIELD_MCP_ACCESS_TOKEN
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

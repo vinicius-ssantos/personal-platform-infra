@@ -82,6 +82,21 @@ spec:
                 secretKeyRef:
                   name: platform-secrets
                   key: VOS_CELERY_RESULT_BACKEND
+            - name: HIGGSFIELD_MCP_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: HIGGSFIELD_MCP_ENABLED
+            - name: HIGGSFIELD_MCP_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: HIGGSFIELD_MCP_ACCESS_TOKEN
+            - name: HIGGSFIELD_FACADE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: HIGGSFIELD_FACADE_URL
           ports:
             - containerPort: 8000
           livenessProbe:

@@ -6,6 +6,7 @@ resources:
   - apps/github-unified-mcp
   - apps/deploy-orchestrator-mcp
   - apps/mcp-social
+  - apps/higgsfield-facade
   - apps/repo-research-sidecar
   - apps/central-mcp-gateway
   - apps/github-unified-mcp-bff
