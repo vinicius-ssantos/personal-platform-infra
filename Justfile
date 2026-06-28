@@ -65,33 +65,34 @@ warp-start:
 warp-stop:
 	& "{{_warp}}" disconnect
 
-compose-up: check-env
-	just compose-up-profile all
+compose-up: check-env check-warp
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
 
 compose-down:
-	just compose-down-profile all
+	docker compose -f compose/docker-compose.yml --env-file .env down
 
 compose-logs:
-	just compose-logs-profile all
+	docker compose -f compose/docker-compose.yml --env-file .env logs -f --tail=200
 
-compose-up-profile profile="all": check-env check-warp
+# Explicit profile override — ignores COMPOSE_PROFILES from .env.
+compose-up-profile profile: check-env check-warp
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} up -d --wait
 
-compose-down-profile profile="all":
+compose-down-profile profile:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} down
 
-compose-logs-profile profile="all":
+compose-logs-profile profile:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} logs -f --tail=200
 
 compose-pull:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile all pull
+	docker compose -f compose/docker-compose.yml --env-file .env pull
 
 # Pull every image and recreate only the containers whose image digest changed.
-compose-upgrade: check-env
-	docker compose -f compose/docker-compose.yml --env-file .env --profile all up -d --pull always --wait
+compose-upgrade: check-env check-warp
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --pull always --wait
 
 compose-build:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile all build
+	docker compose -f compose/docker-compose.yml --env-file .env build
 
 gateway-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait central-mcp-gateway
@@ -271,7 +272,7 @@ clean:
 	bash scripts/clean-local.sh
 
 clean-compose:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile all down -v
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all down -v --remove-orphans
 
 clean-k3d:
 	k3d cluster delete personal-platform
