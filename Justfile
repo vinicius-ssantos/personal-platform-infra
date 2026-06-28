@@ -66,13 +66,13 @@ warp-stop:
 	& "{{_warp}}" disconnect
 
 compose-up: check-env check-warp
-	docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} up -d --wait
 
 compose-down:
-	docker compose -f compose/docker-compose.yml --env-file .env down
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} down
 
 compose-logs:
-	docker compose -f compose/docker-compose.yml --env-file .env logs -f --tail=200
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} logs -f --tail=200
 
 # Explicit profile override — ignores COMPOSE_PROFILES from .env.
 compose-up-profile profile: check-env check-warp
@@ -85,14 +85,14 @@ compose-logs-profile profile:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} logs -f --tail=200
 
 compose-pull:
-	docker compose -f compose/docker-compose.yml --env-file .env pull
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} pull
 
 # Pull every image and recreate only the containers whose image digest changed.
 compose-upgrade: check-env check-warp
-	docker compose -f compose/docker-compose.yml --env-file .env up -d --pull always --wait
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} up -d --pull always --wait
 
 compose-build:
-	docker compose -f compose/docker-compose.yml --env-file .env build
+	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} build
 
 gateway-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait central-mcp-gateway
