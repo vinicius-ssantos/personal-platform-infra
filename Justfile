@@ -65,14 +65,16 @@ warp-start:
 warp-stop:
 	& "{{_warp}}" disconnect
 
+_profiles := env("COMPOSE_PROFILES", "all")
+
 compose-up: check-env check-warp
-	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} up -d --wait
+	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
 
 compose-down:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} down
+	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env down
 
 compose-logs:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} logs -f --tail=200
+	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env logs -f --tail=200
 
 # Explicit profile override — ignores COMPOSE_PROFILES from .env.
 compose-up-profile profile: check-env check-warp
@@ -85,14 +87,14 @@ compose-logs-profile profile:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} logs -f --tail=200
 
 compose-pull:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} pull
+	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env pull
 
 # Pull every image and recreate only the containers whose image digest changed.
 compose-upgrade: check-env check-warp
-	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} up -d --pull always --wait
+	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env up -d --pull always --wait
 
 compose-build:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile {{ env("COMPOSE_PROFILES", "all") }} build
+	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env build
 
 gateway-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait central-mcp-gateway
