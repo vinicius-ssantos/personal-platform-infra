@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "central-mcp-gateway": {
+      "type": "http",
+      "url": "https://<ngrok-or-cloudflare-tunnel-url>/mcp",
+      "headers": {
+        "Authorization": "Bearer <CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN>",
+        "X-Platform-Token": "<MCP_BEARER_TOKEN>"
+      }
+    }
+  }
+}
