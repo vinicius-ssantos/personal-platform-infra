@@ -43,6 +43,15 @@ doctor:
 env-init:
 	bash scripts/env-init.sh
 
+# Create a timestamped backup of .env before any bulk modification.
+env-backup:
+	cp .env ".env.bak.$(date +%Y%m%d-%H%M%S)"
+
+# Rotate CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN and MCP_BEARER_TOKEN safely.
+# Uses sed (line-by-line) to avoid UTF-8 corruption. Backs up .env automatically.
+env-rotate-tokens:
+	bash scripts/env-rotate-tokens.sh
+
 check-env:
 	bash scripts/check-env.sh
 
