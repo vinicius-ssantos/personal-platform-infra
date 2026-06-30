@@ -3381,3 +3381,70 @@ Ao force-recrear um container upstream (VOS, github-mcp, etc.), o gateway manté
 | social:read adicionado aos scopes | ✅ **RESOLVIDO** |
 | VOS webhook signing | ✅ **RESOLVIDO** |
 | Social list_scheduled_posts funcional | ✅ **RESOLVIDO** (com sprint_id obrigatório) |
+
+---
+
+## Phase 9 — Descoberta Crítica: ToolCatalogError (2026-06-30)
+
+### Achado: Gateway v0.31.0 valida allowlist contra catálogo built-in, não upstreams
+
+Ao tentar adicionar ferramentas ao `GATEWAY_TOOL_ALLOWLIST` (tanto no compose quanto no k8s configmap), o gateway travou com:
+
+```
+central_mcp_gateway.tools.ToolCatalogError: Unknown allowlisted tools: deploy.policy_evaluate,
+deploy.render_service_plan, deploy.repo_analyze, github.github_get_me, github.knowledge_search,
+github.label_list, github.ref_get, github.server_info, github.tool_usage_guide,
+social.get_instagram_account_health, vos.get_operation_status, vos.get_sprint_status,
+vos.list_sprint_assets, vos.list_sprints
+```
+
+**Causa raiz:** O gateway valida o allowlist em startup contra um catálogo **built-in** (hardcoded na versão 0.31.0). Apenas tools registradas nesse catálogo estático podem ser adicionadas ao proxy estático. Tools descobertas via MCP de upstreams (dynamic catalog) são acessíveis apenas via `gateway.invoke_discovered_tool`.
+
+### Impacto nos commits anteriores desta branch
+
+| Commit | Problema | Severidade |
+|---|---|---|
+| `0372130` (PR #250) | Adicionou ao k8s configmap: `github.server_info`, `github.github_get_me`, `github.knowledge_search`, `github.tool_usage_guide`, `github.ref_get`, `github.label_list` — nenhum deles existe no catálogo estático | 🔴 Faria VPS crashar se deployado |
+| `b199208` | Adicionou ao k8s configmap: `deploy.repo_analyze`, `deploy.policy_evaluate`, `deploy.render_service_plan`, `vos.list_sprints`, `vos.get_sprint_status`, `vos.list_sprint_assets`, `vos.get_operation_status` — idem | 🔴 Faria VPS crashar se deployado |
+| Anterior (pré-branch) | `social.get_instagram_account_health` já estava no k8s configmap mas NÃO existe no catálogo estático | 🔴 Idem |
+
+**Por que não crashou antes:** O deploy VPS (`deploy-vps.yml`) nunca executou de fato — `VPS_KUBECONFIG` não está configurado, então o workflow registra notice e pula. A VPS ainda roda o configmap deployado manualmente antes desta série de reviews.
+
+### Correção aplicada
+
+`k8s/base/apps/central-mcp-gateway/configmap.yaml` revertido para o conjunto seguro de 20 tools (comprovadas no catálogo estático via testes locais):
+
+```
+gateway.status, gateway.delivery_status, gateway.upstream_capabilities,
+github.search_issues,
+deploy.get_status,
+social.create_draft, social.publish_post, social.get_post_status, social.get_post_metrics,
+  social.list_scheduled_posts, social.cancel_scheduled_post, social.update_post_caption,
+vos.get_studio_status,
+sandbox.run_code, sandbox.run_command, sandbox.run_file,
+repo.search, repo.fetch, repo.repository_overview, repo.list_files
+```
+
+Removidos: `social.get_instagram_account_health` (não existe no catálogo estático), todos os tools GitHub extras, todos os tools Deploy extras, todos os tools VOS de sprint.
+
+### Conclusão arquitetural
+
+| Caminho | Tools disponíveis | Requer catálogo estático? |
+|---|---|---|
+| Proxy estático (`GATEWAY_TOOL_ALLOWLIST`) | Apenas tools do catálogo built-in (~36 tools locais) | ✅ Sim |
+| Dynamic invoke (`gateway.invoke_discovered_tool`) | Qualquer tool dos upstreams (~390 tools) | ❌ Não |
+
+Para adicionar novos tools ao proxy estático do gateway v0.31.0, é preciso atualizar o código do gateway (adicionar schema ao catálogo built-in) e publicar nova versão. **Não é possível fazer apenas via configuração.**
+
+**Impacto para VPS:** O allowlist VPS (k8s configmap) deve conter APENAS tools do catálogo estático. Tools como `vos.list_sprints`, `github.github_get_me` etc. só estão disponíveis via invoke no ambiente local (dynamic upstreams habilitado).
+
+### Status atualizado dos bloqueios (pós-fase 9)
+
+| Bloqueio | Status |
+|---|---|
+| k8s configmap com tools inválidos | ✅ **RESOLVIDO** — revertido para 20 tools seguras |
+| `confirm_channel: none` → tools untrusted bloqueadas | 🔴 **ABERTO** |
+| Higgsfield token expirado | 🔴 **ABERTO** |
+| BUG-01: gateway dropa params Higgsfield | 🔴 **ABERTO** |
+| social:read adicionado aos scopes | ✅ **RESOLVIDO** |
+| VOS webhook signing | ✅ **RESOLVIDO** |
