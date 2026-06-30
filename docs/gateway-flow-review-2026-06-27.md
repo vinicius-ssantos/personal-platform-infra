@@ -3301,3 +3301,83 @@ gateway:read github:read github:write deploy:read social:write sandbox:run repo:
 | `github.issue_list` | não testado | ❌ blocked (requires_confirmation + untrusted) |
 | `github.commit_list` | não testado | ❌ blocked (requires_confirmation + untrusted) |
 | `github.repo_get` | não testado | ✅ funcional |
+
+---
+
+## Phase 8 — Correções e Validação (2026-06-30)
+
+### Correções aplicadas nesta fase
+
+| Item | Causa raiz | Solução | Status |
+|---|---|---|---|
+| VOS `outbound_webhook_signing: degraded` | `OUTBOUND_WEBHOOK_SECRET` não mapeado no compose | Adicionado ao `vos-studio-mcp` environment no `docker-compose.yml` + container force-recreate | ✅ **RESOLVIDO** |
+| VOS `UPSTREAM_BAD_RESPONSE` | Gateway tinha sessão MCP cacheada que ficou inválida após force-recreate do VOS | Gateway reiniciado para limpar cache de sessões | ✅ **RESOLVIDO** |
+| `social.*` `INSUFFICIENT_SCOPE` | `social:read` ausente de `GATEWAY_OAUTH_DEFAULT_SCOPES` | Adicionado `social:read` ao `.env` e ao `k8s/base/apps/central-mcp-gateway/configmap.yaml` + novo token OAuth emitido via PKCE com scopes corretos | ✅ **RESOLVIDO** |
+
+### Novos achados (2026-06-30)
+
+#### mcp-social: API agora exige sprint_id
+
+`social.list_scheduled_posts` mudou a assinatura — agora requer `sprint_id` (UUID). O mcp-social foi atualizado para ser sprint-aware (integração VOS). Todos os posts estão associados a um sprint.
+
+| Tool | Antes | Depois | Funciona? |
+|---|---|---|---|
+| `social.list_scheduled_posts` | sem params | `sprint_id` obrigatório (UUID) | ✅ com `sprint_id` |
+| `social.get_post_status` | `post_id` | `post_id` (sem mudança) | ✅ |
+
+**Impacto no review:** A falha anterior de `social.list_scheduled_posts` tinha DUAS causas sobrepostas: scope insuficiente E parâmetro novo obrigatório. Corrigido o scope, o erro passou a ser de validação de parâmetro — mais informativo.
+
+**Fluxo social correto com VOS:**
+1. Criar sprint via VOS (`create_creative_sprint` → UUID)
+2. Usar `sprint_id` nas social tools
+
+#### Gateway: cache de sessão MCP upstream é container-local
+
+Ao force-recrear um container upstream (VOS, github-mcp, etc.), o gateway mantém sessão MCP cacheada. A sessão fica inválida porque o upstream perdeu estado, mas o gateway não detecta isso automaticamente. **Workaround:** reiniciar o gateway após recriar qualquer upstream.
+
+**Comportamento observado:**
+- Gateway envia `POST /mcp/` com `Mcp-Session-Id` de sessão antiga → VOS retorna `404 Not Found`
+- Gateway mapeia o 404 como `UPSTREAM_BAD_RESPONSE` (não tenta criar nova sessão)
+- Solução pendente no gateway: implementar retry automático com nova sessão quando receber 404 de upstream
+
+#### VOS versão atualizada
+
+| Campo | Review anterior | Ao vivo (2026-06-30) |
+|---|---|---|
+| `version` | `1.38.0` | `1.38.0` |
+| `outbound_webhook_signing` | `degraded` | **`ok`** ✅ |
+| `registered_tools_count` | `116` | `116` |
+
+### Testes ao vivo (2026-06-30)
+
+| # | Tool | Params | Resultado |
+|---|---|---|---|
+| 1 | `vos.get_studio_status` | sem params | ✅ `outbound_webhook_signing: ok`, v1.38.0 |
+| 2 | `social.list_scheduled_posts` | sem params | ❌ `sprint_id: Field required` (scope OK, param obrigatório) |
+| 3 | `social.list_scheduled_posts` | `sprint_id=00000000-...` | ✅ `count:0, posts:[]` |
+| 4 | `social.get_post_status` | `post_id=nonexistent` | ✅ `status:not_found` |
+| 5 | `sandbox.run_code` | `code=print(...)` | ✅ 564ms, Python OK |
+| 6 | `github.search_issues` | `owner/repo, state:open` | ✅ 1 issue open (#66) |
+
+### Mudanças de configuração (2026-06-30)
+
+| Arquivo | Campo | Antes | Depois |
+|---|---|---|---|
+| `.env` | `GATEWAY_OAUTH_DEFAULT_SCOPES` | `...social:write...` | `...social:read social:write...` |
+| `k8s/base/apps/central-mcp-gateway/configmap.yaml` | `GATEWAY_OAUTH_DEFAULT_SCOPES` | `...social:write...` | `...social:read social:write...` |
+| `compose/docker-compose.yml` | `vos-studio-mcp.OUTBOUND_WEBHOOK_SECRET` | ausente | `${OUTBOUND_WEBHOOK_SECRET:-}` |
+
+**Nota:** O token OAuth em `.mcp.json` foi renovado via PKCE e agora inclui `social:read`. Tokens OAuth expiram (TTL 1h) — renovar via PKCE quando social tools voltarem a retornar `INSUFFICIENT_SCOPE`.
+
+### Status atual dos bloqueios (pós-fase 8)
+
+| Bloqueio | Status |
+|---|---|
+| `confirm_channel: none` → tools untrusted bloqueadas | 🔴 **ABERTO** — Telegram bot não configurado |
+| Higgsfield token expirado | 🔴 **ABERTO** — renovar `HIGGSFIELD_MCP_ACCESS_TOKEN` manualmente |
+| BUG-01: gateway dropa params Higgsfield | 🔴 **ABERTO** — bug no `higgsfield-safety-mcp` facade |
+| Gateway não tenta nova sessão após 404 upstream | 🟠 **ABERTO** — workaround: reiniciar gateway após recriar upstream |
+| `GITHUB_ALLOWED_REPOS` restritivo em local | 🟡 **ABERTO** — configurar `*` para dev local |
+| social:read adicionado aos scopes | ✅ **RESOLVIDO** |
+| VOS webhook signing | ✅ **RESOLVIDO** |
+| Social list_scheduled_posts funcional | ✅ **RESOLVIDO** (com sprint_id obrigatório) |
