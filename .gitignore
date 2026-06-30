@@ -44,6 +44,7 @@ dist/
 cloudflare/workers/status-page/wrangler.toml
 /.claude/settings.local.json
 /.mcp.json
+!/.mcp.json.example
 .opencode/tui.json
 .terraform.lock.hcl
 /docs/backlog-snapshot.md
