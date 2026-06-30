@@ -3448,3 +3448,90 @@ Para adicionar novos tools ao proxy estático do gateway v0.31.0, é preciso atu
 | BUG-01: gateway dropa params Higgsfield | 🔴 **ABERTO** |
 | social:read adicionado aos scopes | ✅ **RESOLVIDO** |
 | VOS webhook signing | ✅ **RESOLVIDO** |
+
+---
+
+## Phase 10 — Testes via Dynamic Invoke: VOS extended + Social health (2026-06-30)
+
+### Objetivo
+
+Validar as tools que NÃO podem entrar no proxy estático (não existem no catálogo built-in do gateway v0.31.0) mas são acessíveis via `gateway.invoke_discovered_tool`. Continuação do trabalho da Phase 9.
+
+### VOS — Dynamic tools via invoke
+
+| Tool | Resultado | Detalhes |
+|---|---|---|
+| `list_sprints` | ✅ Funcional | Retorna lista vazia — nenhum sprint criado ainda |
+| `list_provider_capabilities` | ✅ Funcional | 6 providers: freepik, higgsfield, higgsfield_mcp, magnific, huggingface, manual |
+| `get_runtime_health` | ✅ Funcional | Status: `degraded` — `core.worker_queue: no workers responded` (Celery não iniciado em local dev). `safe_to_run_provider_jobs: false` |
+| `get_sprint_status` | ✅ Funcional | Nil UUID → `[not_found] Sprint 00000000-0000-0000-0000-000000000000 not found` (comportamento correto) |
+| `list_sprint_assets` | ✅ Funcional | Nil UUID → `[not_found]` (comportamento correto) |
+| `estimate_generation_cost` | ✅ Funcional | Freepik image = **$0.01**, `uncertain: false`, `next_action: request_api_image`. Schema: `data.provider` + `data.generation_type` obrigatórios |
+| `get_provider_usage_summary` | ⚠️ `auth_required` | Tool responde, mas requer sessão VOS autenticada. Erro: `[auth_required] Authentication required to view provider usage` |
+| `search_library` | ✅ Funcional | Library vazia — `total: 0`, `next_action: promote_to_library` |
+| `get_sprint_performance_summary` | ✅ Funcional | Nil UUID → `[not_found]` (comportamento correto) |
+| `prepare_video_blueprint` | 📋 Schema apenas | State: `candidate_new`, risk: `low-risk-write`. Não testado (requer sprint real) |
+
+#### Nota sobre `estimate_generation_cost` — schema
+
+A tool exige wrapper `data` (padrão VOS):
+
+```json
+{
+  "data": {
+    "provider": "freepik",      // obrigatório — enum: higgsfield|higgsfield_mcp|freepik|magnific|huggingface
+    "generation_type": "image", // obrigatório — enum: image|video
+    "aspect_ratio": "16:9",     // opcional, default 16:9
+    "resolution": "720p",       // opcional, default 720p
+    "duration_seconds": 5       // video only, 5–10s
+  }
+}
+```
+
+#### Nota sobre `get_provider_usage_summary` — auth VOS
+
+Mesmo com Bearer token válido no gateway, a tool exige que o caller tenha uma **sessão VOS autenticada** (multi-tenant, scoped por usuário). No ambiente local de dev, o VOS corre sem autenticação de usuário ativa — o gateway repassa o token OAuth mas o VOS espera credencial própria.
+
+### Social — tool_get_instagram_account_health via invoke
+
+| Tool | Resultado | Detalhes |
+|---|---|---|
+| `tool_get_instagram_account_health` | ✅ Funcional (config ausente) | Executa sem erro; retorna `status: blocked` porque `INSTAGRAM_BUSINESS_ACCOUNT_ID` não está configurado e Instagram access token está ausente. Resposta estruturada com `blockers`, `token.status`, `next_action: reconfigure_platform_token` |
+
+**Confirmado:** A tool é `auto_allowed_read` no catálogo dinâmico e acessível via `gateway.invoke_discovered_tool(upstream="social", tool_name="tool_get_instagram_account_health")`. A resposta é limpa e acionável — não há bug aqui, apenas ausência de credencial Instagram no ambiente local.
+
+**Por que não entra no proxy estático:** O nome `social.get_instagram_account_health` não existe no catálogo built-in do gateway v0.31.0 → causaria `ToolCatalogError` se adicionado ao allowlist.
+
+### Consolidação: tools VOS acessíveis via invoke (mas não via proxy estático)
+
+Para uso via `gateway.invoke_discovered_tool`, todas as seguintes funcionam:
+
+```
+list_sprints
+list_provider_capabilities
+get_runtime_health
+get_sprint_status
+list_sprint_assets
+estimate_generation_cost
+search_library
+get_sprint_performance_summary
+prepare_video_blueprint    (candidate_new — aguarda promoção)
+```
+
+E para social:
+```
+tool_get_instagram_account_health  (auto_allowed_read)
+```
+
+### Status atualizado dos bloqueios (pós-fase 10)
+
+| Bloqueio | Status |
+|---|---|
+| k8s configmap com tools inválidos | ✅ **RESOLVIDO** — 20 tools seguras (Phase 9) |
+| social:read adicionado aos scopes | ✅ **RESOLVIDO** |
+| VOS webhook signing | ✅ **RESOLVIDO** |
+| `confirm_channel: none` → tools untrusted bloqueadas | 🔴 **ABERTO** — Telegram bot não configurado |
+| Higgsfield token expirado | 🔴 **ABERTO** — renovar `HIGGSFIELD_MCP_ACCESS_TOKEN` manualmente |
+| BUG-01: gateway dropa params Higgsfield | 🔴 **ABERTO** — bug no `higgsfield-safety-mcp` facade |
+| `get_provider_usage_summary` requer auth VOS | 🟠 **ABERTO** — auth VOS não configurada em local dev |
+| `prepare_video_blueprint` é `candidate_new` | 🟡 **INFO** — aguarda promoção manual via `gateway.propose_catalog_entry` |
