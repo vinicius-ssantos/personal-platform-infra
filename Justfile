@@ -113,6 +113,17 @@ gateway-pull-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env pull central-mcp-gateway
 	just gateway-restart
 
+facade-restart:
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait higgsfield-facade
+
+# Pull latest higgsfield-facade image from GHCR then restart. Use this after CI has finished building.
+facade-pull-restart:
+	docker compose -f compose/docker-compose.yml --env-file .env pull higgsfield-facade
+	just facade-restart
+
+vos-celery-restart:
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait vos-celery-worker
+
 quick-tunnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1
 
