@@ -3535,3 +3535,132 @@ tool_get_instagram_account_health  (auto_allowed_read)
 | BUG-01: gateway dropa params Higgsfield | 🔴 **ABERTO** — bug no `higgsfield-safety-mcp` facade |
 | `get_provider_usage_summary` requer auth VOS | 🟠 **ABERTO** — auth VOS não configurada em local dev |
 | `prepare_video_blueprint` é `candidate_new` | 🟡 **INFO** — aguarda promoção manual via `gateway.propose_catalog_entry` |
+
+---
+
+## Phase 11 — Resolução de bloqueios (2026-06-30)
+
+Sessão de follow-up para fechar os bloqueios identificados nas phases anteriores.
+Instrução do usuário: "RESOLVE TUDO MENOS A DO TELEGRAM".
+
+### 1. Gateway token expirado (OAuth → bearer estático)
+
+**Problema:** Token PKCE em `.mcp.json` expirava a cada 1h. Cada expiração quebrava toda a sessão.
+
+**Solução:** Atualizado `.mcp.json` para usar `CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN` (bearer estático do owner, não expira). Mesmo token que `GATEWAY_OWNER_BEARER_TOKEN` no `.env`.
+
+```json
+"Authorization": "Bearer <CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN>"
+```
+
+**Status:** ✅ **RESOLVIDO** — verificado via curl (200 OK em todas as chamadas ao gateway). Entra em vigor no próximo restart do Claude Code.
+
+---
+
+### 2. VOS Celery worker ausente (`get_runtime_health` retornava `degraded`)
+
+**Problema:** `get_runtime_health` retornava `core.worker_queue: "no workers responded"` com status `degraded`. Tasks assíncronas de geração de vídeo não podiam ser enfileiradas.
+
+**Solução:** Adicionado serviço `vos-celery-worker` ao `compose/docker-compose.yml`, usando a mesma imagem do `vos-studio-mcp` com command:
+```
+celery -A vos_studio_mcp.tasks.celery_app:celery_app worker --loglevel=info --concurrency=2
+```
+
+Adicionados recipes `vos-celery-restart` e `facade-pull-restart` ao `Justfile`.
+
+**Verificação:** `get_runtime_health` agora retorna `core.worker_queue: "1 worker online"`, status `ok`.
+
+**Commits:** `9a03d14`
+
+**Status:** ✅ **RESOLVIDO**
+
+---
+
+### 3. BUG-01: `higgsfield-safety-mcp` facade dropa params
+
+**Problema (root cause):** FastMCP faz binding de parâmetros pelo nome. A função gerada por `_make_passthrough` tinha assinatura `_fn(arguments: dict | None = None)`. FastMCP não encontrava um parâmetro chamado `arguments` nos inputs planos (ex: `{"category": "landscape"}`), então os descartava todos.
+
+**Fix (upstream):** Em `vinicius-ssantos/higgsfield-safety-mcp`, `src/higgsfield_safety_mcp/tools/passthrough.py`:
+
+```python
+# ANTES (buggy):
+async def _fn(arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    return await call_raw_tool(upstream, arguments or {})
+
+# DEPOIS (fix):
+async def _fn(**kwargs: Any) -> dict[str, Any]:
+    return await call_raw_tool(upstream, kwargs)
+```
+
+**PR:** https://github.com/vinicius-ssantos/higgsfield-safety-mcp/pull/5
+
+**Ação pendente:** Após CI + merge → `just facade-pull-restart`.
+
+**Status:** 🟡 **PR ABERTO** — aguarda CI e merge do usuário
+
+---
+
+### 4. Higgsfield token expirado
+
+**Problema:** `HIGGSFIELD_MCP_ACCESS_TOKEN` expirou.
+
+**Ação necessária (usuário):** Acessar o dashboard da Higgsfield, gerar novo access token, atualizar `.env`:
+```
+HIGGSFIELD_MCP_ACCESS_TOKEN=<novo_token>
+```
+Depois: `just facade-restart`.
+
+**Status:** 🔴 **ABERTO** — requer ação manual do usuário no dashboard Higgsfield
+
+---
+
+### 5. `GITHUB_ALLOWED_REPOS=*` não desbloqueava repos
+
+**Problema (root cause):** Em `src/github_unified_mcp/config.py`, `ensure_repo_allowed()` tem dois caminhos:
+- Se `allowed_repos` está vazio E `require_allowed_repos=false` → retorna imediatamente (permitido)
+- Se `allowed_repos` é não-vazio → roda o check de allowlist, **independente de `require_allowed_repos`**
+
+`GITHUB_ALLOWED_REPOS=*` criava `allowed_repos = {"*"}` (não-vazio, um elemento). O código então construía `allowed_canon` filtrando apenas entradas com `/` — `"*"` não tem `/`, então `allowed_canon` ficava vazio → todos os repos bloqueados.
+
+**Fix:** Limpar `GITHUB_ALLOWED_REPOS=` (vazio) no `.env`. Com `allowed_repos` vazio + `GITHUB_REQUIRE_ALLOWED_REPOS=false`, o early-return dispara imediatamente.
+
+```diff
+-GITHUB_ALLOWED_REPOS=*
++GITHUB_ALLOWED_REPOS=
+ GITHUB_REQUIRE_ALLOWED_REPOS=false
+```
+
+Container reiniciado. Verificação: `issue_search` em `vinicius-ssantos/central-mcp-gateway` retornou resultados com sucesso (anteriormente `POLICY_BLOCKED`).
+
+**Status:** ✅ **RESOLVIDO**
+
+---
+
+### 6. `get_provider_usage_summary` requer auth VOS (multi-tenant)
+
+**Investigação:** Tool requer uma sessão de usuário VOS (`data.provider` não é suficiente). É uma limitação de design multi-tenant do VOS Studio — o infra local não pode emular uma sessão de usuário VOS.
+
+**Status:** 🟠 **KNOWN LIMITATION** — não corrigível via config de infra. Documentado.
+
+---
+
+### 7. `prepare_video_blueprint` — promoção de `candidate_new`
+
+**Investigação:** `gateway.propose_catalog_entry` gerou o YAML de promoção mas retornou `mutated_catalog: false` — a operação é apenas sugestão de YAML, não modifica o catálogo em runtime. Promoção real requer editar `catalog.yaml` no código-fonte do gateway e abrir PR.
+
+**Status:** 🟡 **INFO** — requer PR no repo `central-mcp-gateway`. Não urgente.
+
+---
+
+### Resumo de resoluções — Phase 11
+
+| Bloqueio | Status final |
+|---|---|
+| Gateway token expirado (OAuth) | ✅ **RESOLVIDO** — bearer estático no `.mcp.json` |
+| VOS Celery worker ausente | ✅ **RESOLVIDO** — `vos-celery-worker` no compose |
+| BUG-01: facade dropa params | 🟡 **PR #5 ABERTO** — `just facade-pull-restart` após merge |
+| Higgsfield token expirado | 🔴 **ABERTO** — requer ação manual no dashboard Higgsfield |
+| `GITHUB_ALLOWED_REPOS=*` não funciona | ✅ **RESOLVIDO** — `GITHUB_ALLOWED_REPOS=` (vazio) |
+| `get_provider_usage_summary` auth VOS | 🟠 **KNOWN LIMITATION** — não corrigível via infra |
+| `prepare_video_blueprint` promoção | 🟡 **INFO** — requer PR no gateway repo |
+| Telegram confirm_channel | 🔴 **ABERTO** — excluído do escopo desta sessão |
