@@ -9,7 +9,7 @@ data:
   GATEWAY_PORT: "8080"
   GATEWAY_LOG_LEVEL: info
   GATEWAY_OAUTH_CLIENT_ID: chatgpt
-  GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read github:write deploy:read social:write sandbox:run repo:read repo-research:read vos:read vos:write
+  GATEWAY_OAUTH_DEFAULT_SCOPES: gateway:read github:read github:write deploy:read social:read social:write sandbox:run repo:read repo-research:read vos:read vos:write
   # Tools exposed via the static proxy in every environment (local k3d + VPS).
   # Discovery tools (gateway.search_discovered_tools / get / invoke / propose) are intentionally
   # excluded from here: they expose the full upstream catalog and dynamic invocation, which widens

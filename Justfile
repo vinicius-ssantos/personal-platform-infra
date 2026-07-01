@@ -43,6 +43,15 @@ doctor:
 env-init:
 	bash scripts/env-init.sh
 
+# Create a timestamped backup of .env before any bulk modification.
+env-backup:
+	cp .env ".env.bak.$(date +%Y%m%d-%H%M%S)"
+
+# Rotate CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN and MCP_BEARER_TOKEN safely.
+# Uses sed (line-by-line) to avoid UTF-8 corruption. Backs up .env automatically.
+env-rotate-tokens:
+	bash scripts/env-rotate-tokens.sh
+
 check-env:
 	bash scripts/check-env.sh
 
@@ -103,6 +112,17 @@ gateway-restart:
 gateway-pull-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env pull central-mcp-gateway
 	just gateway-restart
+
+facade-restart:
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait higgsfield-facade
+
+# Pull latest higgsfield-facade image from GHCR then restart. Use this after CI has finished building.
+facade-pull-restart:
+	docker compose -f compose/docker-compose.yml --env-file .env pull higgsfield-facade
+	just facade-restart
+
+vos-celery-restart:
+	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait vos-celery-worker
 
 quick-tunnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1

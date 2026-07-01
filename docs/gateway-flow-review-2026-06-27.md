@@ -3301,3 +3301,366 @@ gateway:read github:read github:write deploy:read social:write sandbox:run repo:
 | `github.issue_list` | não testado | ❌ blocked (requires_confirmation + untrusted) |
 | `github.commit_list` | não testado | ❌ blocked (requires_confirmation + untrusted) |
 | `github.repo_get` | não testado | ✅ funcional |
+
+---
+
+## Phase 8 — Correções e Validação (2026-06-30)
+
+### Correções aplicadas nesta fase
+
+| Item | Causa raiz | Solução | Status |
+|---|---|---|---|
+| VOS `outbound_webhook_signing: degraded` | `OUTBOUND_WEBHOOK_SECRET` não mapeado no compose | Adicionado ao `vos-studio-mcp` environment no `docker-compose.yml` + container force-recreate | ✅ **RESOLVIDO** |
+| VOS `UPSTREAM_BAD_RESPONSE` | Gateway tinha sessão MCP cacheada que ficou inválida após force-recreate do VOS | Gateway reiniciado para limpar cache de sessões | ✅ **RESOLVIDO** |
+| `social.*` `INSUFFICIENT_SCOPE` | `social:read` ausente de `GATEWAY_OAUTH_DEFAULT_SCOPES` | Adicionado `social:read` ao `.env` e ao `k8s/base/apps/central-mcp-gateway/configmap.yaml` + novo token OAuth emitido via PKCE com scopes corretos | ✅ **RESOLVIDO** |
+
+### Novos achados (2026-06-30)
+
+#### mcp-social: API agora exige sprint_id
+
+`social.list_scheduled_posts` mudou a assinatura — agora requer `sprint_id` (UUID). O mcp-social foi atualizado para ser sprint-aware (integração VOS). Todos os posts estão associados a um sprint.
+
+| Tool | Antes | Depois | Funciona? |
+|---|---|---|---|
+| `social.list_scheduled_posts` | sem params | `sprint_id` obrigatório (UUID) | ✅ com `sprint_id` |
+| `social.get_post_status` | `post_id` | `post_id` (sem mudança) | ✅ |
+
+**Impacto no review:** A falha anterior de `social.list_scheduled_posts` tinha DUAS causas sobrepostas: scope insuficiente E parâmetro novo obrigatório. Corrigido o scope, o erro passou a ser de validação de parâmetro — mais informativo.
+
+**Fluxo social correto com VOS:**
+1. Criar sprint via VOS (`create_creative_sprint` → UUID)
+2. Usar `sprint_id` nas social tools
+
+#### Gateway: cache de sessão MCP upstream é container-local
+
+Ao force-recrear um container upstream (VOS, github-mcp, etc.), o gateway mantém sessão MCP cacheada. A sessão fica inválida porque o upstream perdeu estado, mas o gateway não detecta isso automaticamente. **Workaround:** reiniciar o gateway após recriar qualquer upstream.
+
+**Comportamento observado:**
+- Gateway envia `POST /mcp/` com `Mcp-Session-Id` de sessão antiga → VOS retorna `404 Not Found`
+- Gateway mapeia o 404 como `UPSTREAM_BAD_RESPONSE` (não tenta criar nova sessão)
+- Solução pendente no gateway: implementar retry automático com nova sessão quando receber 404 de upstream
+
+#### VOS versão atualizada
+
+| Campo | Review anterior | Ao vivo (2026-06-30) |
+|---|---|---|
+| `version` | `1.38.0` | `1.38.0` |
+| `outbound_webhook_signing` | `degraded` | **`ok`** ✅ |
+| `registered_tools_count` | `116` | `116` |
+
+### Testes ao vivo (2026-06-30)
+
+| # | Tool | Params | Resultado |
+|---|---|---|---|
+| 1 | `vos.get_studio_status` | sem params | ✅ `outbound_webhook_signing: ok`, v1.38.0 |
+| 2 | `social.list_scheduled_posts` | sem params | ❌ `sprint_id: Field required` (scope OK, param obrigatório) |
+| 3 | `social.list_scheduled_posts` | `sprint_id=00000000-...` | ✅ `count:0, posts:[]` |
+| 4 | `social.get_post_status` | `post_id=nonexistent` | ✅ `status:not_found` |
+| 5 | `sandbox.run_code` | `code=print(...)` | ✅ 564ms, Python OK |
+| 6 | `github.search_issues` | `owner/repo, state:open` | ✅ 1 issue open (#66) |
+
+### Mudanças de configuração (2026-06-30)
+
+| Arquivo | Campo | Antes | Depois |
+|---|---|---|---|
+| `.env` | `GATEWAY_OAUTH_DEFAULT_SCOPES` | `...social:write...` | `...social:read social:write...` |
+| `k8s/base/apps/central-mcp-gateway/configmap.yaml` | `GATEWAY_OAUTH_DEFAULT_SCOPES` | `...social:write...` | `...social:read social:write...` |
+| `compose/docker-compose.yml` | `vos-studio-mcp.OUTBOUND_WEBHOOK_SECRET` | ausente | `${OUTBOUND_WEBHOOK_SECRET:-}` |
+
+**Nota:** O token OAuth em `.mcp.json` foi renovado via PKCE e agora inclui `social:read`. Tokens OAuth expiram (TTL 1h) — renovar via PKCE quando social tools voltarem a retornar `INSUFFICIENT_SCOPE`.
+
+### Status atual dos bloqueios (pós-fase 8)
+
+| Bloqueio | Status |
+|---|---|
+| `confirm_channel: none` → tools untrusted bloqueadas | 🔴 **ABERTO** — Telegram bot não configurado |
+| Higgsfield token expirado | 🔴 **ABERTO** — renovar `HIGGSFIELD_MCP_ACCESS_TOKEN` manualmente |
+| BUG-01: gateway dropa params Higgsfield | 🔴 **ABERTO** — bug no `higgsfield-safety-mcp` facade |
+| Gateway não tenta nova sessão após 404 upstream | 🟠 **ABERTO** — workaround: reiniciar gateway após recriar upstream |
+| `GITHUB_ALLOWED_REPOS` restritivo em local | 🟡 **ABERTO** — configurar `*` para dev local |
+| social:read adicionado aos scopes | ✅ **RESOLVIDO** |
+| VOS webhook signing | ✅ **RESOLVIDO** |
+| Social list_scheduled_posts funcional | ✅ **RESOLVIDO** (com sprint_id obrigatório) |
+
+---
+
+## Phase 9 — Descoberta Crítica: ToolCatalogError (2026-06-30)
+
+### Achado: Gateway v0.31.0 valida allowlist contra catálogo built-in, não upstreams
+
+Ao tentar adicionar ferramentas ao `GATEWAY_TOOL_ALLOWLIST` (tanto no compose quanto no k8s configmap), o gateway travou com:
+
+```
+central_mcp_gateway.tools.ToolCatalogError: Unknown allowlisted tools: deploy.policy_evaluate,
+deploy.render_service_plan, deploy.repo_analyze, github.github_get_me, github.knowledge_search,
+github.label_list, github.ref_get, github.server_info, github.tool_usage_guide,
+social.get_instagram_account_health, vos.get_operation_status, vos.get_sprint_status,
+vos.list_sprint_assets, vos.list_sprints
+```
+
+**Causa raiz:** O gateway valida o allowlist em startup contra um catálogo **built-in** (hardcoded na versão 0.31.0). Apenas tools registradas nesse catálogo estático podem ser adicionadas ao proxy estático. Tools descobertas via MCP de upstreams (dynamic catalog) são acessíveis apenas via `gateway.invoke_discovered_tool`.
+
+### Impacto nos commits anteriores desta branch
+
+| Commit | Problema | Severidade |
+|---|---|---|
+| `0372130` (PR #250) | Adicionou ao k8s configmap: `github.server_info`, `github.github_get_me`, `github.knowledge_search`, `github.tool_usage_guide`, `github.ref_get`, `github.label_list` — nenhum deles existe no catálogo estático | 🔴 Faria VPS crashar se deployado |
+| `b199208` | Adicionou ao k8s configmap: `deploy.repo_analyze`, `deploy.policy_evaluate`, `deploy.render_service_plan`, `vos.list_sprints`, `vos.get_sprint_status`, `vos.list_sprint_assets`, `vos.get_operation_status` — idem | 🔴 Faria VPS crashar se deployado |
+| Anterior (pré-branch) | `social.get_instagram_account_health` já estava no k8s configmap mas NÃO existe no catálogo estático | 🔴 Idem |
+
+**Por que não crashou antes:** O deploy VPS (`deploy-vps.yml`) nunca executou de fato — `VPS_KUBECONFIG` não está configurado, então o workflow registra notice e pula. A VPS ainda roda o configmap deployado manualmente antes desta série de reviews.
+
+### Correção aplicada
+
+`k8s/base/apps/central-mcp-gateway/configmap.yaml` revertido para o conjunto seguro de 20 tools (comprovadas no catálogo estático via testes locais):
+
+```
+gateway.status, gateway.delivery_status, gateway.upstream_capabilities,
+github.search_issues,
+deploy.get_status,
+social.create_draft, social.publish_post, social.get_post_status, social.get_post_metrics,
+  social.list_scheduled_posts, social.cancel_scheduled_post, social.update_post_caption,
+vos.get_studio_status,
+sandbox.run_code, sandbox.run_command, sandbox.run_file,
+repo.search, repo.fetch, repo.repository_overview, repo.list_files
+```
+
+Removidos: `social.get_instagram_account_health` (não existe no catálogo estático), todos os tools GitHub extras, todos os tools Deploy extras, todos os tools VOS de sprint.
+
+### Conclusão arquitetural
+
+| Caminho | Tools disponíveis | Requer catálogo estático? |
+|---|---|---|
+| Proxy estático (`GATEWAY_TOOL_ALLOWLIST`) | Apenas tools do catálogo built-in (~36 tools locais) | ✅ Sim |
+| Dynamic invoke (`gateway.invoke_discovered_tool`) | Qualquer tool dos upstreams (~390 tools) | ❌ Não |
+
+Para adicionar novos tools ao proxy estático do gateway v0.31.0, é preciso atualizar o código do gateway (adicionar schema ao catálogo built-in) e publicar nova versão. **Não é possível fazer apenas via configuração.**
+
+**Impacto para VPS:** O allowlist VPS (k8s configmap) deve conter APENAS tools do catálogo estático. Tools como `vos.list_sprints`, `github.github_get_me` etc. só estão disponíveis via invoke no ambiente local (dynamic upstreams habilitado).
+
+### Status atualizado dos bloqueios (pós-fase 9)
+
+| Bloqueio | Status |
+|---|---|
+| k8s configmap com tools inválidos | ✅ **RESOLVIDO** — revertido para 20 tools seguras |
+| `confirm_channel: none` → tools untrusted bloqueadas | 🔴 **ABERTO** |
+| Higgsfield token expirado | 🔴 **ABERTO** |
+| BUG-01: gateway dropa params Higgsfield | 🔴 **ABERTO** |
+| social:read adicionado aos scopes | ✅ **RESOLVIDO** |
+| VOS webhook signing | ✅ **RESOLVIDO** |
+
+---
+
+## Phase 10 — Testes via Dynamic Invoke: VOS extended + Social health (2026-06-30)
+
+### Objetivo
+
+Validar as tools que NÃO podem entrar no proxy estático (não existem no catálogo built-in do gateway v0.31.0) mas são acessíveis via `gateway.invoke_discovered_tool`. Continuação do trabalho da Phase 9.
+
+### VOS — Dynamic tools via invoke
+
+| Tool | Resultado | Detalhes |
+|---|---|---|
+| `list_sprints` | ✅ Funcional | Retorna lista vazia — nenhum sprint criado ainda |
+| `list_provider_capabilities` | ✅ Funcional | 6 providers: freepik, higgsfield, higgsfield_mcp, magnific, huggingface, manual |
+| `get_runtime_health` | ✅ Funcional | Status: `degraded` — `core.worker_queue: no workers responded` (Celery não iniciado em local dev). `safe_to_run_provider_jobs: false` |
+| `get_sprint_status` | ✅ Funcional | Nil UUID → `[not_found] Sprint 00000000-0000-0000-0000-000000000000 not found` (comportamento correto) |
+| `list_sprint_assets` | ✅ Funcional | Nil UUID → `[not_found]` (comportamento correto) |
+| `estimate_generation_cost` | ✅ Funcional | Freepik image = **$0.01**, `uncertain: false`, `next_action: request_api_image`. Schema: `data.provider` + `data.generation_type` obrigatórios |
+| `get_provider_usage_summary` | ⚠️ `auth_required` | Tool responde, mas requer sessão VOS autenticada. Erro: `[auth_required] Authentication required to view provider usage` |
+| `search_library` | ✅ Funcional | Library vazia — `total: 0`, `next_action: promote_to_library` |
+| `get_sprint_performance_summary` | ✅ Funcional | Nil UUID → `[not_found]` (comportamento correto) |
+| `prepare_video_blueprint` | 📋 Schema apenas | State: `candidate_new`, risk: `low-risk-write`. Não testado (requer sprint real) |
+
+#### Nota sobre `estimate_generation_cost` — schema
+
+A tool exige wrapper `data` (padrão VOS):
+
+```json
+{
+  "data": {
+    "provider": "freepik",      // obrigatório — enum: higgsfield|higgsfield_mcp|freepik|magnific|huggingface
+    "generation_type": "image", // obrigatório — enum: image|video
+    "aspect_ratio": "16:9",     // opcional, default 16:9
+    "resolution": "720p",       // opcional, default 720p
+    "duration_seconds": 5       // video only, 5–10s
+  }
+}
+```
+
+#### Nota sobre `get_provider_usage_summary` — auth VOS
+
+Mesmo com Bearer token válido no gateway, a tool exige que o caller tenha uma **sessão VOS autenticada** (multi-tenant, scoped por usuário). No ambiente local de dev, o VOS corre sem autenticação de usuário ativa — o gateway repassa o token OAuth mas o VOS espera credencial própria.
+
+### Social — tool_get_instagram_account_health via invoke
+
+| Tool | Resultado | Detalhes |
+|---|---|---|
+| `tool_get_instagram_account_health` | ✅ Funcional (config ausente) | Executa sem erro; retorna `status: blocked` porque `INSTAGRAM_BUSINESS_ACCOUNT_ID` não está configurado e Instagram access token está ausente. Resposta estruturada com `blockers`, `token.status`, `next_action: reconfigure_platform_token` |
+
+**Confirmado:** A tool é `auto_allowed_read` no catálogo dinâmico e acessível via `gateway.invoke_discovered_tool(upstream="social", tool_name="tool_get_instagram_account_health")`. A resposta é limpa e acionável — não há bug aqui, apenas ausência de credencial Instagram no ambiente local.
+
+**Por que não entra no proxy estático:** O nome `social.get_instagram_account_health` não existe no catálogo built-in do gateway v0.31.0 → causaria `ToolCatalogError` se adicionado ao allowlist.
+
+### Consolidação: tools VOS acessíveis via invoke (mas não via proxy estático)
+
+Para uso via `gateway.invoke_discovered_tool`, todas as seguintes funcionam:
+
+```
+list_sprints
+list_provider_capabilities
+get_runtime_health
+get_sprint_status
+list_sprint_assets
+estimate_generation_cost
+search_library
+get_sprint_performance_summary
+prepare_video_blueprint    (candidate_new — aguarda promoção)
+```
+
+E para social:
+```
+tool_get_instagram_account_health  (auto_allowed_read)
+```
+
+### Status atualizado dos bloqueios (pós-fase 10)
+
+| Bloqueio | Status |
+|---|---|
+| k8s configmap com tools inválidos | ✅ **RESOLVIDO** — 20 tools seguras (Phase 9) |
+| social:read adicionado aos scopes | ✅ **RESOLVIDO** |
+| VOS webhook signing | ✅ **RESOLVIDO** |
+| `confirm_channel: none` → tools untrusted bloqueadas | 🔴 **ABERTO** — Telegram bot não configurado |
+| Higgsfield token expirado | 🔴 **ABERTO** — renovar `HIGGSFIELD_MCP_ACCESS_TOKEN` manualmente |
+| BUG-01: gateway dropa params Higgsfield | 🔴 **ABERTO** — bug no `higgsfield-safety-mcp` facade |
+| `get_provider_usage_summary` requer auth VOS | 🟠 **ABERTO** — auth VOS não configurada em local dev |
+| `prepare_video_blueprint` é `candidate_new` | 🟡 **INFO** — aguarda promoção manual via `gateway.propose_catalog_entry` |
+
+---
+
+## Phase 11 — Resolução de bloqueios (2026-06-30)
+
+Sessão de follow-up para fechar os bloqueios identificados nas phases anteriores.
+Instrução do usuário: "RESOLVE TUDO MENOS A DO TELEGRAM".
+
+### 1. Gateway token expirado (OAuth → bearer estático)
+
+**Problema:** Token PKCE em `.mcp.json` expirava a cada 1h. Cada expiração quebrava toda a sessão.
+
+**Solução:** Atualizado `.mcp.json` para usar `CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN` (bearer estático do owner, não expira). Mesmo token que `GATEWAY_OWNER_BEARER_TOKEN` no `.env`.
+
+```json
+"Authorization": "Bearer <CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN>"
+```
+
+**Status:** ✅ **RESOLVIDO** — verificado via curl (200 OK em todas as chamadas ao gateway). Entra em vigor no próximo restart do Claude Code.
+
+---
+
+### 2. VOS Celery worker ausente (`get_runtime_health` retornava `degraded`)
+
+**Problema:** `get_runtime_health` retornava `core.worker_queue: "no workers responded"` com status `degraded`. Tasks assíncronas de geração de vídeo não podiam ser enfileiradas.
+
+**Solução:** Adicionado serviço `vos-celery-worker` ao `compose/docker-compose.yml`, usando a mesma imagem do `vos-studio-mcp` com command:
+```
+celery -A vos_studio_mcp.tasks.celery_app:celery_app worker --loglevel=info --concurrency=2
+```
+
+Adicionados recipes `vos-celery-restart` e `facade-pull-restart` ao `Justfile`.
+
+**Verificação:** `get_runtime_health` agora retorna `core.worker_queue: "1 worker online"`, status `ok`.
+
+**Commits:** `9a03d14`
+
+**Status:** ✅ **RESOLVIDO**
+
+---
+
+### 3. BUG-01: `higgsfield-safety-mcp` facade dropa params
+
+**Problema (root cause):** FastMCP faz binding de parâmetros pelo nome. A função gerada por `_make_passthrough` tinha assinatura `_fn(arguments: dict | None = None)`. FastMCP não encontrava um parâmetro chamado `arguments` nos inputs planos (ex: `{"category": "landscape"}`), então os descartava todos.
+
+**Fix (upstream):** Em `vinicius-ssantos/higgsfield-safety-mcp`, `src/higgsfield_safety_mcp/tools/passthrough.py`:
+
+```python
+# ANTES (buggy):
+async def _fn(arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    return await call_raw_tool(upstream, arguments or {})
+
+# DEPOIS (fix):
+async def _fn(**kwargs: Any) -> dict[str, Any]:
+    return await call_raw_tool(upstream, kwargs)
+```
+
+**PR:** https://github.com/vinicius-ssantos/higgsfield-safety-mcp/pull/5
+
+**Ação pendente:** Após CI + merge → `just facade-pull-restart`.
+
+**Status:** 🟡 **PR ABERTO** — aguarda CI e merge do usuário
+
+---
+
+### 4. Higgsfield token expirado
+
+**Problema:** `HIGGSFIELD_MCP_ACCESS_TOKEN` expirou.
+
+**Ação necessária (usuário):** Acessar o dashboard da Higgsfield, gerar novo access token, atualizar `.env`:
+```
+HIGGSFIELD_MCP_ACCESS_TOKEN=<novo_token>
+```
+Depois: `just facade-restart`.
+
+**Status:** 🔴 **ABERTO** — requer ação manual do usuário no dashboard Higgsfield
+
+---
+
+### 5. `GITHUB_ALLOWED_REPOS=*` não desbloqueava repos
+
+**Problema (root cause):** Em `src/github_unified_mcp/config.py`, `ensure_repo_allowed()` tem dois caminhos:
+- Se `allowed_repos` está vazio E `require_allowed_repos=false` → retorna imediatamente (permitido)
+- Se `allowed_repos` é não-vazio → roda o check de allowlist, **independente de `require_allowed_repos`**
+
+`GITHUB_ALLOWED_REPOS=*` criava `allowed_repos = {"*"}` (não-vazio, um elemento). O código então construía `allowed_canon` filtrando apenas entradas com `/` — `"*"` não tem `/`, então `allowed_canon` ficava vazio → todos os repos bloqueados.
+
+**Fix:** Limpar `GITHUB_ALLOWED_REPOS=` (vazio) no `.env`. Com `allowed_repos` vazio + `GITHUB_REQUIRE_ALLOWED_REPOS=false`, o early-return dispara imediatamente.
+
+```diff
+-GITHUB_ALLOWED_REPOS=*
++GITHUB_ALLOWED_REPOS=
+ GITHUB_REQUIRE_ALLOWED_REPOS=false
+```
+
+Container reiniciado. Verificação: `issue_search` em `vinicius-ssantos/central-mcp-gateway` retornou resultados com sucesso (anteriormente `POLICY_BLOCKED`).
+
+**Status:** ✅ **RESOLVIDO**
+
+---
+
+### 6. `get_provider_usage_summary` requer auth VOS (multi-tenant)
+
+**Investigação:** Tool requer uma sessão de usuário VOS (`data.provider` não é suficiente). É uma limitação de design multi-tenant do VOS Studio — o infra local não pode emular uma sessão de usuário VOS.
+
+**Status:** 🟠 **KNOWN LIMITATION** — não corrigível via config de infra. Documentado.
+
+---
+
+### 7. `prepare_video_blueprint` — promoção de `candidate_new`
+
+**Investigação:** `gateway.propose_catalog_entry` gerou o YAML de promoção mas retornou `mutated_catalog: false` — a operação é apenas sugestão de YAML, não modifica o catálogo em runtime. Promoção real requer editar `catalog.yaml` no código-fonte do gateway e abrir PR.
+
+**Status:** 🟡 **INFO** — requer PR no repo `central-mcp-gateway`. Não urgente.
+
+---
+
+### Resumo de resoluções — Phase 11
+
+| Bloqueio | Status final |
+|---|---|
+| Gateway token expirado (OAuth) | ✅ **RESOLVIDO** — bearer estático no `.mcp.json` |
+| VOS Celery worker ausente | ✅ **RESOLVIDO** — `vos-celery-worker` no compose |
+| BUG-01: facade dropa params | 🟡 **PR #5 ABERTO** — `just facade-pull-restart` após merge |
+| Higgsfield token expirado | 🔴 **ABERTO** — requer ação manual no dashboard Higgsfield |
+| `GITHUB_ALLOWED_REPOS=*` não funciona | ✅ **RESOLVIDO** — `GITHUB_ALLOWED_REPOS=` (vazio) |
+| `get_provider_usage_summary` auth VOS | 🟠 **KNOWN LIMITATION** — não corrigível via infra |
+| `prepare_video_blueprint` promoção | 🟡 **INFO** — requer PR no gateway repo |
+| Telegram confirm_channel | 🔴 **ABERTO** — excluído do escopo desta sessão |
