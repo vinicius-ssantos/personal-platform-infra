@@ -19,9 +19,15 @@ BACKUP=".env.bak.$(date +%Y%m%d-%H%M%S)"
 cp "$ENV_FILE" "$BACKUP"
 echo "Backed up $ENV_FILE → $BACKUP"
 
-# Generate tokens using /dev/urandom (portable, no PowerShell)
-NEW_BEARER=$(LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64)
-NEW_PLATFORM=$(LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64)
+# Generate tokens — openssl preferred; falls back to tr with pipefail disabled
+# (tr+head triggers SIGPIPE/141 when head closes stdin early, which pipefail catches)
+if command -v openssl &>/dev/null; then
+  NEW_BEARER=$(openssl rand -hex 32)
+  NEW_PLATFORM=$(openssl rand -hex 32)
+else
+  NEW_BEARER=$(set +o pipefail; LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64)
+  NEW_PLATFORM=$(set +o pipefail; LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64)
+fi
 
 # Rotate in .env using sed (line-by-line, safe for UTF-8 files)
 sed -i.tmp \
