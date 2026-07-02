@@ -37,6 +37,14 @@ when that context is needed.
   targeted checks pass or when shared wiring changed.
 - Keep final reports short: what changed, what was validated, and any remaining
   risk or blocker.
+- Avoid token-burning phrasings — prefer the scoped alternative:
+  - "analise o repo k8s" → "foque em `k8s/base/apps/<serviço>/`"
+  - "rode todos os smokes" → `just smoke-<serviço>-sh` específico
+  - "explique o ADR detalhadamente" → "resuma em 3 bullets"
+  - `kubectl get pods -A` → `kubectl get pods -n <namespace>`
+  - "mostre todos os manifestos" → `git diff --stat` + diff do arquivo alterado
+  - "investigue tudo no cluster" → `kubectl describe <pod>` + `kubectl logs <pod>`
+  - "refatore completamente" → "refatore só a função X, mantendo o comportamento"
 
 ## Validation Routes
 
@@ -56,6 +64,21 @@ when that context is needed.
 - Keep real OpenCode MCP credentials in `.env`, never in `opencode.json`.
 - Generate the local ignored config with `just opencode-local-config`.
 - Treat `opencode.local.json` as secret material; do not commit or paste it.
+
+## Token Economy Across Tools
+
+This repo is worked on by Codex, Claude Code, and OpenCode. Apply economy per
+tool when starting a non-trivial task:
+
+- **Codex** (`.codex/config.toml`): drop to a low-effort profile for trivial
+  edits and routine smokes; reserve `model_reasoning_effort = "high"` for
+  migrations, ADRs, or cross-service refactors.
+- **Claude Code**: prefer the `task` tool with `subagent_type: "explore"` (free)
+  for investigation; avoid `general` — it costs the same as the main session and
+  the orchestrator can do the work directly.
+- **OpenCode**: invoke the `economy-mode` skill for quick tasks; route subagents
+  via `explore` (free) / `dev-free` / `dev-light` / `dev-medium` / `dev-heavy`
+  by complexity, and never use `general`.
 
 ## Subagents
 
