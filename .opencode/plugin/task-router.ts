@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import type { Plugin } from "@opencode-ai/plugin";
 
-const AGENT_DIR = ".opencode/agent";
+const AGENT_DIR = ".opencode/agents";
 const FREE_TYPES = ["explore", "explorer"];
 const AGENT_MAP: Record<string, string> = {
   "infra-engineer": "infra-engineer.md",

@@ -1,7 +1,6 @@
 ---
 description: Execute a persisted plans/*.plan.md workflow
 agent: orquestrador
-model: opencode/deepseek-v4-flash-free
 subtask: false
 ---
 

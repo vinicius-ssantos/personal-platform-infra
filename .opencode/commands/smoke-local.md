@@ -1,33 +1,11 @@
-# smoke-local
+---
+description: Run smoke tests against the local Compose stack
+---
 
-Run the full smoke test suite against the local Compose stack.
+Run smoke tests for the local Compose stack.
 
-## What this does
+Detect the shell: use `smoke-all-sh` in bash/WSL/CI, `smoke-all` in PowerShell.
 
-Executes `just smoke-all` (PowerShell) or `just smoke-all-sh` (bash/CI) and reports each service result.
+Parse output for `[OK]` / `[FAIL]` per service. If any failure: show the service URL, last curl response, and suggest `just compose-logs-profile <service>` for investigation.
 
-## Steps
-
-1. Detect shell: use `smoke-all-sh` in bash/WSL, `smoke-all` in PowerShell
-2. Run the appropriate just recipe
-3. Parse output for `[OK]` / `[FAIL]` per service
-4. If any failure: show the service URL and last curl response
-5. Suggest `just compose-logs-profile <service>` for failed services
-
-## Services checked
-
-| Service | Port | Health path |
-|---|---|---|
-| github-unified-mcp | 8765 | `/healthz` |
-| deploy-orchestrator-mcp | 8001 | `/healthz` |
-| mcp-social | 8080 | `/health` |
-| central-mcp-gateway | 8040 | `/healthz` |
-| github-unified-mcp-bff | 8010 | `/healthz` |
-| vos-studio-mcp | 8020 | `/health` |
-| vos-studio-bff | 8030 | `/healthz` |
-
-## Usage
-
-```
-/smoke-local
-```
+Services checked: github-mcp:8765, deploy-mcp:8001, social:8080, gateway:8040, github-bff:8010, vos-mcp:8020, vos-bff:8030.

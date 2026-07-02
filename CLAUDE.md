@@ -39,11 +39,11 @@ Leia o arquivo `.md` do agent manualmente antes de agir:
 
 | Se for fazer... | Leia manualmente |
 |---|---|
-| Editar k8s, terraform, ansible, kustomize | `.opencode/agent/infra-engineer.md` |
-| Revisar código, PR, segurança | `.opencode/agent/reviewer.md` |
-| Criar/manter scripts, Justfile, automação | `.opencode/agent/scripter.md` |
-| Smoke test, logs, status, wake/sleep | `.opencode/agent/operations.md` |
-| Investigar algo antes de agir | `.opencode/agent/explorer.md` |
+| Editar k8s, terraform, ansible, kustomize | `.opencode/agents/infra-engineer.md` |
+| Revisar código, PR, segurança | `.opencode/agents/reviewer.md` |
+| Criar/manter scripts, Justfile, automação | `.opencode/agents/scripter.md` |
+| Smoke test, logs, status, wake/sleep | `.opencode/agents/operations.md` |
+| Investigar algo antes de agir | `.opencode/agents/explorer.md` |
 
 ### Quando usar Dynamic Workflows (Claude Code)
 

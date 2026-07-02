@@ -1,28 +1,15 @@
-# review-diff
+---
+description: Review current git diff for security, ADRs, and best practices
+---
 
-Run a full security and ADR compliance review of the current git diff.
+Run a full review of the current git diff (`git diff HEAD`).
 
-## What this does
+Apply the reviewer checklist:
 
-Calls the `reviewer` agent against staged or unstaged changes to catch blockers before opening a PR.
+Security: secrets in plaintext? Container as root? Trusted image source?
+Consistency: naming matches repo pattern? Labels/annotations consistent? Port conflicts?
+ADRs: complies with ADR 0001 (replicas:0), ADR 0004 (SOPS), ADR 0007 (Kustomize), ADR 0009 (Cloudflare)?
+Syntax: YAML valid? kustomize build works? terraform fmt -check passes?
+Best practices: health checks? resource limits? tag != latest? ConfigMap/Secret exists?
 
-## Steps
-
-1. Show the diff: `git diff HEAD` (or `git diff --cached` if staged)
-2. Apply the reviewer checklist:
-   - Secrets in plaintext?
-   - Container running as root?
-   - `replicas: 0` in base (ADR 0001)?
-   - SOPS for secrets (ADR 0004)?
-   - Kustomize not Helm (ADR 0007)?
-   - Valid YAML? (`kubectl kustomize k8s/overlays/local`)
-   - Health checks and resource limits set?
-3. Output structured report: Blockers / Recommendations / OK
-
-## Usage
-
-```
-/review-diff
-```
-
-No arguments needed. Operates on `git diff HEAD` by default.
+Output structured report: Blockers / Recommendations / OK. Include file:line references. Never show secret values.
