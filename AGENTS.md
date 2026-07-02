@@ -25,6 +25,19 @@ when that context is needed.
 - If a change touches more than one subsystem, summarize the intended files
   before editing.
 
+## Token Discipline
+
+- Prefer `git diff --stat`, `git status --short`, and targeted `rg` results
+  before opening full diffs or files.
+- Read only the relevant file ranges when possible; avoid dumping long logs,
+  generated manifests, or full command output into the conversation.
+- For bugfixes and narrow edits, investigate first, then apply the smallest
+  patch that resolves the issue.
+- Run the most specific validation route first; use broad suites only after
+  targeted checks pass or when shared wiring changed.
+- Keep final reports short: what changed, what was validated, and any remaining
+  risk or blocker.
+
 ## Validation Routes
 
 - Kubernetes changes: run `kubectl kustomize k8s/overlays/local` and
