@@ -25,9 +25,6 @@ function isUnsafeOnVps(cmd: string): boolean {
 }
 
 export default (async () => {
-  const ctx = getKubeContext();
-  const env = classifyContext(ctx);
-
   return {
     "tool.execute.before": (input: any, output: any) => {
       const toolName = input?.name || input?.tool;
@@ -35,6 +32,9 @@ export default (async () => {
 
       const cmd = output?.args?.command || "";
       if (!cmd || cmd.length < 3) return;
+
+      const ctx = getKubeContext();
+      const env = classifyContext(ctx);
 
       const badges: string[] = [];
       const desc = output?.args?.description || "";

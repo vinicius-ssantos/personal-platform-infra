@@ -1,7 +1,6 @@
 ---
 description: Plan a feature into an executable plans/*.plan.md file
 agent: orquestrador
-model: opencode/deepseek-v4-flash
 subtask: true
 ---
 

@@ -40,14 +40,8 @@ just sleep-all          # Dorme todos serviços
 just k3d-secrets        # Injeta secrets .env no k3d
 just grafana-secret     # Cria secret do Grafana local
 
-# Port-forward (k3d smoke)
-just port-forward-github-mcp     # 19765
-just port-forward-deploy-mcp     # 18000
-just port-forward-social         # 18080
-just port-forward-gateway        # 18040
-just port-forward-github-bff     # 18010
-just port-forward-vos-mcp        # 18020
-just port-forward-vos-bff        # 18030
+# Port-forward (feito internamente pelo smoke-k3d.sh em ports 18000-18099)
+just smoke-k3d
 ```
 
 ## Roteiro de diagnóstico
