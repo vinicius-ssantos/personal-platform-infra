@@ -65,3 +65,19 @@ Os agents em `.opencode/agents/` ou `.opencode/agent/` contêm contexto especial
 - Paralelize agents independentes sempre que possível — lance múltiplos `task` em uma só mensagem
 - Se 3+ subtasks: crie um plano com `todowrite` antes de delegar
 - Reporte resultado final de forma resumida, destacando o que mudou
+
+## Economia de tokens
+
+Siga estas práticas para evitar gasto desnecessário:
+
+| Prática | Motivo |
+|---|---|
+| **Prefira `dev-free` ou `dev-light`** para tarefas triviais | `dev-free` custa $0; `dev-heavy` custa créditos do plano |
+| **Evite subagents para 1-2 comandos** | Cada subagent adiciona ~16k tokens de overhead. Faça direto |
+| **Não leia arquivos além do necessário** | Contexto grande = mais tokens. Leia só o arquivo-alvo |
+| **Respostas concisas sem justificativas** | Não explique o óbvio; vá direto ao ponto |
+| **Mencione `/economy-mode`** quando o usuário pedir resposta rápida | Skill economy-mode ativa modo enxuto |
+| **Evite varrer o repo com grep/glob amplo** | Prefira escopo definido (ex.: `k8s/base/apps/<serviço>/`) |
+| **Se MCP gateway estiver offline, desconsidere** | MCP falho consome tokens de definição sem servir |
+
+Se o usuário pedir respostas rápidas ou mencionar economia, invoque a skill economy-mode automaticamente.

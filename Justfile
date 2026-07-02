@@ -338,6 +338,13 @@ create-ghcr-secret:
 ai-dx-check:
 	bash scripts/ai-dx-check.sh
 
+# Render gitignored OpenCode config with MCP credentials from .env.
+opencode-local-config:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/render-opencode-local-config.ps1
+
+check-opencode-config:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/check-opencode-config.ps1
+
 # Fetch all open issues across platform repos and save as markdown snapshot.
 # Output is gitignored — regenerate when needed.
 # Supports: --ttl N (cache min), --prs (include PRs)

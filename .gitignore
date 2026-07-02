@@ -46,6 +46,7 @@ cloudflare/workers/status-page/wrangler.toml
 /.mcp.json
 /.mcp.json.bak.*
 !/.mcp.json.example
+/opencode.local.json
 .opencode/tui.json
 .terraform.lock.hcl
 /docs/backlog-snapshot.md
