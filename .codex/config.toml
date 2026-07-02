@@ -1,5 +1,11 @@
 ﻿model = "gpt-5.5"
-model_reasoning_effort = "high"
+# Token economy: match effort to task complexity.
+#   - "low"    → trivial edits, smokes, renames, config bumps
+#   - "medium" → default; manifests, overlays, scripts, most infra work
+#   - "high"   → migrations, ADRs, cross-service refactors (override per-session
+#                with `codex --model-reasoning-effort high`)
+# See AGENTS.md "Token Economy Across Tools".
+model_reasoning_effort = "medium"
 
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
