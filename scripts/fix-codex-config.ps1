@@ -1,4 +1,18 @@
-﻿model = "gpt-5.5"
+param(
+    [string]$RepoRoot = "C:\Users\vinicius\Documents\workspace\personal-platform-infra"
+)
+
+$ErrorActionPreference = "Stop"
+
+$codexDir = Join-Path $RepoRoot ".codex"
+$configPath = Join-Path $codexDir "config.toml"
+
+if (-not (Test-Path -LiteralPath $codexDir)) {
+    New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
+}
+
+$content = @'
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 
 approval_policy = "on-request"
@@ -38,3 +52,10 @@ network = false
 ".wrangler" = "deny"
 ".tmp-*" = "deny"
 "*.log" = "deny"
+'@
+
+Set-Content -LiteralPath $configPath -Value $content -Encoding utf8
+
+Write-Host "Arquivo criado em: $configPath"
+Write-Host ""
+Get-Content -LiteralPath $configPath
