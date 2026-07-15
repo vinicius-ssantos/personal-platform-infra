@@ -54,7 +54,7 @@ function Read-EnvMap([string]$Path) {
         return $map
     }
 
-    foreach ($line in Get-Content $Path) {
+    foreach ($line in [System.IO.File]::ReadAllLines((Resolve-Path $Path), [System.Text.UTF8Encoding]::new($false))) {
         if ($line -match "^\s*#" -or $line -match "^\s*$") {
             continue
         }
@@ -79,7 +79,7 @@ function Set-EnvValues([string]$Path, [hashtable]$Values) {
     }
 
     $seen = @{}
-    $lines = Get-Content $Path
+    $lines = [System.IO.File]::ReadAllLines((Resolve-Path $Path), [System.Text.UTF8Encoding]::new($false))
     $updated = foreach ($line in $lines) {
         if ($line -match "^([^#][^=]+)=") {
             $key = $matches[1]

@@ -12,6 +12,16 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
+# Refuse to push secrets into the cluster from a corrupted .env (encoding
+# bloat, mojibake, invalid UTF-8) — same guard as `just check-env`.
+source "$ROOT_DIR/scripts/check-env-encoding.sh"
+check_env_encoding "$ENV_FILE"
+if [[ "$ENCODING_ERRORS" -gt 0 ]]; then
+  echo "" >&2
+  echo "$ENCODING_ERRORS encoding problem(s) found in $ENV_FILE. Fix these before pushing secrets to the cluster." >&2
+  exit 1
+fi
+
 # Load .env without exporting — we'll read values explicitly
 _get() {
   local key="$1"

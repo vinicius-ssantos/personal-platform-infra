@@ -8,9 +8,18 @@ set -euo pipefail
 
 ENV_FILE=".env"
 MCP_FILE=".mcp.json"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: $ENV_FILE not found. Run from repo root." >&2
+  exit 1
+fi
+
+source "$ROOT_DIR/scripts/check-env-encoding.sh"
+check_env_encoding "$ENV_FILE"
+if [[ "$ENCODING_ERRORS" -gt 0 ]]; then
+  echo "" >&2
+  echo "$ENV_FILE already has encoding corruption — fix it before rotating tokens (rotation would just re-save the corruption)." >&2
   exit 1
 fi
 
@@ -37,6 +46,13 @@ sed -i.tmp \
   "s|^MCP_BEARER_TOKEN=.*|MCP_BEARER_TOKEN=${NEW_PLATFORM}|" \
   "$ENV_FILE"
 rm -f "${ENV_FILE}.tmp"
+
+check_env_encoding "$ENV_FILE"
+if [[ "$ENCODING_ERRORS" -gt 0 ]]; then
+  echo "" >&2
+  echo "ERROR: rotation left $ENV_FILE with encoding corruption. Restore from $BACKUP and investigate." >&2
+  exit 1
+fi
 
 echo "Tokens rotated in $ENV_FILE"
 

@@ -86,6 +86,25 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  postgres-vos:
+    image: postgres:17-alpine
+    profiles: ["vos", "tailscale", "all", "ngrok"]
+    environment:
+      POSTGRES_DB: ${VOS_POSTGRES_DB:-vos_studio}
+      POSTGRES_USER: ${VOS_POSTGRES_USER:-vos}
+      POSTGRES_PASSWORD: ${VOS_POSTGRES_PASSWORD:-vos-local-dev}
+    ports:
+      - "127.0.0.1:54322:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${VOS_POSTGRES_USER:-vos} -d ${VOS_POSTGRES_DB:-vos_studio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - postgres-vos-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   vos-studio-mcp:
     image: ${VOS_STUDIO_MCP_IMAGE}
     profiles: ["vos", "tailscale", "all"]
@@ -97,7 +116,7 @@ services:
       MCP_SERVER_PORT: 8000
       PORT: 8000
       MCP_PUBLIC_BASE_URL: http://vos-studio-mcp:8000
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql+asyncpg://${VOS_POSTGRES_USER:-vos}:${VOS_POSTGRES_PASSWORD:-vos-local-dev}@postgres-vos:5432/${VOS_POSTGRES_DB:-vos_studio}
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -563,3 +582,4 @@ volumes:
   job-hunter-artifacts:
   ollama-models:
   postgres-workflow-engine-data:
+  postgres-vos-data:
