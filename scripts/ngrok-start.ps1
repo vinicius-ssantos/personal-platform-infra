@@ -30,7 +30,7 @@ function Get-CommandPath([string]$Name) {
 function Read-EnvMap([string]$Path) {
     $map = [ordered]@{}
     if (-not (Test-Path $Path)) { return $map }
-    foreach ($line in Get-Content $Path) {
+    foreach ($line in [System.IO.File]::ReadAllLines((Resolve-Path $Path), [System.Text.UTF8Encoding]::new($false))) {
         if ($line -match "^\s*#" -or $line -match "^\s*$") { continue }
         if ($line -match "^([^=]+)=(.*)$") { $map[$matches[1]] = $matches[2].TrimEnd("`r") }
     }
@@ -39,7 +39,7 @@ function Read-EnvMap([string]$Path) {
 
 function Set-EnvValues([string]$Path, [hashtable]$Values) {
     $seen = @{}
-    $lines = Get-Content $Path
+    $lines = [System.IO.File]::ReadAllLines((Resolve-Path $Path), [System.Text.UTF8Encoding]::new($false))
     $updated = foreach ($line in $lines) {
         if ($line -match "^([^#][^=]+)=") {
             $key = $matches[1]
