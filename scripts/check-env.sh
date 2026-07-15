@@ -42,6 +42,20 @@ if [[ ! -f "$EXAMPLE_FILE" ]]; then
   exit 1
 fi
 
+# --- Encoding sanity check ---------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./check-env-encoding.sh
+source "$SCRIPT_DIR/check-env-encoding.sh"
+check_env_encoding "$ENV_FILE"
+ERRORS=$((ERRORS + ENCODING_ERRORS))
+
+if [[ "$ERRORS" -gt 0 ]]; then
+  echo ""
+  echo "$ERRORS encoding problem(s) found in $ENV_FILE. Fix these before continuing — do not start services or push secrets to k3d/VPS with a corrupted .env." >&2
+  exit 1
+fi
+# --- End encoding sanity check -----------------------------------------------
+
 for key in "${required_keys[@]}"; do
   if ! grep -Eq "^${key}=" "$ENV_FILE"; then
     echo "MISSING: $key"
