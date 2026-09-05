@@ -106,7 +106,7 @@ compose-build:
 	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env build
 
 gateway-restart:
-	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait central-mcp-gateway
+	docker compose -f compose/docker-compose.yml --env-file .env --profile gateway up -d --force-recreate --wait central-mcp-gateway
 
 # Pull latest gateway image from GHCR then restart. Use this after CI has finished building.
 gateway-pull-restart:

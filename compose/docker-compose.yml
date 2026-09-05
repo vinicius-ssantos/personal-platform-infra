@@ -480,6 +480,22 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
 
+  # Prepara o volume de dados do gateway antes de ele subir.
+  # A imagem roda como usuário `gateway` e /app é root-only, então o serviço não
+  # consegue criar o diretório do audit trail sozinho. Um volume nomeado montado
+  # num path que não existe na imagem nasce root:root, então também não bastaria.
+  # Este init roda como root, usa a MESMA imagem (nada extra pra baixar) e faz o
+  # chown pelo nome do usuário, sobrevivendo a mudanças de uid na imagem base.
+  central-mcp-gateway-data-init:
+    image: ${CENTRAL_MCP_GATEWAY_IMAGE}
+    profiles: ["gateway", "tailscale", "all"]
+    user: root
+    entrypoint: ["sh", "-c"]
+    command: ["mkdir -p /data && chown -R gateway:gateway /data && chmod 750 /data"]
+    volumes:
+      - gateway-data:/data
+    restart: "no"
+
   central-mcp-gateway:
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
     profiles: ["gateway", "tailscale", "all"]
@@ -494,6 +510,8 @@ services:
       GATEWAY_HOST: 0.0.0.0
       GATEWAY_PORT: 8080
       GATEWAY_LOG_LEVEL: ${GATEWAY_LOG_LEVEL:-info}
+      # Fora de /app: o serviço roda como `gateway` e não pode escrever em /app.
+      GATEWAY_AUDIT_SQLITE_PATH: ${GATEWAY_AUDIT_SQLITE_PATH:-/data/audit.db}
       GATEWAY_PUBLIC_BEARER_TOKEN: ${CENTRAL_MCP_GATEWAY_PUBLIC_BEARER_TOKEN}
       GATEWAY_OAUTH_CLIENT_ID: ${GATEWAY_OAUTH_CLIENT_ID:-chatgpt}
       GATEWAY_OAUTH_CLIENT_SECRET: ${CENTRAL_MCP_GATEWAY_OAUTH_CLIENT_SECRET}
@@ -539,9 +557,13 @@ services:
       GATEWAY_ALLOW_PRIVATE_UPSTREAM_URLS: ${GATEWAY_ALLOW_PRIVATE_UPSTREAM_URLS:-true}
       GATEWAY_CONFIRM_TELEGRAM_TOKEN: ${GATEWAY_CONFIRM_TELEGRAM_TOKEN}
       GATEWAY_CONFIRM_TELEGRAM_CHAT_ID: ${GATEWAY_CONFIRM_TELEGRAM_CHAT_ID}
+    volumes:
+      - gateway-data:/data
     depends_on:
       redis:
         condition: service_healthy
+      central-mcp-gateway-data-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=3).read()\""]
       interval: 10s
@@ -588,6 +610,7 @@ services:
 
 volumes:
   social-data:
+  gateway-data:
   tailscale-gateway-state:
   job-hunter-data:
   job-hunter-browseruse:
