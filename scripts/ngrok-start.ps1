@@ -116,7 +116,7 @@ if (-not $proxyOk) {
 
 $ngrokArgs = @("http", "http://localhost:8088", "--log", "stdout")
 if (-not [string]::IsNullOrWhiteSpace($staticDomain)) {
-    $ngrokArgs += "--domain=$staticDomain"
+    $ngrokArgs += "--url=https://$staticDomain"
     $ngrokArgs += "--pooling-enabled"
 }
 

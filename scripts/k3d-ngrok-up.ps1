@@ -289,7 +289,7 @@ Start-GatewayPortForward -LogDir $logDir
 $staticDomain = $currentEnv["NGROK_STATIC_DOMAIN"]
 $ngrokArgs = @("http", "http://localhost:${LocalPort}", "--log", "stdout")
 if (-not [string]::IsNullOrWhiteSpace($staticDomain)) {
-    $ngrokArgs += "--domain=$staticDomain"
+    $ngrokArgs += "--url=https://$staticDomain"
 }
 
 Write-Host "Starting ngrok..."

@@ -202,7 +202,7 @@ Invoke-RestMethod -Uri "http://localhost:8088/vos-bff/healthz" -Headers $edgeHea
 $staticDomain = $currentEnv["NGROK_STATIC_DOMAIN"]
 $ngrokArgs = @("http", "http://localhost:8088", "--log", "stdout")
 if (-not [string]::IsNullOrWhiteSpace($staticDomain)) {
-    $ngrokArgs += "--domain=$staticDomain"
+    $ngrokArgs += "--url=https://$staticDomain"
 }
 
 Write-Host "Starting ngrok..."
