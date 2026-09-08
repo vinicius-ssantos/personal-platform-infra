@@ -127,6 +127,9 @@ docs/
 | `deploy-orchestrator-mcp` | mcp | 8000 | `/healthz` | ready |
 | `mcp-social` | mcp | 8080 | `/health` ¹ | ready |
 | `central-mcp-gateway` | mcp | 8080 | `/healthz` + `/readyz` | ready |
+| `higgsfield-facade` | mcp | 8080 | TCP socket ² | ready |
+| `repo-research-sidecar` | mcp | 8081 | TCP socket ² | ready |
+| `workflow-engine` | mcp | 8080 | `/actuator/health` | ready |
 | `github-unified-mcp-bff` | bff | 8000 | `/healthz` | ready |
 | `vos-studio-mcp` | vos | 8000 | `/health` ¹ | ready |
 | `vos-studio-bff` | bff | 8000 | `/healthz` | ready |
@@ -134,9 +137,11 @@ docs/
 
 ¹ `/health` (sem `z`) — path upstream diferente dos demais. Padronizar para `/healthz` é uma melhoria pendente nos repos de aplicação.
 
-**Portas Compose (host):** github-mcp=8765, deploy-mcp=8001, social=8080, gateway=8040, github-bff=8010, vos-mcp=8020, vos-bff=8030, sandbox-host=8766.
+² Sem endpoint HTTP de health hoje — liveness/readiness em k8s e healthcheck no compose validam apenas que a porta TCP aceita conexão.
 
-**Portas port-forward k3d (smoke):** github-mcp=19765, deploy-mcp=18000, social=18080, gateway=18040, github-bff=18010, vos-mcp=18020, vos-bff=18030.
+**Portas Compose (host):** github-mcp=8765, deploy-mcp=8001, social=8080, gateway=8040, github-bff=8010, vos-mcp=8020, vos-bff=8030, sandbox-host=8766, higgsfield-facade=8085, workflow-engine=8081 (`repo-research-sidecar` não publica porta no host — só acessível via rede interna do compose/gateway).
+
+**Portas port-forward k3d (smoke):** github-mcp=19765, deploy-mcp=18000, social=18080, gateway=18040, github-bff=18010, vos-mcp=18020, vos-bff=18030, repo-research-sidecar=18081. `higgsfield-facade` e `workflow-engine` ainda não têm rollout check nem port-forward em `scripts/smoke-k3d.sh` — lacuna de cobertura pendente.
 
 ## Comandos essenciais
 
@@ -240,6 +245,10 @@ Todas as decisões estão em `docs/adr/`.
 - [ADR 0014](docs/adr/0014-status-page-via-cloudflare-worker.md) — Status page via Cloudflare Worker
 - [ADR 0015](docs/adr/0015-logs-centralizados-com-loki-alloy.md) — Logs centralizados com Loki e Alloy
 - [ADR 0016](docs/adr/0016-scale-to-zero-via-keda-http-add-on.md) — Scale-to-zero via KEDA HTTP Add-on
+- [ADR 0017](docs/adr/0017-kubernetes-ownership-in-infra-repo.md) — Kubernetes ownership vive no infra repo
+- [ADR 0018](docs/adr/0018-ci-runner-boundary.md) — Infra de CI runner vive em `ci-self-hosted-runner`
+- [ADR 0019](docs/adr/0019-ai-subagent-workflow-for-development-automation.md) — Workflow de subagentes de IA (Fase 1 aceita; Fases 2–3 propostas)
+- [ADR 0020](docs/adr/0020-repo-sandbox-runner.md) — Arquitetura do Repo Sandbox Runner (proposto)
 
 ## Backlog atual sugerido
 
