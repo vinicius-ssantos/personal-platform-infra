@@ -48,6 +48,24 @@ spec:
                   name: platform-secrets
                   key: CENTRAL_MCP_GATEWAY_ADMIN_TOKEN
                   optional: true
+            - name: GATEWAY_CONFIRM_CHANNEL
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: GATEWAY_CONFIRM_CHANNEL
+                  optional: true
+            - name: GATEWAY_CONFIRM_TELEGRAM_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: GATEWAY_CONFIRM_TELEGRAM_TOKEN
+                  optional: true
+            - name: GATEWAY_CONFIRM_TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: GATEWAY_CONFIRM_TELEGRAM_CHAT_ID
+                  optional: true
             - name: GATEWAY_MCP_BEARER_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -87,6 +105,7 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 15
+            timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
             httpGet:
@@ -94,6 +113,7 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
           resources:
             requests:
