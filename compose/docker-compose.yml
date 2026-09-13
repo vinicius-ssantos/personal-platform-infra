@@ -238,7 +238,7 @@ services:
   # resource flag below is read-only regardless of value.
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy:v0.4.2
-    profiles: ["sandbox", "gateway", "tailscale", "all"]
+    profiles: ["sandbox", "tailscale", "all"]
     environment:
       CONTAINERS: 1
       VOLUMES: 1
@@ -266,7 +266,7 @@ services:
 
   mcp-code-sandbox-images:
     image: docker:27-cli
-    profiles: ["sandbox", "gateway", "tailscale", "all"]
+    profiles: ["sandbox", "tailscale", "all"]
     command:
       - sh
       - -ec
@@ -292,7 +292,7 @@ services:
       dockerfile: Dockerfile.server
     image: mcp-code-sandbox-server:local
     pull_policy: never
-    profiles: ["sandbox", "gateway", "tailscale", "all"]
+    profiles: ["sandbox", "tailscale", "all"]
     ports:
       - "127.0.0.1:8766:8766"
     environment:
@@ -335,7 +335,7 @@ services:
 
   higgsfield-facade:
     image: ${HIGGSFIELD_FACADE_IMAGE}
-    profiles: ["gateway", "tailscale", "all"]
+    profiles: ["higgsfield", "tailscale", "all"]
     ports:
       - "127.0.0.1:8085:8080"
     environment:
@@ -415,7 +415,7 @@ services:
 
   repo-research-sidecar:
     image: ${REPO_RESEARCH_SIDECAR_IMAGE}
-    profiles: ["gateway", "tailscale", "all"]
+    profiles: ["repo-research", "tailscale", "all"]
     environment:
       COLUMNS: "300"  # wide terminal width so structured JSON logs aren't word-wrapped across docker compose log lines
       MCP_TRANSPORT: streamable-http
@@ -530,6 +530,7 @@ services:
       GATEWAY_UPSTREAM_SANDBOX_URL: ${GATEWAY_UPSTREAM_SANDBOX_URL}
       GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar:8081/mcp
       GATEWAY_UPSTREAM_HIGGSFIELD_URL: http://higgsfield-facade:8080/mcp
+      GATEWAY_UPSTREAM_LIFECYCLE: ${GATEWAY_UPSTREAM_LIFECYCLE:-github:required,repo-research:required,sandbox:optional-enabled,deploy:disabled,social:disabled,vos:disabled,higgsfield:disabled}
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
       GATEWAY_GITHUB_TOKEN: ${GITHUB_TOKEN}
       GATEWAY_DEPLOY_API_KEY: ${MCP_SERVER_API_KEY}

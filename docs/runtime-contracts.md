@@ -180,22 +180,21 @@ O sandbox não roda em container dentro desta infra porque precisa falar com o D
 
 ### Ciclo de vida local do gateway
 
-No Compose, o gateway atual e seus upstreams formam um conjunto de integracao:
-`gateway`, `github`, `deploy`, `social` e `vos`. Use
-`just compose-up-gateway-integration` quando for validar esse caminho completo.
+No Compose, o caminho operacional minimo do gateway e `gateway`, `github` e
+`repo-research`. Use `just compose-up-gateway-integration` para iniciar e
+validar esse conjunto.
 
-Os servicos `sandbox`, `higgsfield-facade` e `repo-research-sidecar` sao
-iniciados pelo perfil `gateway`. O gateway ainda nao possui um contrato para
-distinguir um upstream desabilitado de um upstream indisponivel. Portanto, nao
-remova upstreams desse conjunto apenas pelo Compose: tools, discovery e readiness
-precisam ser tornados capability-aware no `central-mcp-gateway` primeiro. A
-implementacao upstream e acompanhada em
-`vinicius-ssantos/central-mcp-gateway#273`; esta infraestrutura acompanha a
-integracao em #273.
+`GATEWAY_UPSTREAM_LIFECYCLE` declara os upstreams necessarios (`github` e
+`repo-research`) e deixa `deploy`, `social`, `vos` e `higgsfield` desabilitados.
+O `sandbox` permanece opcional. Os servicos auxiliares usam perfis proprios:
+`sandbox`, `higgsfield` e `repo-research`. Para ativar um deles pelo gateway,
+inicie seu perfil e ajuste deliberadamente o lifecycle local. O contrato foi
+entregue em `vinicius-ssantos/central-mcp-gateway#274`.
 
 Para trabalho cotidiano, use os perfis focados (`compose-up-github`,
 `compose-up-vos`, `compose-up-deploy`, `compose-up-social`,
-`compose-up-sandbox` ou `compose-up-workflow-engine`). `compose-up-all` fica
+`compose-up-sandbox`, `compose-up-profile higgsfield` ou
+`compose-up-workflow-engine`). `compose-up-all` fica
 reservado para integracao completa.
 
 ### Antes de mudar wiring neste repositório
