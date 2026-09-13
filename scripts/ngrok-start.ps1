@@ -111,7 +111,7 @@ try {
     }
 }
 if (-not $proxyOk) {
-    throw "Caddy proxy not reachable at http://localhost:8088. Run 'just compose-up' first."
+    throw "Caddy proxy not reachable at http://localhost:8088. Run 'just ngrok-up' first."
 }
 
 $ngrokArgs = @("http", "http://localhost:8088", "--log", "stdout")
