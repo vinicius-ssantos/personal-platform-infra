@@ -28,26 +28,36 @@ just bootstrap-local
 ```bash
 just env-init
 just check-env
-just compose-up
+just compose-up-github
 just compose-logs
 just compose-down
 ```
 
-`compose-up`, `compose-logs`, and `compose-down` are stable aliases for the full
-`all` profile. For incremental work, use the profile-specific targets:
+`compose-up` intentionally requires an explicit context, so an everyday command
+cannot silently start the full platform. Use a focused recipe:
 
 ```bash
-just compose-up-profile github
-just compose-logs-profile github
-just compose-down-profile github
-
-just compose-up-profile vos
-just compose-up-profile all
+just compose-up-github
+just compose-up-vos
+just compose-up-deploy
+just compose-up-social
+just compose-up-sandbox
+just compose-up-workflow-engine
+just compose-up-gateway-integration
+just compose-up-all
 ```
 
-This is useful when validating one service family without starting the complete
-local platform. Full-stack smoke validation should still use `just compose-up`
-and `just smoke-all`.
+`compose-up-gateway-integration` is the current full gateway topology. It starts
+the gateway and the upstream services its readiness and smoke contract require.
+`compose-up-all` is reserved for full-stack validation. `compose-down` stops the
+entire Compose project; Docker Compose does not provide a safe profile-scoped
+teardown when profiles share dependencies.
+
+Run `just runtime-status` (or `just runtime-status 7`) to see Compose, k3d, and
+aggregated gateway use. The report labels upstreams as `active`, `occasional`,
+or `no-observed-use` for the selected rolling window. The
+audit report excludes payloads, tokens, identities, request IDs, and arguments;
+it only covers calls that passed through the gateway.
 
 The managed services consume images published by their upstream
 repositories:
@@ -101,6 +111,10 @@ Login with the value of `CENTRAL_MCP_GATEWAY_ADMIN_TOKEN` from your uncommitted
 applies the local Kustomize overlay. The overlay includes a replica patch that
 starts the six ready services automatically.
 
+Use k3d for Kubernetes validation, then stop it when finished. Keeping it active
+alongside Compose duplicates most workloads and consumes local resources. The
+bootstrap prints a warning when Compose platform services are already running.
+
 ```bash
 just k8s-local-up
 GHCR_USERNAME="<github-username>" GHCR_TOKEN="<token-with-read-packages>" just create-ghcr-secret
@@ -151,7 +165,7 @@ just k8s-local-down
 
 | | Compose | k3d |
 |---|---|---|
-| Command | `just compose-up` | `just k8s-local-up` |
+| Command | `just compose-up-github` or another explicit context | `just k8s-local-up` |
 | Smoke | `just smoke-all` | `just smoke-k3d` |
 | Runtime | Docker Compose | Kubernetes (k3s in k3d) |
 | Networking | host ports | port-forward or loadbalancer (8088/8443) |

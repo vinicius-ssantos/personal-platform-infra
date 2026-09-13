@@ -72,10 +72,15 @@ Falha se alguma variável obrigatória estiver ausente ou com valor `change-me`.
 ### 3. Subir os serviços
 
 ```bash
-just compose-up
+just compose-up-github
 ```
 
-Sobe todos os serviços definidos no perfil `all`. Aguarda o healthcheck de cada container antes de retornar.
+Sobe somente o contexto GitHub. Escolha outro contexto com `just compose-up-vos`,
+`just compose-up-deploy`, `just compose-up-social`, `just compose-up-sandbox` ou
+`just compose-up-workflow-engine`. Use `just compose-up-gateway-integration` para
+o gateway com seus upstreams atuais e `just compose-up-all` apenas para validacao
+completa. `just compose-up` exige uma escolha explicita para evitar iniciar todos
+os servicos sem necessidade.
 
 ### 4. Validar
 

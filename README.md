@@ -73,8 +73,9 @@ just bootstrap-local
 just env-init        # cria .env a partir do .env.example
 # edite .env com seus tokens reais
 just check-env       # valida variáveis obrigatórias
-just compose-up      # sobe todos os serviços
-just smoke-all-sh    # valida health de cada serviço
+just compose-up-github # sobe o contexto GitHub
+just smoke-github-sh   # valida o health do contexto
+# use `just compose-up-all` e `just smoke-all-sh` apenas para integracao completa
 just compose-down
 ```
 

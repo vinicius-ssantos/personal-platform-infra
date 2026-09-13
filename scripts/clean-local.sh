@@ -17,4 +17,4 @@ else
   echo "k3d not found; skipping cluster delete."
 fi
 
-echo "Local environment reset. Use 'just compose-up' or 'just k8s-local-up' to start again."
+echo "Local environment reset. Use 'just compose-up-github' or 'just k8s-local-up' to start again."

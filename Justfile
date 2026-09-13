@@ -74,36 +74,62 @@ warp-start:
 warp-stop:
 	& "{{_warp}}" disconnect
 
-_profiles := env("COMPOSE_PROFILES", "all")
+# Starting every profile is expensive and hides which stack is needed. Select a
+# context explicitly, or use compose-up-all for an intentional full-stack run.
+compose-up:
+	Write-Error "Select a context: compose-up-profile <profile>, compose-up-github, compose-up-vos, compose-up-gateway-integration, or compose-up-all."; exit 1
 
-compose-up: check-env check-warp
-	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env up -d --wait
+compose-up-all: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all up -d --wait
+
+compose-up-github: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile github --profile github-bff up -d --wait
+
+compose-up-vos: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile vos up -d --wait
+
+compose-up-deploy: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile deploy up -d --wait
+
+compose-up-social: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile social up -d --wait
+
+compose-up-sandbox: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile sandbox up -d --wait
+
+compose-up-workflow-engine: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile workflow-engine up -d --wait
+
+# The gateway currently requires its upstream integration set. Keep it explicit
+# until central-mcp-gateway supports optional upstreams (issue #273).
+compose-up-gateway-integration: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile gateway --profile github --profile deploy --profile social --profile vos up -d --wait
 
 compose-down:
-	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env down
+	docker compose -f compose/docker-compose.yml --env-file .env down
 
 compose-logs:
-	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env logs -f --tail=200
+	docker compose -f compose/docker-compose.yml --env-file .env logs -f --tail=200
 
 # Explicit profile override — ignores COMPOSE_PROFILES from .env.
-compose-up-profile profile: check-env check-warp
+compose-up-profile profile: check-env check-warp runtime-overlap-warning
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} up -d --wait
 
 compose-down-profile profile:
-	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} down
+	Write-Error "Docker Compose down is project-wide, not profile-scoped. Use compose-down only when you intend to stop the full local runtime."; exit 1
 
 compose-logs-profile profile:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile {{profile}} logs -f --tail=200
 
-compose-pull:
-	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env pull
+compose-pull-all:
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all pull
 
 # Pull every image and recreate only the containers whose image digest changed.
-compose-upgrade: check-env check-warp
-	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env up -d --pull always --wait
+compose-upgrade-all: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all up -d --pull always --wait
 
-compose-build:
-	$env:COMPOSE_PROFILES = '{{ _profiles }}'; docker compose -f compose/docker-compose.yml --env-file .env build
+compose-build-all:
+	docker compose -f compose/docker-compose.yml --env-file .env --profile all build
 
 gateway-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile gateway up -d --force-recreate --wait central-mcp-gateway
@@ -133,7 +159,7 @@ quick-tunnel-refresh:
 quick-tunnel-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-down.ps1
 
-ngrok-up: compose-upgrade ngrok-start
+ngrok-up: compose-upgrade-all ngrok-start
 	-just status-public
 
 ngrok-down:
@@ -229,6 +255,12 @@ smoke-logs:
 
 k8s-local-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/k8s-local-up.ps1
+
+runtime-status days="14":
+	powershell.exe -ExecutionPolicy Bypass -File scripts/runtime-status.ps1 -Days {{days}}
+
+runtime-overlap-warning:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/runtime-status.ps1 -Quiet
 
 k3d-secrets:
 	bash scripts/k3d-secrets.sh

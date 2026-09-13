@@ -70,5 +70,5 @@ if [[ -f "$MCP_FILE" ]]; then
 fi
 
 echo ""
-echo "Done. Restart the gateway to apply: just compose-up"
+echo "Done. Restart the gateway to apply: just gateway-restart"
 echo "Remove backups when confirmed working: rm $BACKUP ${MCP_FILE}.bak"

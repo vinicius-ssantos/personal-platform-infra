@@ -23,8 +23,23 @@ function Get-CommandPath([string]$Name) {
     throw "$Name not found in PATH"
 }
 
+function Test-ComposePlatformRunning {
+    $containers = @(
+        & docker ps --filter "label=com.docker.compose.project=compose" --format "{{.Names}}" 2>$null |
+            Where-Object { $_ -and $_ -notmatch "^compose-(ngrok-proxy|docker-socket-proxy)-" }
+    )
+
+    return $containers.Count -gt 0
+}
+
 $K3d = Get-CommandPath "k3d"
 $Kubectl = Get-CommandPath "kubectl"
+
+if (Get-Command docker -ErrorAction SilentlyContinue) {
+    if (Test-ComposePlatformRunning) {
+        Write-Warning "Compose platform services are running. k3d will duplicate workloads; use 'just runtime-status' to review, or 'just compose-down' if Kubernetes validation is the intended runtime."
+    }
+}
 
 $clusterExists = (& $K3d cluster list 2>$null | Select-String -Pattern "^$ClusterName\s") -ne $null
 if ($clusterExists) {

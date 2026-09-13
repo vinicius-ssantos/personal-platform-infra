@@ -26,5 +26,5 @@ Most upstream image repos are private — authenticate Docker before pulling:
 
 Then run:
   just check-env
-  just compose-up
+  just compose-up-github
 MSG

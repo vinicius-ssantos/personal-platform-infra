@@ -15,12 +15,18 @@ For immutable image versions, rollback guidance, and mutable tag policy, use the
 ## Start local compose
 
 ```bash
-just compose-up
+just compose-up-github
 ```
 
-Compose reads image tags from `.env`. To test a temporary local or branch image,
-override the relevant image variable in `.env` instead of editing
-`compose/docker-compose.yml`.
+Compose reads image tags from `.env`. Select a context with `just compose-up-vos`,
+`just compose-up-deploy`, `just compose-up-social`, `just compose-up-sandbox`,
+`just compose-up-workflow-engine`, `just compose-up-gateway-integration`, or
+`just compose-up-all`. To test a temporary local or branch image, override the
+relevant image variable in `.env` instead of editing `compose/docker-compose.yml`.
+
+Before starting a runtime, use `just runtime-status` (or `just runtime-status 7`).
+It reports whether Compose and k3d are both active and aggregates gateway audit
+events without printing payloads or credentials.
 
 ## Stop local compose
 
@@ -110,7 +116,7 @@ Common failure modes:
 Teardown:
 
 ```bash
-docker compose --env-file .env -f compose/docker-compose.yml --profile github down
+just compose-down
 ```
 
 ## Wake VOS stack
