@@ -1,0 +1,40 @@
+name: Patch gateway milestone allowlist
+
+on:
+  push:
+    branches:
+      - fix/gateway-milestone-allowlist
+    paths:
+      - .github/workflows/patch-gateway-milestone-allowlist.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/gateway-milestone-allowlist
+          fetch-depth: 0
+      - name: Add static milestone tools to Compose allowlist
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("compose/docker-compose.yml")
+          text = path.read_text()
+          old = "github.search_issues,github.pr_merge,github.ruleset_upsert,deploy.get_status"
+          new = "github.search_issues,github.milestone_list,github.milestone_get,github.milestone_create,github.milestone_update,github.pr_merge,github.ruleset_upsert,deploy.get_status"
+          assert old in text, "expected gateway allowlist segment not found"
+          assert "github.milestone_create" not in text, "milestone tools already present"
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add compose/docker-compose.yml
+          git commit -m 'fix(gateway): expose milestone tools in local compose'
+          git push origin HEAD:fix/gateway-milestone-allowlist
