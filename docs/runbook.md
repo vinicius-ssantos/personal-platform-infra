@@ -24,6 +24,22 @@ Compose reads image tags from `.env`. Select a context with `just compose-up-vos
 `just compose-up-all`. To test a temporary local or branch image, override the
 relevant image variable in `.env` instead of editing `compose/docker-compose.yml`.
 
+### Sandbox sob demanda
+
+O sandbox local pode ficar preparado, mas parado. Uma chamada autenticada do
+gateway para `sandbox.*` acorda somente `mcp-code-sandbox` e seu socket proxy;
+apos `SANDBOX_IDLE_SECONDS` (900 por padrao) sem requisicao real, ambos param.
+O controlador aceita apenas o token ja usado entre gateway e sandbox e so opera
+esses dois nomes fixos de servico.
+
+Depois de alterar a imagem do sandbox ou executar `just compose-down`, prepare
+o par uma vez e mantenha o gateway normal em execucao:
+
+```bash
+just sandbox-lifecycle-enable
+just compose-up-gateway-integration
+```
+
 Before starting a runtime, use `just runtime-status` (or `just runtime-status 7`).
 It reports whether Compose and k3d are both active and aggregates gateway audit
 events without printing payloads or credentials.

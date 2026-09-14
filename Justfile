@@ -97,6 +97,11 @@ compose-up-social: check-env check-warp runtime-overlap-warning
 compose-up-sandbox: check-env check-warp runtime-overlap-warning
 	docker compose -f compose/docker-compose.yml --env-file .env --profile sandbox up -d --wait
 
+# Build and create the optional sandbox once, then leave it asleep.
+sandbox-lifecycle-enable: check-env check-warp runtime-overlap-warning
+	docker compose -f compose/docker-compose.yml --env-file .env --profile sandbox up -d --wait
+	docker compose -f compose/docker-compose.yml --env-file .env stop mcp-code-sandbox docker-socket-proxy
+
 compose-up-workflow-engine: check-env check-warp runtime-overlap-warning
 	docker compose -f compose/docker-compose.yml --env-file .env --profile workflow-engine up -d --wait
 
