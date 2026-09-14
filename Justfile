@@ -100,10 +100,11 @@ compose-up-sandbox: check-env check-warp runtime-overlap-warning
 compose-up-workflow-engine: check-env check-warp runtime-overlap-warning
 	docker compose -f compose/docker-compose.yml --env-file .env --profile workflow-engine up -d --wait
 
-# The gateway currently requires its upstream integration set. Keep it explicit
-# until central-mcp-gateway supports optional upstreams (issue #273).
+# The gateway's minimal operational path is GitHub plus repository research.
+# Optional upstreams stay disabled until their service profile is started and
+# GATEWAY_UPSTREAM_LIFECYCLE is adjusted deliberately.
 compose-up-gateway-integration: check-env check-warp runtime-overlap-warning
-	docker compose -f compose/docker-compose.yml --env-file .env --profile gateway --profile github --profile deploy --profile social --profile vos up -d --wait
+	docker compose -f compose/docker-compose.yml --env-file .env --profile gateway --profile github --profile repo-research up -d --wait
 
 compose-down:
 	docker compose -f compose/docker-compose.yml --env-file .env down
