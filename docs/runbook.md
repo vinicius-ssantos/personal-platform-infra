@@ -310,15 +310,21 @@ http://localhost:<port>`, copy the generated `trycloudflare.com` URLs into
 just status-public
 ```
 
-On Windows, the full local quick-tunnel workflow is automated:
+On Windows, the local quick-tunnel workflow starts only the gateway, GitHub MCP,
+and repository research services. It creates a public URL for the gateway:
 
 ```bash
 just quick-tunnel-up
 ```
 
-This starts Compose, restarts one quick tunnel per service, writes the generated
-public URLs into `.env`, preserves existing tokens, generates missing local
-tokens, and runs local/public smoke checks.
+This starts the minimum Compose profiles, writes the generated gateway URL into
+`.env`, preserves existing tokens, generates missing local tokens, and runs
+gateway health checks. Start every service and create one tunnel per service
+only when required:
+
+```bash
+just quick-tunnel-up-full
+```
 
 By default, the command keeps existing `trycloudflare.com` URLs when they are
 still healthy. This avoids Cloudflare Quick Tunnel rate limits. To force new
@@ -356,9 +362,9 @@ Then run:
 just ngrok-up
 ```
 
-This starts Compose, pulls the latest images, starts the local path proxy on
-`localhost:8088`, starts ngrok, writes the public path-routed URLs into `.env`,
-and runs public smoke checks. The exposed paths are:
+This starts the minimum runtime, the local path proxy on `localhost:8088`, and
+ngrok for the central gateway. To start every service and expose all
+path-routed endpoints, use `just ngrok-up-full`. The full-stack paths are:
 
 ```text
 /github-mcp
