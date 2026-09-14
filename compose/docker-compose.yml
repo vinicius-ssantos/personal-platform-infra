@@ -517,6 +517,13 @@ services:
 
   central-mcp-gateway:
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
+    entrypoint: ["sh", "-ec"]
+    command:
+      - |
+        # Older local .env files can retain tools removed from a newer gateway image.
+        # Keep all other operator entries intact, but fail closed on the retired names.
+        export GATEWAY_TOOL_ALLOWLIST="$(printf '%s' "$GATEWAY_TOOL_ALLOWLIST" | sed 's/,github\.milestone_\(list\|get\|create\|update\)//g')"
+        exec central-mcp-gateway
     profiles: ["gateway", "tailscale", "all"]
     ports:
       - "127.0.0.1:8040:8080"
