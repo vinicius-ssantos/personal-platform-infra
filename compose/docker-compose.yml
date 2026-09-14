@@ -576,6 +576,48 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # Blue/green slots share Redis and upstreams but isolate the local audit DB.
+  # The deployment controller promotes one slot through Caddy only after readiness.
+  central-mcp-gateway-blue-data-init:
+    extends:
+      service: central-mcp-gateway-data-init
+    volumes:
+      - gateway-blue-data:/data
+
+  central-mcp-gateway-blue:
+    extends:
+      service: central-mcp-gateway
+    image: ${CENTRAL_MCP_GATEWAY_BLUE_IMAGE:-${CENTRAL_MCP_GATEWAY_IMAGE}}
+    ports:
+      - "127.0.0.1:8041:8080"
+    volumes:
+      - gateway-blue-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      central-mcp-gateway-blue-data-init:
+        condition: service_completed_successfully
+
+  central-mcp-gateway-green-data-init:
+    extends:
+      service: central-mcp-gateway-data-init
+    volumes:
+      - gateway-green-data:/data
+
+  central-mcp-gateway-green:
+    extends:
+      service: central-mcp-gateway
+    image: ${CENTRAL_MCP_GATEWAY_GREEN_IMAGE:-${CENTRAL_MCP_GATEWAY_IMAGE}}
+    ports:
+      - "127.0.0.1:8042:8080"
+    volumes:
+      - gateway-green-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      central-mcp-gateway-green-data-init:
+        condition: service_completed_successfully
+
   tailscale-gateway:
     image: tailscale/tailscale:stable
     profiles: ["tailscale"]
@@ -615,6 +657,8 @@ services:
 volumes:
   social-data:
   gateway-data:
+  gateway-blue-data:
+  gateway-green-data:
   tailscale-gateway-state:
   job-hunter-data:
   job-hunter-browseruse:

@@ -182,6 +182,21 @@ docker compose --env-file .env -f compose/docker-compose.yml \
 
 The gateway listens on `http://localhost:8040`. Check it:
 
+### Blue/green gateway promotion
+
+For frequent local gateway updates, start and validate the inactive slot before
+switching Caddy without recreating the public frontdoor:
+
+```bash
+just gateway-promote-blue
+# or
+just gateway-promote-green
+```
+
+The command keeps the previous slot running. Remove it only after the gateway
+drain metrics report no active requests or streams. Redis remains shared across
+slots; each slot has its own SQLite audit volume.
+
 ```bash
 # health / readiness
 curl http://localhost:8040/healthz

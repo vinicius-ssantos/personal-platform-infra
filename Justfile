@@ -140,6 +140,12 @@ gateway-pull-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env pull central-mcp-gateway
 	just gateway-restart
 
+gateway-promote-blue:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/gateway-bluegreen-promote.ps1 -Target blue
+
+gateway-promote-green:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/gateway-bluegreen-promote.ps1 -Target green
+
 facade-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env up -d --force-recreate --no-deps --wait higgsfield-facade
 
