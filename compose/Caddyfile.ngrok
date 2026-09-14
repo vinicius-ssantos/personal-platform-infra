@@ -18,6 +18,12 @@
 			reverse_proxy central-mcp-gateway:8080
 		}
 
+		# GitHub authenticates this endpoint with X-Hub-Signature-256. It is
+		# intentionally outside the platform-token guard so webhooks can arrive.
+		handle /runner-autoscaler/webhook {
+			reverse_proxy host.docker.internal:8787
+		}
+
 		@missing_platform_token not {
 			header X-Platform-Token {$PUBLIC_EDGE_TOKEN}
 		}

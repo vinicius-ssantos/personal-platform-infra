@@ -388,6 +388,21 @@ may still count rejected requests against free-tier request limits because they
 already reached the ngrok edge, so keep the public URL private and stop ngrok
 when it is not needed.
 
+### CI runner autoscaler webhook
+
+When developing on this workstation, `ci-self-hosted-runner` can keep Docker
+stopped until a signed GitHub `workflow_job` webhook requests an allowlisted
+runner. With ngrok active, configure each repository webhook at:
+
+```text
+https://<your-ngrok-domain>/runner-autoscaler/webhook
+```
+
+The endpoint is intentionally outside the `X-Platform-Token` proxy guard. Its
+authentication is the GitHub webhook HMAC signature, verified by the local
+autoscaler. Configure its secret only in `ci-self-hosted-runner/.env`; do not
+place it in this repository or a public URL.
+
 ## Tailscale Funnel
 
 Tailscale Funnel is an optional no-owned-domain path for testing ChatGPT against
