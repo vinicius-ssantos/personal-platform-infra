@@ -111,6 +111,9 @@ compose-up-workflow-engine: check-env check-warp runtime-overlap-warning
 compose-up-gateway-integration: check-env check-warp runtime-overlap-warning
 	docker compose -f compose/docker-compose.yml --env-file .env --profile gateway --profile github --profile repo-research up -d --wait
 
+mcp-wake-proxy-install:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/install-mcp-wake-proxy-task.ps1
+
 compose-down:
 	docker compose -f compose/docker-compose.yml --env-file .env down
 

@@ -3,15 +3,15 @@
 		respond /healthz 200
 
 		handle /.well-known/* {
-			reverse_proxy central-mcp-gateway:8080
+			reverse_proxy host.docker.internal:8788
 		}
 
 		handle /oauth/* {
-			reverse_proxy central-mcp-gateway:8080
+			reverse_proxy host.docker.internal:8788
 		}
 
 		handle /mcp {
-			reverse_proxy central-mcp-gateway:8080
+			reverse_proxy host.docker.internal:8788
 		}
 
 		handle_path /gateway/* {
