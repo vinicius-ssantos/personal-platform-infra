@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ComposeProject = "compose"
 $K3dContainer = "k3d-personal-platform-server-0"
-$GatewayContainer = "compose-central-mcp-gateway-1"
+$GatewayContainers = @("compose-central-mcp-gateway-1", "compose-central-mcp-gateway-blue-1", "compose-central-mcp-gateway-green-1")
 
 function Get-DockerLines([string[]]$Arguments) {
     try {
@@ -56,7 +56,12 @@ if ($composeContainers.Count -gt 0 -and $k3dContainers.Count -gt 0) {
     Write-Warning "Both runtimes are active. Prefer Compose for daily work and k3d only while validating Kubernetes manifests."
 }
 
-if (-not ($composeContainers | Where-Object { $_ -like "$GatewayContainer|*" })) {
+$activeGateways = @(
+    foreach ($gateway in $GatewayContainers) {
+        if ($composeContainers -like "$gateway|*") { $gateway }
+    }
+)
+if ($activeGateways.Count -eq 0) {
     Write-Host "Gateway audit report: unavailable (gateway container is not running)."
     exit 0
 }
@@ -104,9 +109,9 @@ for upstream, tool, events, last_use in connection.execute(
 $auditProgramBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($auditProgram))
 $auditQuery = "import base64; exec(base64.b64decode('$auditProgramBase64'))"
 
-$auditRows = @(& docker exec $GatewayContainer /app/.venv/bin/python -c $auditQuery $Days 2>$null | Where-Object { $_ })
-if ($LASTEXITCODE -ne 0) {
-    $auditRows = @()
+$auditRows = foreach ($gateway in $activeGateways) {
+    $slot = if ($gateway -match '-(blue|green)-') { $Matches[1] } else { "legacy" }
+    @(& docker exec $gateway /app/.venv/bin/python -c $auditQuery $Days 2>$null | Where-Object { $_ } | ForEach-Object { "SLOT|$slot|$_" })
 }
 
 if ($auditRows.Count -eq 0) {
@@ -115,6 +120,6 @@ if ($auditRows.Count -eq 0) {
 }
 
 Write-Host "Gateway audit report (last $Days days; payloads are excluded):"
-Write-Host "  upstream rows: UPSTREAM | name | classification | events | last use (UTC) | avg latency ms"
+Write-Host "  upstream rows: SLOT | slot | UPSTREAM | name | classification | events | last use (UTC) | avg latency ms"
 Write-Host "  tool rows: TOOL | upstream | public tool | events | last use (UTC)"
 $auditRows | ForEach-Object { Write-Host "  $_" }
