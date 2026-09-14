@@ -3,7 +3,7 @@ set -euo pipefail
 
 compose_project="compose"
 k3d_container="k3d-personal-platform-server-0"
-gateway_container="compose-central-mcp-gateway-1"
+gateway_containers=("compose-central-mcp-gateway-1" "compose-central-mcp-gateway-blue-1" "compose-central-mcp-gateway-green-1")
 days="${1:-14}"
 
 if ! [[ "$days" =~ ^[1-9][0-9]*$ ]] || (( days > 365 )); then
@@ -37,7 +37,11 @@ if [[ -n "$compose_containers" && -n "$k3d_containers" ]]; then
   echo "WARNING: Both runtimes are active. Prefer Compose for daily work and k3d only while validating Kubernetes manifests." >&2
 fi
 
-if ! printf '%s\n' "$compose_containers" | cut -d'|' -f1 | grep -Fxq "$gateway_container"; then
+active_gateways=()
+for gateway_container in "${gateway_containers[@]}"; do
+  if printf '%s\n' "$compose_containers" | cut -d'|' -f1 | grep -Fxq "$gateway_container"; then active_gateways+=("$gateway_container"); fi
+done
+if (( ${#active_gateways[@]} == 0 )); then
   echo "Gateway audit report: unavailable (gateway container is not running)."
   exit 0
 fi
@@ -86,10 +90,12 @@ PY
 audit_base64="$(printf '%s' "$audit_program" | base64 | tr -d '\n')"
 audit_query="import base64; exec(base64.b64decode('${audit_base64}'))"
 
-if ! audit_rows="$(docker exec "$gateway_container" /app/.venv/bin/python -c "$audit_query" "$days" 2>/dev/null)"; then
-  echo "Gateway audit report: audit database unavailable."
-  exit 0
-fi
+audit_rows=""
+for gateway_container in "${active_gateways[@]}"; do
+  slot="legacy"; [[ "$gateway_container" =~ -(blue|green)- ]] && slot="${BASH_REMATCH[1]}"
+  rows="$(docker exec "$gateway_container" /app/.venv/bin/python -c "$audit_query" "$days" 2>/dev/null || true)"
+  [[ -n "$rows" ]] && audit_rows+="$(printf '%s\n' "$rows" | sed "s/^/SLOT|$slot|/")"$'\n'
+done
 
 if [[ -z "$audit_rows" ]]; then
   echo "Gateway audit report: no events."
@@ -97,6 +103,6 @@ if [[ -z "$audit_rows" ]]; then
 fi
 
 echo "Gateway audit report (last ${days} days; payloads are excluded):"
-echo "  upstream rows: UPSTREAM | name | classification | events | last use (UTC) | avg latency ms"
+echo "  upstream rows: SLOT | slot | UPSTREAM | name | classification | events | last use (UTC) | avg latency ms"
 echo "  tool rows: TOOL | upstream | public tool | events | last use (UTC)"
 printf '%s\n' "$audit_rows" | sed 's/^/  /'
