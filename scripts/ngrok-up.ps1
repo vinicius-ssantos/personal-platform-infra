@@ -1,5 +1,6 @@
 param(
-    [string]$EnvFile = ".env"
+    [string]$EnvFile = ".env",
+    [switch]$FullStack
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,13 +9,22 @@ $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $Root
 
 $Routes = @(
-    @{ Env = "GITHUB_MCP_PUBLIC_URL"; Path = "github-mcp" },
-    @{ Env = "DEPLOY_MCP_PUBLIC_URL"; Path = "deploy-mcp" },
-    @{ Env = "SOCIAL_MCP_PUBLIC_URL"; Path = "social-mcp" },
-    @{ Env = "GITHUB_BFF_PUBLIC_URL"; Path = "github-bff" },
-    @{ Env = "VOS_MCP_PUBLIC_URL"; Path = "vos-mcp" },
-    @{ Env = "VOS_BFF_PUBLIC_URL"; Path = "vos-bff" }
+    @{ Env = "GITHUB_MCP_PUBLIC_URL"; Path = "github-mcp"; HealthPath = "healthz" },
+    @{ Env = "DEPLOY_MCP_PUBLIC_URL"; Path = "deploy-mcp"; HealthPath = "healthz" },
+    @{ Env = "SOCIAL_MCP_PUBLIC_URL"; Path = "social-mcp"; HealthPath = "health" },
+    @{ Env = "GITHUB_BFF_PUBLIC_URL"; Path = "github-bff"; HealthPath = "healthz" },
+    @{ Env = "VOS_MCP_PUBLIC_URL"; Path = "vos-mcp"; HealthPath = "health" },
+    @{ Env = "VOS_BFF_PUBLIC_URL"; Path = "vos-bff"; HealthPath = "healthz" }
 )
+
+$ComposeProfiles = if ($FullStack) {
+    @("--profile", "all")
+}
+else {
+    @("--profile", "gateway", "--profile", "github", "--profile", "repo-research", "--profile", "ngrok")
+}
+
+$ActiveRoutes = if ($FullStack) { $Routes } else { @() }
 
 function New-HexToken([int]$Bytes = 32) {
     $buffer = New-Object byte[] $Bytes
@@ -184,20 +194,17 @@ if (Test-Placeholder $edgeToken) {
 }
 
 Write-Host "Pulling latest Compose images..."
-docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all pull
+docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles pull
 
 Write-Host "Starting local Compose services and path proxy..."
-docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --wait
+docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles up -d --wait
 
 Write-Host "Validating local proxy routes..."
 $edgeHeaders = @{ "X-Platform-Token" = $edgeToken }
 Invoke-RestMethod -Uri "http://localhost:8088/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/github-mcp/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/deploy-mcp/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/social-mcp/health" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/github-bff/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/vos-mcp/health" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
-Invoke-RestMethod -Uri "http://localhost:8088/vos-bff/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
+foreach ($route in $ActiveRoutes) {
+    Invoke-RestMethod -Uri "http://localhost:8088/$($route.Path)/$($route.HealthPath)" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
+}
 
 $staticDomain = $currentEnv["NGROK_STATIC_DOMAIN"]
 $ngrokArgs = @("http", "http://localhost:8088", "--log", "stdout")
@@ -229,7 +236,7 @@ $publicValues = @{
     CENTRAL_MCP_GATEWAY_PUBLIC_URL = $publicBaseUrl
 }
 
-foreach ($route in $Routes) {
+foreach ($route in $ActiveRoutes) {
     $publicValues[$route.Env] = "$publicBaseUrl/$($route.Path)"
 }
 
@@ -239,13 +246,13 @@ foreach ($key in $publicValues.Keys) {
 }
 
 Write-Host "Restarting central MCP gateway with ngrok OAuth URL..."
-docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --force-recreate --wait central-mcp-gateway
+docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles up -d --force-recreate --wait central-mcp-gateway
 
 Write-Host "Validating public path routes..."
-just status-public
+Invoke-RestMethod -Uri "$publicBaseUrl/healthz" -Headers $edgeHeaders -TimeoutSec 10 | Out-Null
 
 Write-Host ""
 Write-Host "Ngrok path-routed environment is ready:"
-foreach ($route in $Routes) {
+foreach ($route in $ActiveRoutes) {
     Write-Host "$($route.Path): $publicBaseUrl/$($route.Path)"
 }

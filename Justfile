@@ -154,14 +154,20 @@ vos-celery-restart:
 quick-tunnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1
 
+quick-tunnel-up-full:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1 -FullStack
+
 quick-tunnel-refresh:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-up.ps1 -ForceRefresh
 
 quick-tunnel-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/quick-tunnel-down.ps1
 
-ngrok-up: compose-upgrade-all ngrok-start
-	-just status-public
+ngrok-up:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-up.ps1
+
+ngrok-up-full:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-up.ps1 -FullStack
 
 ngrok-down:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-down.ps1

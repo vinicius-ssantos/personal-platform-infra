@@ -1,6 +1,7 @@
 param(
     [string]$EnvFile = ".env",
-    [switch]$ForceRefresh
+    [switch]$ForceRefresh,
+    [switch]$FullStack
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,6 +18,20 @@ $Services = @(
     @{ Env = "VOS_BFF_PUBLIC_URL"; Name = "vos-bff"; Port = 8030; HealthPath = "/healthz" },
     @{ Env = "CENTRAL_MCP_GATEWAY_PUBLIC_URL"; Name = "central-mcp-gateway"; Port = 8040; HealthPath = "/healthz" }
 )
+
+$ComposeProfiles = if ($FullStack) {
+    @("--profile", "all")
+}
+else {
+    @("--profile", "gateway", "--profile", "github", "--profile", "repo-research")
+}
+
+$ActiveServices = if ($FullStack) {
+    $Services
+}
+else {
+    @($Services | Where-Object { $_.Name -eq "central-mcp-gateway" })
+}
 
 function New-HexToken([int]$Bytes = 32) {
     $buffer = New-Object byte[] $Bytes
@@ -189,18 +204,35 @@ if (Test-Placeholder $currentEnv["CENTRAL_MCP_GATEWAY_OAUTH_ALLOWED_REDIRECT_URI
 Set-EnvValues $EnvFile $initialValues
 
 Write-Host "Pulling latest Compose images..."
-docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all pull --ignore-pull-failures
+docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles pull --ignore-pull-failures
 
 Write-Host "Starting local Compose services..."
-docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --wait
+docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles up -d --wait
 
 Write-Host "Validating local health checks..."
-just smoke-all
+just smoke-gateway
 
 if (-not $ForceRefresh) {
     Write-Host "Checking existing public URLs..."
-    & bash scripts/status-public.sh
-    if ($LASTEXITCODE -eq 0) {
+    $existingUrlsHealthy = $false
+    if ($FullStack) {
+        & bash scripts/status-public.sh
+        $existingUrlsHealthy = $LASTEXITCODE -eq 0
+    }
+    else {
+        $existingGatewayUrl = $currentEnv["CENTRAL_MCP_GATEWAY_PUBLIC_URL"]
+        if (-not (Test-Placeholder $existingGatewayUrl)) {
+            try {
+                Invoke-RestMethod -Uri "$($existingGatewayUrl.TrimEnd('/'))/healthz" -TimeoutSec 10 | Out-Null
+                $existingUrlsHealthy = $true
+            }
+            catch {
+                $existingUrlsHealthy = $false
+            }
+        }
+    }
+
+    if ($existingUrlsHealthy) {
         Write-Host ""
         Write-Host "Existing quick tunnel URLs are healthy; keeping them."
         exit 0
@@ -216,7 +248,7 @@ Stop-ExistingQuickTunnels
 Start-Sleep -Seconds 2
 
 $publicUrls = @{}
-foreach ($service in $Services) {
+foreach ($service in $ActiveServices) {
     $url = Start-QuickTunnel $Cloudflared $service $LogDir
     $publicUrls[$service.Env] = $url
     Write-Host "$($service.Env)=$url"
@@ -228,13 +260,14 @@ foreach ($key in $publicUrls.Keys) {
 }
 
 Write-Host "Restarting central MCP gateway with public OAuth URL..."
-docker compose -f compose/docker-compose.yml --env-file $EnvFile --profile all up -d --force-recreate central-mcp-gateway
+docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles up -d --force-recreate central-mcp-gateway
 
 Write-Host "Validating public health checks..."
-just status-public
+$gatewayUrl = $publicUrls["CENTRAL_MCP_GATEWAY_PUBLIC_URL"]
+Invoke-RestMethod -Uri "$gatewayUrl/healthz" -TimeoutSec 10 | Out-Null
 
 Write-Host ""
 Write-Host "Quick tunnel environment is ready. Current public URLs:"
-foreach ($service in $Services) {
+foreach ($service in $ActiveServices) {
     Write-Host "$($service.Name): $($publicUrls[$service.Env])"
 }
