@@ -333,6 +333,25 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # Fixed-target wake proxy. The gateway never receives Docker socket access.
+  sandbox-lifecycle-controller:
+    build:
+      context: ./sandbox-lifecycle-controller
+    image: sandbox-lifecycle-controller:local
+    profiles: ["gateway", "tailscale", "all"]
+    environment:
+      SANDBOX_API_KEY: ${SANDBOX_API_KEY}
+      SANDBOX_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-compose}
+      SANDBOX_IDLE_SECONDS: ${SANDBOX_IDLE_SECONDS:-900}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8767/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
   higgsfield-facade:
     image: ${HIGGSFIELD_FACADE_IMAGE}
     profiles: ["higgsfield", "tailscale", "all"]
@@ -527,7 +546,7 @@ services:
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp/
       GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp/
-      GATEWAY_UPSTREAM_SANDBOX_URL: ${GATEWAY_UPSTREAM_SANDBOX_URL}
+      GATEWAY_UPSTREAM_SANDBOX_URL: http://sandbox-lifecycle-controller:8767/mcp
       GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar:8081/mcp
       GATEWAY_UPSTREAM_HIGGSFIELD_URL: http://higgsfield-facade:8080/mcp
       GATEWAY_UPSTREAM_LIFECYCLE: ${GATEWAY_UPSTREAM_LIFECYCLE:-github:required,repo-research:required,sandbox:optional-enabled,deploy:disabled,social:disabled,vos:disabled,higgsfield:disabled}
@@ -568,6 +587,8 @@ services:
         condition: service_healthy
       central-mcp-gateway-data-init:
         condition: service_completed_successfully
+      sandbox-lifecycle-controller:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=3).read()\""]
       interval: 10s
