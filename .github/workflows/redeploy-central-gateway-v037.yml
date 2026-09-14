@@ -1,0 +1,102 @@
+name: Redeploy central gateway v0.37.0
+
+on:
+  push:
+    branches:
+      - ops/redeploy-central-gateway-v037
+    paths:
+      - .github/workflows/redeploy-central-gateway-v037.yml
+
+permissions:
+  contents: read
+
+jobs:
+  redeploy:
+    runs-on: [self-hosted, linux, x64, infra-ci]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate current Compose runtime
+        id: runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cid="$(docker ps -q --filter label=com.docker.compose.service=central-mcp-gateway | head -n1)"
+          if [ -z "$cid" ]; then
+            echo "::error::central-mcp-gateway is not running under Docker Compose"
+            exit 1
+          fi
+          project="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid")"
+          workdir="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' "$cid")"
+          if [ -z "$project" ] || [ -z "$workdir" ] || [ ! -f "$workdir/.env" ]; then
+            echo "::error::Could not resolve the existing Compose project/.env safely"
+            exit 1
+          fi
+          echo "project=$project" >> "$GITHUB_OUTPUT"
+          echo "workdir=$workdir" >> "$GITHUB_OUTPUT"
+          echo "current_image=$(docker inspect -f '{{.Config.Image}}' "$cid")" >> "$GITHUB_OUTPUT"
+          echo "Located existing Compose runtime; secret values are intentionally not printed."
+
+      - name: Recreate only central-mcp-gateway on v0.37.0
+        shell: bash
+        env:
+          COMPOSE_PROJECT: ${{ steps.runtime.outputs.project }}
+          RUNTIME_WORKDIR: ${{ steps.runtime.outputs.workdir }}
+        run: |
+          set -euo pipefail
+          cid="$(docker ps -q --filter label=com.docker.compose.service=central-mcp-gateway | head -n1)"
+          current_allowlist="$(docker inspect "$cid" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^GATEWAY_TOOL_ALLOWLIST=//p')"
+          if [ -z "$current_allowlist" ]; then
+            echo "::error::Current gateway has no effective GATEWAY_TOOL_ALLOWLIST"
+            exit 1
+          fi
+          allowlist="$current_allowlist"
+          for tool in github.milestone_list github.milestone_get github.milestone_create github.milestone_update; do
+            case ",$allowlist," in
+              *",$tool,"*) ;;
+              *) allowlist="$allowlist,$tool" ;;
+            esac
+          done
+
+          image="ghcr.io/vinicius-ssantos/central-mcp-gateway:v0.37.0"
+          docker pull "$image"
+          CENTRAL_MCP_GATEWAY_IMAGE="$image" \
+          GATEWAY_TOOL_ALLOWLIST="$allowlist" \
+          docker compose \
+            --project-name "$COMPOSE_PROJECT" \
+            --env-file "$RUNTIME_WORKDIR/.env" \
+            -f compose/docker-compose.yml \
+            up -d --no-deps --force-recreate central-mcp-gateway
+
+      - name: Verify container health and effective tool allowlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          cid="$(docker ps -q --filter label=com.docker.compose.service=central-mcp-gateway | head -n1)"
+          if [ -z "$cid" ]; then
+            echo "::error::central-mcp-gateway did not restart"
+            exit 1
+          fi
+          for _ in $(seq 1 45); do
+            status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid")"
+            if [ "$status" = "healthy" ]; then
+              break
+            fi
+            if [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
+              docker logs --tail 80 "$cid" || true
+              exit 1
+            fi
+            sleep 2
+          done
+          status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid")"
+          test "$status" = "healthy"
+          test "$(docker inspect -f '{{.Config.Image}}' "$cid")" = "ghcr.io/vinicius-ssantos/central-mcp-gateway:v0.37.0"
+          effective="$(docker inspect "$cid" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^GATEWAY_TOOL_ALLOWLIST=//p')"
+          for tool in github.milestone_list github.milestone_get github.milestone_create github.milestone_update; do
+            case ",$effective," in
+              *",$tool,"*) ;;
+              *) echo "::error::$tool missing from effective allowlist"; exit 1 ;;
+            esac
+          done
+          echo "central-mcp-gateway is healthy on v0.37.0 with all four milestone tools allowlisted."
