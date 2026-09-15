@@ -393,6 +393,16 @@ Then run:
 just ngrok-up
 ```
 
+To start this local path-routed environment automatically after a Windows logon,
+install the scheduled task once:
+
+```powershell
+just install-ngrok-startup-task
+```
+
+The task runs `ngrok-up`, which starts the required Compose profiles before
+publishing the tunnel.
+
 This starts the minimum runtime, the local path proxy on `localhost:8088`, and
 ngrok for the central gateway. To start every service and expose all
 path-routed endpoints, use `just ngrok-up-full`. The full-stack paths are:

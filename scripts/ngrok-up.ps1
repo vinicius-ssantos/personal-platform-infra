@@ -194,7 +194,7 @@ if (Test-Placeholder $edgeToken) {
 }
 
 Write-Host "Pulling latest Compose images..."
-docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles pull
+docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles pull --ignore-buildable
 
 Write-Host "Starting local Compose services and path proxy..."
 docker compose -f compose/docker-compose.yml --env-file $EnvFile @ComposeProfiles up -d --wait

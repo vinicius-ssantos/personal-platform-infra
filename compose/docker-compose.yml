@@ -338,6 +338,7 @@ services:
     build:
       context: ./sandbox-lifecycle-controller
     image: sandbox-lifecycle-controller:local
+    pull_policy: never
     profiles: ["gateway", "tailscale", "all"]
     environment:
       SANDBOX_API_KEY: ${SANDBOX_API_KEY}
@@ -617,7 +618,7 @@ services:
     extends:
       service: central-mcp-gateway
     image: ${CENTRAL_MCP_GATEWAY_BLUE_IMAGE:-${CENTRAL_MCP_GATEWAY_IMAGE}}
-    ports:
+    ports: !override
       - "127.0.0.1:8041:8080"
     volumes:
       - gateway-blue-data:/data
@@ -637,7 +638,7 @@ services:
     extends:
       service: central-mcp-gateway
     image: ${CENTRAL_MCP_GATEWAY_GREEN_IMAGE:-${CENTRAL_MCP_GATEWAY_IMAGE}}
-    ports:
+    ports: !override
       - "127.0.0.1:8042:8080"
     volumes:
       - gateway-green-data:/data
