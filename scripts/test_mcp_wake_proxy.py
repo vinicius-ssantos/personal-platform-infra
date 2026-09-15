@@ -13,3 +13,9 @@ def test_public_route_allowlist_is_fail_closed() -> None:
     assert not wake.allowed("GET", "/mcp")
     assert not wake.allowed("POST", "/gateway/admin")
     assert not wake.allowed("POST", "/runner-autoscaler/webhook")
+
+
+def test_unknown_slot_falls_back_to_legacy(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(wake, "SLOT_STATE", tmp_path / "slot.json")
+    wake.SLOT_STATE.write_text('{"slot":"external"}', encoding="ascii")
+    assert wake.active_slot() == ("central-mcp-gateway", 8040)
