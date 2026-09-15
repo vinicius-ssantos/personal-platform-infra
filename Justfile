@@ -189,6 +189,9 @@ ngrok-down:
 ngrok-start:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/ngrok-start.ps1
 
+install-ngrok-startup-task:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/install-ngrok-startup-task.ps1
+
 tailscale-funnel-up:
 	powershell.exe -ExecutionPolicy Bypass -File scripts/tailscale-funnel-up.ps1
 
