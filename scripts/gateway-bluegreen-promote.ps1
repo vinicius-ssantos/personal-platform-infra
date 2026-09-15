@@ -31,20 +31,11 @@ do {
 } while ((Get-Date) -lt $deadline)
 if (-not $ready -or $ready.StatusCode -ne 200) { throw "$service did not become ready" }
 
-$proxyId = (& docker @compose ps -q ngrok-proxy).Trim()
-if (-not $proxyId) { throw "ngrok-proxy is not running; start it before promotion" }
+$stateDirectory = Join-Path $env:LOCALAPPDATA "personal-platform"
+New-Item -ItemType Directory -Force -Path $stateDirectory | Out-Null
+$statePath = Join-Path $stateDirectory "gateway-slot.json"
+$temporary = "$statePath.tmp"
+@{ slot = $Target } | ConvertTo-Json -Compress | Set-Content -LiteralPath $temporary -NoNewline -Encoding ascii
+Move-Item -LiteralPath $temporary -Destination $statePath -Force
 
-# Caddy reload is atomic and retains established connections on the old upstream.
-$temporary = Join-Path $env:TEMP "Caddyfile.gateway-$Target"
-try {
-    (Get-Content "compose/Caddyfile.ngrok" -Raw).Replace("central-mcp-gateway:8080", "$service`:8080") |
-        Set-Content -LiteralPath $temporary -NoNewline -Encoding ascii
-    & docker cp $temporary "${proxyId}:/tmp/Caddyfile"
-    if ($LASTEXITCODE -ne 0) { throw "Unable to copy Caddy configuration" }
-    & docker exec $proxyId caddy reload --config /tmp/Caddyfile --adapter caddyfile
-    if ($LASTEXITCODE -ne 0) { throw "Caddy reload failed; the existing route was retained" }
-} finally {
-    Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
-}
-
-Write-Host "Promoted $Target. Keep the previous slot running until its drain metrics reach zero."
+Write-Host "Promoted $Target. New wake-proxy requests use this slot; keep the previous slot running until drain metrics reach zero."
