@@ -516,7 +516,7 @@ services:
       - gateway-data:/data
     restart: "no"
 
-  central-mcp-gateway:
+  central-mcp-gateway: &central_mcp_gateway
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
     entrypoint: ["sh", "-ec"]
     command:
@@ -615,10 +615,9 @@ services:
       - gateway-blue-data:/data
 
   central-mcp-gateway-blue:
-    extends:
-      service: central-mcp-gateway
+    <<: *central_mcp_gateway
     image: ${CENTRAL_MCP_GATEWAY_BLUE_IMAGE:-${CENTRAL_MCP_GATEWAY_IMAGE}}
-    ports: !override
+    ports:
       - "127.0.0.1:8041:8080"
     volumes:
       - gateway-blue-data:/data
@@ -627,6 +626,8 @@ services:
         condition: service_healthy
       central-mcp-gateway-blue-data-init:
         condition: service_completed_successfully
+      sandbox-lifecycle-controller:
+        condition: service_healthy
 
   central-mcp-gateway-green-data-init:
     extends:
@@ -635,10 +636,9 @@ services:
       - gateway-green-data:/data
 
   central-mcp-gateway-green:
-    extends:
-      service: central-mcp-gateway
+    <<: *central_mcp_gateway
     image: ${CENTRAL_MCP_GATEWAY_GREEN_IMAGE:-${CENTRAL_MCP_GATEWAY_IMAGE}}
-    ports: !override
+    ports:
       - "127.0.0.1:8042:8080"
     volumes:
       - gateway-green-data:/data
@@ -647,6 +647,8 @@ services:
         condition: service_healthy
       central-mcp-gateway-green-data-init:
         condition: service_completed_successfully
+      sandbox-lifecycle-controller:
+        condition: service_healthy
 
   tailscale-gateway:
     image: tailscale/tailscale:stable
