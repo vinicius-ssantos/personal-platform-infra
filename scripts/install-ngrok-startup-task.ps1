@@ -5,8 +5,10 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $scriptPath = Join-Path $root "scripts\ngrok-up.ps1"
 $taskName = "MCP Ngrok Environment"
 
-$action = New-ScheduledTaskAction -Execute "powershell.exe" `
-    -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$scriptPath`"" `
+# No console window: see run-hidden.vbs.
+$runHidden = Join-Path $PSScriptRoot "run-hidden.vbs"
+$action = New-ScheduledTaskAction -Execute "wscript.exe" `
+    -Argument "//B //Nologo `"$runHidden`" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$scriptPath`"" `
     -WorkingDirectory $root
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -RunOnlyIfNetworkAvailable
