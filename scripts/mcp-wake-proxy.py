@@ -25,6 +25,11 @@ def allowed(method: str, path: str) -> bool:
     return (method == "POST" and path == "/mcp") or (method in {"GET", "POST"} and (path.startswith("/.well-known/") or path.startswith("/oauth/")))
 
 
+def upstream_headers(headers: dict[str, str]) -> dict[str, str]:
+    """Keep the original host so OAuth origin validation survives the local hop."""
+    return {key: value for key, value in headers.items() if key.lower() != "connection"}
+
+
 def active_slot() -> tuple[str, int]:
     try:
         slot = json.loads(SLOT_STATE.read_text(encoding="ascii")).get("slot")
@@ -69,7 +74,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
             connection = http.client.HTTPConnection("127.0.0.1", port, timeout=90)
-            headers = {k: v for k, v in self.headers.items() if k.lower() not in {"host", "connection"}}
+            headers = upstream_headers(dict(self.headers.items()))
             connection.request(self.command, self.path, body=body, headers=headers)
             response = connection.getresponse()
             self.send_response(response.status)

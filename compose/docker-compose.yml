@@ -537,6 +537,9 @@ services:
       GATEWAY_OAUTH_ISSUER: ${CENTRAL_MCP_GATEWAY_PUBLIC_URL}
       GATEWAY_HOST: 0.0.0.0
       GATEWAY_PORT: 8080
+      # Docker Desktop NAT hides the local wake proxy's loopback source from Uvicorn.
+      # Trust the public proxy headers so OAuth origin checks retain the HTTPS scheme.
+      FORWARDED_ALLOW_IPS: "*"
       GATEWAY_LOG_LEVEL: ${GATEWAY_LOG_LEVEL:-info}
       # Fora de /app: o serviço roda como `gateway` e não pode escrever em /app.
       GATEWAY_AUDIT_SQLITE_PATH: ${GATEWAY_AUDIT_SQLITE_PATH:-/data/audit.db}
