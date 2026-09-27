@@ -143,6 +143,9 @@ compose-build-all:
 gateway-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env --profile gateway up -d --force-recreate --wait central-mcp-gateway
 
+gateway-owner-password-rotate:
+	powershell.exe -ExecutionPolicy Bypass -File scripts/rotate-gateway-owner-password.ps1
+
 # Pull latest gateway image from GHCR then restart. Use this after CI has finished building.
 gateway-pull-restart:
 	docker compose -f compose/docker-compose.yml --env-file .env pull central-mcp-gateway
