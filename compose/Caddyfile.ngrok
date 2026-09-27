@@ -3,15 +3,24 @@
 		respond /healthz 200
 
 		handle /.well-known/* {
-			reverse_proxy host.docker.internal:8788
+			reverse_proxy host.docker.internal:8788 {
+				header_up Host {http.request.host}
+				header_up X-Forwarded-Proto https
+			}
 		}
 
 		handle /oauth/* {
-			reverse_proxy host.docker.internal:8788
+			reverse_proxy host.docker.internal:8788 {
+				header_up Host {http.request.host}
+				header_up X-Forwarded-Proto https
+			}
 		}
 
 		handle /mcp {
-			reverse_proxy host.docker.internal:8788
+			reverse_proxy host.docker.internal:8788 {
+				header_up Host {http.request.host}
+				header_up X-Forwarded-Proto https
+			}
 		}
 
 		handle_path /gateway/* {
