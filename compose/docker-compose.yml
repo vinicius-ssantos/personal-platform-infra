@@ -501,12 +501,44 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
 
-  # Prepara o volume de dados do gateway antes de ele subir.
-  # A imagem roda como usuário `gateway` e /app é root-only, então o serviço não
-  # consegue criar o diretório do audit trail sozinho. Um volume nomeado montado
-  # num path que não existe na imagem nasce root:root, então também não bastaria.
-  # Este init roda como root, usa a MESMA imagem (nada extra pra baixar) e faz o
-  # chown pelo nome do usuário, sobrevivendo a mudanças de uid na imagem base.
+  # Workspace Java MCP stays on the internal Compose network: no host-published port.
+  # The bind-mounted source tree is intentionally limited to the configured local
+  # workspace; the Java PathGuard/SecretGuard remains authoritative.
+  mcp-dev-workspace:
+    image: ${MCP_DEV_WORKSPACE_JAVA_IMAGE:-eclipse-temurin:25-jre}
+    profiles: ["workspace", "all"]
+    working_dir: /app
+    user: "10001:10001"
+    command:
+      - java
+      - -XX:MaxRAMPercentage=75.0
+      - -jar
+      - /app/workspace.jar
+      - --mcp-dev-workspace.workspaces[0].id=dev
+      - --mcp-dev-workspace.workspaces[0].root=/projects
+      - --mcp-dev-workspace.workspaces[0].trust=TRUSTED
+    environment:
+      WORKSPACE_API_KEY: ${GATEWAY_WORKSPACE_MCP_BEARER_TOKEN:-}
+      WORKSPACE_SERVER_ADDRESS: 0.0.0.0
+      WORKSPACE_SERVER_PORT: "8770"
+    volumes:
+      - type: bind
+        source: ${MCP_DEV_WORKSPACE_HOST_ROOT:-/nonexistent-workspace}
+        target: /projects
+      - type: bind
+        source: ${MCP_DEV_WORKSPACE_JAR_PATH:-/nonexistent-workspace.jar}
+        target: /app/workspace.jar
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    pids_limit: 256
+    restart: unless-stopped
+
+  # Initialize the shared audit-volume ownership before starting the Gateway.
   central-mcp-gateway-data-init:
     image: ${CENTRAL_MCP_GATEWAY_IMAGE}
     profiles: ["gateway", "tailscale", "all"]
@@ -566,6 +598,8 @@ services:
       GATEWAY_UPSTREAM_VOS_URL: http://vos-studio-mcp:8000/mcp/
       GATEWAY_UPSTREAM_SANDBOX_URL: http://sandbox-lifecycle-controller:8767/mcp
       GATEWAY_UPSTREAM_REPO_RESEARCH_URL: http://repo-research-sidecar:8081/mcp
+      GATEWAY_UPSTREAM_WORKSPACE_URL: ${GATEWAY_UPSTREAM_WORKSPACE_URL:-http://mcp-dev-workspace:8770/mcp}
+      GATEWAY_WORKSPACE_MCP_BEARER_TOKEN: ${GATEWAY_WORKSPACE_MCP_BEARER_TOKEN:-}
       GATEWAY_UPSTREAM_HIGGSFIELD_URL: http://higgsfield-facade:8080/mcp
       GATEWAY_UPSTREAM_LIFECYCLE: ${GATEWAY_UPSTREAM_LIFECYCLE:-github:required,repo-research:required,sandbox:optional-enabled,deploy:disabled,social:disabled,vos:disabled,higgsfield:disabled}
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
