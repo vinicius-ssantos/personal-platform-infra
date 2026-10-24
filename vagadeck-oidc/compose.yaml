@@ -1,0 +1,61 @@
+# Private-only rehearsal: no public port and no exposed database.
+name: vagadeck-oidc-private
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
+    restart: unless-stopped
+    env_file:
+      - ${VAGADECK_OIDC_DB_CONFIG_FILE:?Private postgres.env path required}
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [db-private]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+  keycloak:
+    build:
+      context: .
+      dockerfile: Dockerfile.keycloak
+    image: vagadeck-keycloak-private:26.4.2
+    restart: unless-stopped
+    command: ["start", "--optimized", "--http-enabled=false", "--hostname-strict=true"]
+    env_file:
+      - ${VAGADECK_OIDC_KEYCLOAK_CONFIG_FILE:?Private keycloak.env path required}
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_HTTPS_KEY_STORE_FILE: /opt/keycloak/conf/tls/keycloak.p12
+      KC_HTTP_ENABLED: "false"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    volumes:
+      - type: bind
+        source: ${VAGADECK_OIDC_KEYSTORE_FILE:?Private keystore required}
+        target: /opt/keycloak/conf/tls/keycloak.p12
+        read_only: true
+    ports:
+      - "127.0.0.1:${VAGADECK_OIDC_LOOPBACK_PORT:-19443}:8443"
+      - "127.0.0.1:${VAGADECK_OIDC_MANAGEMENT_PORT:-19001}:9000"
+    networks: [db-private, frontend-private]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 45s
+networks:
+  db-private:
+    internal: true
+  frontend-private: {}
+volumes:
+  postgres-data: {}
