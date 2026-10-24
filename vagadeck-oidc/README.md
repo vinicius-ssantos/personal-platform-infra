@@ -52,3 +52,25 @@ This Compose stack is **not externally reachable by design**. Actual private sta
 `env_file` variables can be observed via `docker inspect` by privileged Docker operators. That is acceptable only for the isolated local rehearsal. **Do not copy this secret delivery method into shared/external staging unchanged.**
 
 No external approval is implied by a local HTTPS 200 or the Compose static tests. The requirements and explicit independent HTTP-release gate in [VagaDeck issue #86](https://github.com/vinicius-ssantos/VagaDeck/issues/86) remain fully applicable.
+
+## Local backup and isolated restore drill (PowerShell, optional)
+
+The repository includes `verify-backup-restore.ps1` for an **explicitly acknowledged local rehearsal only**. It is not a production disaster-recovery solution and is deliberately **not executed by CI**. The source PostgreSQL must be the dedicated `vagadeck-oidc-private` service with the fixed image digest, persistent volume, no published database port, and the loopback-only Keycloak hostname.
+
+From the repository root, in a Windows PowerShell shell with Docker Desktop running:
+
+```powershell
+& .\vagadeck-oidc\verify-backup-restore.ps1 -ConfirmIsolatedLocalLab
+```
+
+The script validates the source project's identity before reading anything; produces a **binary-safe `pg_dump` custom-format archive**; verifies a SHA-256 fingerprint and restrictive ACL; then starts a **new PostgreSQL 17 container with `--network none`, no ports, no mounted persistent volumes**, and runs `pg_restore --single-transaction --exit-on-error`. It compares realm/table aggregate counts only, then removes the disposable restore container, the temporary archive inside the source container and the local dump (including after a failure when cleanup is possible). **It never restores into the source PostgreSQL database** and never changes Keycloak configuration, credentials or application data.
+
+Successful execution must print `KEYCLOAK_POSTGRES_DISPOSABLE_RESTORE_PASSED`. A green static or CI test does **not** mean this live drill ran. Use `-KeepBackup` only if a local unencrypted, sensitive snapshot is intentionally needed; encrypt it immediately or delete it after the check. Do not publish dumps, table contents, usernames, OIDC subject IDs, certificates, tokens or secret values to GitHub.
+
+The SQL snapshot is transactionally consistent per `pg_dump`, but the count comparison assumes the **synthetic lab** is mostly idle while the drill runs. A change in counts during the drill should fail the verification rather than be ignored. The drill does not establish recovery point objective, recovery time objective, retention policy, off-host backup durability, encrypted backup vault, or disaster recovery readiness for external staging.
+
+### Administrative hardening — separate gate
+
+The administrator initially created with `KC_BOOTSTRAP_ADMIN_*` is a temporary bootstrap administrator. Before shared/private external staging, establish a **permanent named administrator**, strong MFA and least-privilege operational role assignments through the Keycloak Admin Console/approved admin API; verify login/recovery; then retire the temporary bootstrap administrator. Do not perform this transition by direct SQL updates, copy the local bootstrap credentials to remote staging, or turn on publicly accessible Keycloak admin endpoints. Complete a private review with evidence excluding secrets or personal identifiers.
+
+**External release remains blocked:** private DNS/VPN ingress, CA-managed TLS, secrets manager, database TLS/backup encryption and verified restore, managed admin access, PKCE/OAuth flows, revocation, Keycloak JWT isolation and VagaDeck's HTTP quarantine must all pass separate checks before #86 can be closed.
