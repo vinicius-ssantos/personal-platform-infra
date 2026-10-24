@@ -43,7 +43,7 @@ Stop without losing DB data: `docker compose -f vagadeck-oidc/compose.yaml down`
 
 ### Static configuration tests (offline)
 
-Run `python3 -m unittest discover -s vagadeck-oidc -p 'test_*.py' -v`. The tests call only `docker compose config` with synthetic credentials in a temporary directory; they do **not** launch containers, contact Keycloak or manipulate GitHub secrets. A dedicated `runner-ci` workflow is gated to same-repository PRs (no forks) and validates the contract without requiring production secrets.
+Run `python3 -m unittest discover -s vagadeck-oidc -p 'test_*.py' -v`. The tests call only `docker compose config` with synthetic credentials in a temporary directory; they do **not** launch containers, contact Keycloak or manipulate GitHub secrets. A dedicated GitHub-hosted workflow is gated to same-repository PRs (no forks) and validates the contract without requiring production secrets or a privileged self-hosted runner.
 
 ## External staging still blocked
 
