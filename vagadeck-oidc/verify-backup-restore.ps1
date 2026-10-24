@@ -151,10 +151,16 @@ try {
 
     $ready = $false
     for ($attempt = 0; $attempt -lt 45; $attempt++) {
-        & docker exec $scratch pg_isready -U keycloak -d keycloak | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            $ready = $true
-            break
+        # The postgres entrypoint temporarily starts PostgreSQL during initdb,
+        # then stops it before launching the final PID 1 postgres daemon.
+        # pg_isready alone can yield a false-positive during this transition.
+        $daemon = ((& docker exec $scratch cat /proc/1/comm 2>$null) -join '').Trim()
+        if ($LASTEXITCODE -eq 0 -and $daemon -eq 'postgres') {
+            $probe = ((& docker exec $scratch psql -X --quiet --tuples-only --no-align -U keycloak -d keycloak -c 'SELECT 1' 2>$null) -join '').Trim()
+            if ($LASTEXITCODE -eq 0 -and $probe -eq '1') {
+                $ready = $true
+                break
+            }
         }
         Start-Sleep -Seconds 1
     }
