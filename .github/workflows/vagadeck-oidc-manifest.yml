@@ -26,6 +26,9 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Validate private-only Docker Compose contract (offline)
         run: python3 -m unittest discover -s vagadeck-oidc -p 'test_*.py' -v
+      - name: Rehearse PostgreSQL custom archive restore with synthetic data
+        shell: bash
+        run: bash vagadeck-oidc/test_pg_archive_restore.sh
       - name: Parse backup and restore PowerShell without running Docker
         shell: pwsh
         run: |
