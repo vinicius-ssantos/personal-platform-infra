@@ -24,7 +24,11 @@ wait_for_postgres() {
   local container="$1"
   local attempt
   for attempt in $(seq 1 45); do
-    if docker exec "$container" pg_isready -U keycloak -d keycloak >/dev/null 2>&1; then
+    # pg_isready can report success against the temporary initialization
+    # server, immediately before postgres stops it for the final restart.
+    # PID 1 must be the final postgres daemon, not docker-entrypoint.sh.
+    if [[ "$(docker exec "$container" cat /proc/1/comm 2>/dev/null || true)" == 'postgres' ]] &&
+       [[ "$(docker exec "$container" psql -X --quiet --tuples-only --no-align           -U keycloak -d keycloak -c 'SELECT 1' 2>/dev/null || true)" == '1' ]]; then
       return 0
     fi
     sleep 1
