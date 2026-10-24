@@ -527,22 +527,22 @@ services:
         export GATEWAY_TOOL_ALLOWLIST="$$(printf '%s' "$$GATEWAY_TOOL_ALLOWLIST" | sed 's/,github\.milestone_\(list\|get\|create\|update\)//g')"
         export GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS="$$GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS,https://claude.ai/api/mcp/auth_callback"
         # Repo creation is owner-only and pre-registered in the GitHub upstream.
-        export GATEWAY_TOOL_ALLOWLIST="$GATEWAY_TOOL_ALLOWLIST,github.repo_create"
+        export GATEWAY_TOOL_ALLOWLIST="$$GATEWAY_TOOL_ALLOWLIST,github.repo_create"
         # The Java workspace is static-only: dynamic invocation is intentionally denied.
         # Append scoped READ routes even when the local .env predates this integration.
-        export GATEWAY_TOOL_ALLOWLIST="$GATEWAY_TOOL_ALLOWLIST,workspace.list,workspace.describe,workspace.context,workspace.tree,workspace.search,workspace.file_read,workspace.git_status,workspace.git_diff,workspace.task_list"
-        case " $GATEWAY_OAUTH_DEFAULT_SCOPES " in
+        export GATEWAY_TOOL_ALLOWLIST="$$GATEWAY_TOOL_ALLOWLIST,workspace.list,workspace.describe,workspace.context,workspace.tree,workspace.search,workspace.file_read,workspace.git_status,workspace.git_diff,workspace.task_list"
+        case " $$GATEWAY_OAUTH_DEFAULT_SCOPES " in
           *" workspace:read "*) ;;
-          *) export GATEWAY_OAUTH_DEFAULT_SCOPES="$GATEWAY_OAUTH_DEFAULT_SCOPES workspace:read" ;;
+          *) export GATEWAY_OAUTH_DEFAULT_SCOPES="$$GATEWAY_OAUTH_DEFAULT_SCOPES workspace:read" ;;
         esac
         # Write/execute requires an explicit local opt-in plus the gateway's owner check.
         # These scopes also reach the public bearer: never use this opt-in on a shared endpoint.
-        if [ "$GATEWAY_WORKSPACE_OWNER_TOOLS_ENABLED" = "true" ]; then
-          export GATEWAY_TOOL_ALLOWLIST="$GATEWAY_TOOL_ALLOWLIST,workspace.file_create,workspace.file_apply_edits,workspace.task_run,workspace.process_start,workspace.process_output,workspace.process_stop,workspace.validate"
+        if [ "$$GATEWAY_WORKSPACE_OWNER_TOOLS_ENABLED" = "true" ]; then
+          export GATEWAY_TOOL_ALLOWLIST="$$GATEWAY_TOOL_ALLOWLIST,workspace.file_create,workspace.file_apply_edits,workspace.task_run,workspace.process_start,workspace.process_output,workspace.process_stop,workspace.validate"
           for scope in workspace:write workspace:execute; do
-            case " $GATEWAY_OAUTH_DEFAULT_SCOPES " in
-              *" $scope "*) ;;
-              *) export GATEWAY_OAUTH_DEFAULT_SCOPES="$GATEWAY_OAUTH_DEFAULT_SCOPES $scope" ;;
+            case " $$GATEWAY_OAUTH_DEFAULT_SCOPES " in
+              *" $$scope "*) ;;
+              *) export GATEWAY_OAUTH_DEFAULT_SCOPES="$$GATEWAY_OAUTH_DEFAULT_SCOPES $$scope" ;;
             esac
           done
         fi
