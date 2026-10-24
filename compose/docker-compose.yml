@@ -507,6 +507,8 @@ services:
   mcp-dev-workspace:
     image: ${MCP_DEV_WORKSPACE_JAVA_IMAGE:-eclipse-temurin:25-jre}
     profiles: ["workspace", "all"]
+    networks:
+      - workspace-private
     working_dir: /app
     user: "10001:10001"
     command:
@@ -562,6 +564,11 @@ services:
         export GATEWAY_TOOL_ALLOWLIST="$$GATEWAY_TOOL_ALLOWLIST,github.repo_create"
         exec central-mcp-gateway
     profiles: ["gateway", "tailscale", "all"]
+    # Gateway alone bridges the existing service network and private Java MCP.
+    # The blue/green services inherit the same networks via the YAML anchor.
+    networks:
+      - default
+      - workspace-private
     ports:
       - "127.0.0.1:8040:8080"
     environment:
@@ -728,6 +735,12 @@ services:
     volumes:
       - ./Caddyfile.ngrok:/etc/caddy/Caddyfile:ro
     restart: unless-stopped
+
+networks:
+  default: {}
+  # No default gateway or external connectivity for the Java workspace.
+  workspace-private:
+    internal: true
 
 volumes:
   social-data:
