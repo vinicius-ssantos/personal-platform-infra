@@ -26,3 +26,14 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Validate private-only Docker Compose contract (offline)
         run: python3 -m unittest discover -s vagadeck-oidc -p 'test_*.py' -v
+      - name: Parse backup and restore PowerShell without running Docker
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $path = Join-Path $PWD 'vagadeck-oidc/verify-backup-restore.ps1'
+          [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
