@@ -113,9 +113,9 @@ try {
     # The custom-format archive is created IN the source container first.
     # Do not use PowerShell's redirection to pipe binary pg_dump output.
     $sourceDumpCreated = $true
-    Invoke-DockerChecked @('exec', $sourceId, 'pg_dump', '--format=custom', '--no-owner', '--no-acl',
+    Invoke-DockerChecked -Arguments @('exec', $sourceId, 'pg_dump', '--format=custom', '--no-owner', '--no-acl',
         '-U', 'keycloak', '-d', 'keycloak', '--file', $sourceDump)
-    Invoke-DockerChecked @('cp', "${sourceId}:$sourceDump", $localDump)
+    Invoke-DockerChecked -Arguments @('cp', "${sourceId}:$sourceDump", $localDump)
     if ((Get-Item -LiteralPath $localDump).Length -lt 1024) {
         throw 'The PostgreSQL archive is suspiciously small.'
     }
@@ -131,7 +131,7 @@ try {
     $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
     try { $rng.GetBytes($randomBytes) } finally { $rng.Dispose() }
     $env:POSTGRES_PASSWORD = [Convert]::ToBase64String($randomBytes)
-    Invoke-DockerChecked @('run', '--detach', '--rm', '--network', 'none', '--name', $scratch,
+    Invoke-DockerChecked -Arguments @('run', '--detach', '--rm', '--network', 'none', '--name', $scratch,
         '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_DB=keycloak', '--env', 'POSTGRES_USER=keycloak',
         $expectedImage)
     $scratchStarted = $true
@@ -153,9 +153,9 @@ try {
     if (-not $ready) {
         throw 'Disposable PostgreSQL did not become ready.'
     }
-    Invoke-DockerChecked @('cp', $localDump, "${scratch}:$targetDump")
-    Invoke-DockerChecked @('exec', $scratch, 'pg_restore', '--list', $targetDump)
-    Invoke-DockerChecked @('exec', $scratch, 'pg_restore', '--exit-on-error', '--single-transaction',
+    Invoke-DockerChecked -Arguments @('cp', $localDump, "${scratch}:$targetDump")
+    Invoke-DockerChecked -Arguments @('exec', $scratch, 'pg_restore', '--list', $targetDump)
+    Invoke-DockerChecked -Arguments @('exec', $scratch, 'pg_restore', '--exit-on-error', '--single-transaction',
         '--no-owner', '--no-acl', '-U', 'keycloak', '-d', 'keycloak', $targetDump)
 
     # Compare narrow aggregate evidence only; never print OIDC subjects, account names or data.
