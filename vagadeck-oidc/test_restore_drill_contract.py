@@ -72,6 +72,12 @@ class RecoveryDrillContract(unittest.TestCase):
         self.assertIn("'--no-owner', '--no-acl'", self.script)
         self.assertIn("'pg_restore', '--list'", self.script)
 
+    def test_waits_for_final_postgres_daemon(self):
+        # pg_isready can succeed on the transient initdb server; require final PID 1.
+        self.assertIn("cat /proc/1/comm", self.script)
+        self.assertIn("$daemon -eq 'postgres'", self.script)
+        self.assertIn("-c 'SELECT 1'", self.script)
+
     def test_verifies_realms_and_table_counts(self):
         self.assertIn("SELECT COUNT(*) FROM realm", self.script)
         self.assertIn("information_schema.tables", self.script)
