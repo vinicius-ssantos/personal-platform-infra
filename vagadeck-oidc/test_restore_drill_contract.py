@@ -86,6 +86,11 @@ class RecoveryDrillContract(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, self.clean)
 
+    def test_docker_command_arrays_bind_as_named_parameter(self):
+        # Avoid accidental PowerShell array splatting into the first arg only.
+        self.assertNotIn("Invoke-DockerChecked @(", self.script)
+        self.assertEqual(self.script.count("Invoke-DockerChecked -Arguments @("), 6)
+
     def test_does_not_print_temporary_password(self):
         self.assertIn("'--env', 'POSTGRES_PASSWORD'", self.script)
         self.assertNotRegex(self.clean, r"(?i)Write-Output\s+\$env:POSTGRES_PASSWORD")
