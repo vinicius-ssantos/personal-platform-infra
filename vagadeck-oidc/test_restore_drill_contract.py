@@ -26,6 +26,12 @@ class RecoveryDrillContract(unittest.TestCase):
         self.assertIn("postgres.env", self.script)
         self.assertIn("keycloak.env", self.script)
 
+    def test_refuses_remote_docker_daemon(self):
+        self.assertIn("if ($env:DOCKER_HOST)", self.script)
+        self.assertIn("docker context inspect --format '{{.Endpoints.docker.Host}}'", self.script)
+        self.assertIn("npipe:", self.script)
+        self.assertIn("Only a local Windows Docker named-pipe context is allowed.", self.script)
+
     def test_requires_localhost_issuer(self):
         self.assertIn("KC_HOSTNAME=https://localhost:19443", self.script)
         self.assertIn("unexpected image", self.script)
