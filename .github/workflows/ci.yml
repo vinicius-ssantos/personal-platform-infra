@@ -39,6 +39,12 @@ jobs:
       - name: Validate Docker Compose config
         run: docker compose -f compose/docker-compose.yml config --quiet
 
+      - name: Enforce gateway-only private Java workspace network
+        run: |
+          # Do not print rendered config: it can contain environment secrets.
+          docker compose -f compose/docker-compose.yml --env-file .env.example --profile gateway --profile workspace config --format json \
+            | python3 scripts/verify_workspace_private_topology.py
+
       - name: Validate shell scripts parse
         run: |
           find scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
