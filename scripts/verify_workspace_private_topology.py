@@ -33,6 +33,8 @@ def validate(config: dict) -> None:
     require(isinstance(services, dict) and isinstance(networks, dict), "invalid compose layout")
     java = services.get("mcp-dev-workspace")
     require(isinstance(java, dict), "missing workspace service")
+    require(set(java.get("profiles", [])) == {"workspace"},
+            "workspace must be opt-in and excluded from the all profile")
     require(networks.get("workspace-private", {}).get("internal") is True,
             "workspace network must be internal")
     require(network_names(java) == {"workspace-private"},
