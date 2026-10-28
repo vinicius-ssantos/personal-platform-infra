@@ -506,7 +506,7 @@ services:
   # workspace; the Java PathGuard/SecretGuard remains authoritative.
   mcp-dev-workspace:
     image: ${MCP_DEV_WORKSPACE_JAVA_IMAGE:-eclipse-temurin:25-jre}
-    profiles: ["workspace", "all"]
+    profiles: ["workspace"]
     networks:
       - workspace-private
     working_dir: /app
