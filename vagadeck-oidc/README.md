@@ -63,6 +63,8 @@ From the repository root, in a Windows PowerShell shell with Docker Desktop runn
 & .\vagadeck-oidc\verify-backup-restore.ps1 -ConfirmIsolatedLocalLab
 ```
 
+The local rehearsal may have been started using the mutable `postgres:17-alpine` tag; the script permits that historical spelling **only when the running container's immutable image ID exactly matches the checked-in pinned ID**, verifies the image exists locally, and launches the scratch container by that same ID (no implicit image pulls). Mismatched IDs fail closed; do not update the running database merely to satisfy this check.
+
 The script validates the source project's identity before reading anything; produces a **binary-safe `pg_dump` custom-format archive**; verifies a SHA-256 fingerprint and restrictive ACL; then starts a **new PostgreSQL 17 container with `--network none`, no ports, no mounted persistent volumes**, and runs `pg_restore --single-transaction --exit-on-error`. It compares realm/table aggregate counts only, then removes the disposable restore container, the temporary archive inside the source container and the local dump (including after a failure when cleanup is possible). **It never restores into the source PostgreSQL database** and never changes Keycloak configuration, credentials or application data.
 
 Successful execution must print `KEYCLOAK_POSTGRES_DISPOSABLE_RESTORE_PASSED`. A green static or CI test does **not** mean this live drill ran. Use `-KeepBackup` only if a local unencrypted, sensitive snapshot is intentionally needed; encrypt it immediately or delete it after the check. Do not publish dumps, table contents, usernames, OIDC subject IDs, certificates, tokens or secret values to GitHub.
