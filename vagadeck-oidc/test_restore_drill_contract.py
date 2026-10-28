@@ -34,7 +34,7 @@ class RecoveryDrillContract(unittest.TestCase):
 
     def test_requires_localhost_issuer(self):
         self.assertIn("KC_HOSTNAME=https://localhost:19443", self.script)
-        self.assertIn("unexpected image", self.script)
+        self.assertIn("unexpected immutable image ID", self.script)
 
     def test_checks_compose_project_and_postgres_service(self):
         self.assertIn("'vagadeck-oidc-private'", self.script)
