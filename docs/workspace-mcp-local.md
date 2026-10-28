@@ -30,6 +30,33 @@ a montagem é gravável. A configuração `TRUSTED` autoriza operações dentro
 dessa raiz, mas o servidor continua aplicando `PathGuard`, `SecretGuard` e
 as restrições de tasks.
 
+## Ativar o upstream explicitamente (mínimo privilégio)
+
+No `.env` **local** existente, além das quatro variáveis acima, edite os valores
+**já presentes** de `GATEWAY_UPSTREAM_LIFECYCLE` e
+`GATEWAY_OAUTH_DEFAULT_SCOPES` sem remover outras entradas necessárias.
+Inclua `workspace:optional-enabled` na lista de lifecycle e
+`workspace:read` nos escopos OAuth somente quando habilitar o serviço.
+Exemplo ilustrativo de valores *parciais* (não substituir listas completas):
+
+```text
+GATEWAY_UPSTREAM_LIFECYCLE=github:required,repo-research:required,sandbox:optional-enabled,workspace:optional-enabled,...
+GATEWAY_OAUTH_DEFAULT_SCOPES=gateway:read, ... workspace:read
+```
+
+**Atenção:** a lista de escopos OAuth é separada por **espaços**, não vírgulas.
+O trecho acima é ilustrativo; mantenha as demais permissões aprovadas e não
+use `...` literalmente. `workspace:write` e `workspace:execute` são
+permissões elevadas e devem ser adicionadas **apenas com necessidade e
+aprovação específicas de Owner Mode**, nunca como escopos padrão de todos
+os clientes. Os controles de allowlist e owner permanecem obrigatórios.
+Após alterar escopos, reconecte a integração OAuth para renovar o token;
+um token antigo não ganha novos escopos automaticamente.
+
+**Não use `--profile all` para subir o workspace.** O serviço depende de
+caminhos locais e credencial exclusiva e fica apenas no perfil opt-in
+`workspace`. Os demais serviços permanecem independentes.
+
 ## Subir e atualizar
 
 No diretório `personal-platform-infra`:
