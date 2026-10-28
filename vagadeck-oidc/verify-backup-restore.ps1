@@ -67,17 +67,31 @@ if ($LASTEXITCODE -ne 0 -or
 $sourceImage = ((& docker inspect --format '{{.Config.Image}}' $sourceId) -join '').Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source PostgreSQL image reference.' }
 $sourceImageId = ((& docker inspect --format '{{.Image}}' $sourceId) -join '').Trim()
-# Legacy local compose launches the verified image under the mutable tag.
-# Accept that spelling only if the running image ID matches the fixed digest.
-$expectedImageId = 'sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb'
-if ($LASTEXITCODE -ne 0 -or
-    $sourceImage -notin @($expectedImage, 'postgres:17-alpine') -or
-    $sourceImageId -ne $expectedImageId) {
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source PostgreSQL immutable image ID.' }
+if ($sourceImage -notin @($expectedImage, 'postgres:17-alpine')) {
+    throw 'Refusing an unexpected source image reference.'
+}
+# Manifest registry digests and local Docker image IDs are different concepts.
+# When the pinned manifest reference is cached, resolve it to a local image ID.
+$resolvedPinnedImageId = ((& docker image inspect $expectedImage --format '{{.Id}}' 2>$null) -join '').Trim()
+$pinnedAvailable = ($LASTEXITCODE -eq 0 -and $resolvedPinnedImageId -match '^sha256:[0-9a-f]{64}$')
+# Exact Windows-only local rehearsal fallback for a previously verified image
+# installed via the legacy tag. This is an approved image *ID*, not a
+# derivation from the pinned registry manifest digest.
+$approvedLegacyImageId = 'sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb'
+if ($pinnedAvailable) {
+    if ($sourceImageId -ne $resolvedPinnedImageId) {
+        throw 'Refusing a PostgreSQL container with an unexpected immutable image ID.'
+    }
+    $scratchImageId = $resolvedPinnedImageId
+} elseif ($sourceImage -eq 'postgres:17-alpine' -and $sourceImageId -eq $approvedLegacyImageId) {
+    $scratchImageId = $approvedLegacyImageId
+} else {
     throw 'Refusing a PostgreSQL container with an unexpected immutable image ID.'
 }
-$localImageId = ((& docker image inspect $expectedImageId --format '{{.Id}}') -join '').Trim()
-if ($LASTEXITCODE -ne 0 -or $localImageId -ne $expectedImageId) {
-    throw 'Pinned PostgreSQL image ID is unavailable locally; refusing any image pull.'
+$localImageId = ((& docker image inspect $scratchImageId --format '{{.Id}}') -join '').Trim()
+if ($LASTEXITCODE -ne 0 -or $localImageId -ne $scratchImageId) {
+    throw 'Approved PostgreSQL image ID is unavailable locally; refusing any image pull.'
 }
 $bindings = ((& docker inspect --format '{{json .HostConfig.PortBindings}}' $sourceId) -join '').Trim()
 if ($LASTEXITCODE -ne 0 -or $bindings -ne '{}') {
@@ -152,7 +166,7 @@ try {
     $env:POSTGRES_PASSWORD = [Convert]::ToBase64String($randomBytes)
     Invoke-DockerChecked -Arguments @('run', '--detach', '--rm', '--network', 'none', '--name', $scratch,
         '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_DB=keycloak', '--env', 'POSTGRES_USER=keycloak',
-        $expectedImageId)
+        $scratchImageId)
     $scratchStarted = $true
     $scratchNetwork = ((& docker inspect --format '{{.HostConfig.NetworkMode}}' $scratch) -join '').Trim()
     $scratchPorts = ((& docker inspect --format '{{json .HostConfig.PortBindings}}' $scratch) -join '').Trim()
