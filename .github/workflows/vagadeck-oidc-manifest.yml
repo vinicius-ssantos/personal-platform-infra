@@ -1,0 +1,42 @@
+name: VagaDeck private OIDC manifest gate
+
+on:
+  pull_request:
+    paths:
+      - 'vagadeck-oidc/**'
+      - '.github/workflows/vagadeck-oidc-manifest.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'vagadeck-oidc/**'
+      - '.github/workflows/vagadeck-oidc-manifest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  private-oidc-manifest:
+    # Offline metadata validation: never use a privileged personal self-hosted runner.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout trusted repository code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Validate private-only Docker Compose contract (offline)
+        run: python3 -m unittest discover -s vagadeck-oidc -p 'test_*.py' -v
+      - name: Rehearse PostgreSQL custom archive restore with synthetic data
+        shell: bash
+        run: bash vagadeck-oidc/test_pg_archive_restore.sh
+      - name: Parse backup and restore PowerShell without running Docker
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $path = Join-Path $PWD 'vagadeck-oidc/verify-backup-restore.ps1'
+          [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }

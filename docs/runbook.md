@@ -235,6 +235,51 @@ The `GATEWAY_TOOL_ALLOWLIST` in `.env` controls which tools the gateway exposes
 publicly. Upstream service URLs (`GATEWAY_UPSTREAM_*`) use internal Docker
 network names and must not be changed to `localhost` addresses.
 
+### mcp-dev-workspace via ChatGPT (local Compose)
+
+The Java workspace deliberately **cannot** be reached through
+`gateway.invoke_discovered_tool`. It requires the audited static `workspace.*`
+catalog entries, `workspace:read` scope and an enabled workspace upstream.
+
+The local Compose gateway startup appends the nine read-only static routes
+(`workspace.list`, `describe`, `context`, `tree`, `search`, `file_read`,
+`git_status`, `git_diff`, `task_list`) and `workspace:read` to the OAuth
+scope configuration. It preserves existing operator allowlist entries, including
+values from older, local, ignored `.env` files. The Kubernetes/VPS ConfigMap is
+**unchanged**.
+
+1. Confirm the Java upstream is actually accessible to the gateway container
+   (e.g., private Docker service DNS or `host.docker.internal`, not Windows
+   `localhost`). If no dynamic upstream registration exists, set
+   `GATEWAY_UPSTREAM_WORKSPACE_URL` to its authenticated `/mcp` endpoint and
+   set `GATEWAY_WORKSPACE_MCP_BEARER_TOKEN` to the **dedicated Java credential**.
+   Never reuse the public Gateway bearer, version credentials, or print them.
+   Keep `workspace:optional-enabled` in `GATEWAY_UPSTREAM_LIFECYCLE` (unless
+   an intentionally disabled environment is being preserved).
+2. Recreate **only** the affected Compose gateway container or promote a
+   validated blue/green slot. A GitHub commit alone does not reconfigure the
+   already-running Gateway.
+3. Reconnect the ChatGPT Gateway app so it requests a fresh OAuth token
+   containing `workspace:read` and refreshes its advertised static tool list.
+   Tokens minted before the scope change will still lack `workspace:read`.
+4. Check `gateway.explain_authorization` for `workspace.list` and then call
+   `workspace.list` through its **static public tool**, not dynamic invocation.
+   Expect `allowed=true` before testing `workspace.file_read` on a trusted
+   workspace. Do not claim end-to-end success from upstream health alone.
+
+Editing and task/process execution remain **off by default**. A private
+single-owner local Gateway may explicitly set
+`GATEWAY_WORKSPACE_OWNER_TOOLS_ENABLED=true` to append the seven
+`workspace:write`/`workspace:execute` tools and scopes. **Important: this
+also grants the scopes to the Gateway's public/owner bearer defaults.** Enable
+it only when credentials are private, the owner identity check is verified,
+the Java workspace trust/path/secret guards are configured, and the operator
+accepts that expanded local scope. It is not suitable for a shared/public
+Gateway; use dedicated scoped OAuth credentials instead. Write/execute still
+require owner authorization, and protected/destructive actions may require
+additional confirmation. Always verify `gateway.explain_authorization` before
+trying an action.
+
 ### End-to-end smoke
 
 Beyond per-service health checks, `just smoke-e2e` exercises the real request
