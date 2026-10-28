@@ -48,11 +48,14 @@ class RecoveryDrillContract(unittest.TestCase):
 
     def test_checks_immutable_running_image_id_even_for_legacy_tag(self):
         self.assertIn("$sourceImageId = ((& docker inspect --format '{{.Image}}'", self.script)
-        self.assertIn("$sourceImageId -ne $expectedImageId", self.script)
         self.assertIn("$sourceImage -notin @($expectedImage, 'postgres:17-alpine')", self.script)
-        self.assertIn("docker image inspect $expectedImageId", self.script)
+        self.assertIn("docker image inspect $expectedImage --format '{{.Id}}'", self.script)
+        self.assertIn("$sourceImageId -ne $resolvedPinnedImageId", self.script)
+        self.assertIn("$sourceImageId -eq $approvedLegacyImageId", self.script)
+        self.assertIn("$sourceImage -eq 'postgres:17-alpine'", self.script)
+        self.assertIn("docker image inspect $scratchImageId", self.script)
         self.assertIn("refusing any image pull", self.script)
-        self.assertIn("$expectedImageId)", self.script)
+        self.assertIn("$scratchImageId)", self.script)
 
     def test_fails_closed_if_source_exposes_a_port(self):
         self.assertIn(".HostConfig.PortBindings", self.script)
