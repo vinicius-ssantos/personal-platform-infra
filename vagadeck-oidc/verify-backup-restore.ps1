@@ -71,11 +71,11 @@ if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source PostgreSQL immutable ima
 if ($sourceImage -notin @($expectedImage, 'postgres:17-alpine')) {
     throw 'Refusing an unexpected source image reference.'
 }
-# Manifest registry digests and local Docker image IDs are different concepts.
-# When the pinned manifest reference is cached, resolve it to a local image ID.
-# Windows PowerShell 5.1 can promote a native CLI's stderr into a
-# terminating error under Stop, even with 2>$null. Missing optional local
-# cache must be observable as a nonzero exit status, not bypass our guard.
+# Registry manifest digest and Docker's local config image ID are NOT interchangeable.
+# Resolve the pinned reference's local image ID if cached. A missing local
+# reference is allowed ONLY for the separately approved legacy lab ID below.
+# Windows PowerShell can promote a missing Docker image's stderr to a fatal
+# error under Stop, so temporarily suppress stderr errors on this lookup only.
 $priorInspectErrorPreference = $ErrorActionPreference
 try {
     $ErrorActionPreference = 'SilentlyContinue'
@@ -84,165 +84,11 @@ try {
 } finally {
     $ErrorActionPreference = $priorInspectErrorPreference
 }
-$pinnedAvailable = ($pinnedInspectExitCode -eq 0 -and $resolvedPinnedImageId -match '^sha256:[0-9a-f]{64}
-# Exact Windows-only local rehearsal fallback for a previously verified image
-# installed via the legacy tag. This is an approved image *ID*, not a
-# derivation from the pinned registry manifest digest.
-$approvedLegacyImageId = 'sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb'
-if ($pinnedAvailable) {
-    if ($sourceImageId -ne $resolvedPinnedImageId) {
-        throw 'Refusing a PostgreSQL container with an unexpected immutable image ID.'
-    }
-    $scratchImageId = $resolvedPinnedImageId
-} elseif ($sourceImage -eq 'postgres:17-alpine' -and $sourceImageId -eq $approvedLegacyImageId) {
-    $scratchImageId = $approvedLegacyImageId
-} else {
-    throw 'Refusing a PostgreSQL container with an unexpected immutable image ID.'
-}
-$localImageId = ((& docker image inspect $scratchImageId --format '{{.Id}}') -join '').Trim()
-if ($LASTEXITCODE -ne 0 -or $localImageId -ne $scratchImageId) {
-    throw 'Approved PostgreSQL image ID is unavailable locally; refusing any image pull.'
-}
-$bindings = ((& docker inspect --format '{{json .HostConfig.PortBindings}}' $sourceId) -join '').Trim()
-if ($LASTEXITCODE -ne 0 -or $bindings -ne '{}') {
-    throw 'Source PostgreSQL unexpectedly publishes a host port.'
-}
-$sourceMounts = @(((& docker inspect --format '{{json .Mounts}}' $sourceId) -join '') | ConvertFrom-Json)
-if ($LASTEXITCODE -ne 0 -or
-    @($sourceMounts | Where-Object {
-        $_.Type -eq 'volume' -and $_.Name -eq 'vagadeck-oidc-private_postgres-data' -and
-        $_.Destination -eq '/var/lib/postgresql/data'
-    }).Count -ne 1) {
-    throw 'Source PostgreSQL is not backed by the isolated rehearsal volume.'
-}
-
-function Invoke-DockerChecked([string[]]$Arguments) {
-    & docker @Arguments | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw ('Docker operation failed: ' + $Arguments[0])
-    }
-}
-
-function Get-PostgresCount([string]$Container, [string]$Sql) {
-    $lines = @(& docker exec $Container psql -X --quiet --tuples-only --no-align --set ON_ERROR_STOP=1 -U keycloak -d keycloak -c $Sql)
-    if ($LASTEXITCODE -ne 0) {
-        throw 'A PostgreSQL verification query failed.'
-    }
-    $candidate = (($lines | Where-Object { $_ -match '\S' }) -join '').Trim()
-    if ($candidate -notmatch '^\d+$') {
-        throw 'PostgreSQL returned a non-numeric verification result.'
-    }
-    return [long]::Parse($candidate)
-}
-
-New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
-& icacls $backupDir /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)(F)" /grant:r 'SYSTEM:(OI)(CI)(F)' | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Cannot secure the temporary local backup directory.'
-}
-
-$unique = [guid]::NewGuid().ToString('N').Substring(0, 12)
-$timestamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
-$localDump = Join-Path $backupDir ("keycloak-$timestamp-$unique.dump")
-$sourceDump = "/tmp/vagadeck-rehearsal-$unique.dump"
-$targetDump = '/tmp/vagadeck-restore.dump'
-$scratch = "vagadeck-oidc-restore-$unique"
-$sourceDumpCreated = $false
-$scratchStarted = $false
-$verified = $false
-$priorPgPassword = [Environment]::GetEnvironmentVariable('POSTGRES_PASSWORD', 'Process')
-
-try {
-    # The custom-format archive is created IN the source container first.
-    # Do not use PowerShell's redirection to pipe binary pg_dump output.
-    $sourceDumpCreated = $true
-    Invoke-DockerChecked -Arguments @('exec', $sourceId, 'pg_dump', '--format=custom', '--no-owner', '--no-acl',
-        '-U', 'keycloak', '-d', 'keycloak', '--file', $sourceDump)
-    Invoke-DockerChecked -Arguments @('cp', "${sourceId}:$sourceDump", $localDump)
-    if ((Get-Item -LiteralPath $localDump).Length -lt 1024) {
-        throw 'The PostgreSQL archive is suspiciously small.'
-    }
-    & icacls $localDump /inheritance:r /grant:r "${env:USERNAME}:(R,W)" /grant:r 'SYSTEM:(F)' | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Cannot restrict backup file ACLs.'
-    }
-    $digest = (Get-FileHash -LiteralPath $localDump -Algorithm SHA256).Hash
-
-    # The scratch container is ephemeral: no network, no ports and no mounted volume.
-    # Docker receives the password from the process environment, not CLI history.
-    $randomBytes = New-Object byte[] 36
-    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
-    try { $rng.GetBytes($randomBytes) } finally { $rng.Dispose() }
-    $env:POSTGRES_PASSWORD = [Convert]::ToBase64String($randomBytes)
-    Invoke-DockerChecked -Arguments @('run', '--detach', '--rm', '--network', 'none', '--name', $scratch,
-        '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_DB=keycloak', '--env', 'POSTGRES_USER=keycloak',
-        $scratchImageId)
-    $scratchStarted = $true
-    $scratchNetwork = ((& docker inspect --format '{{.HostConfig.NetworkMode}}' $scratch) -join '').Trim()
-    $scratchPorts = ((& docker inspect --format '{{json .HostConfig.PortBindings}}' $scratch) -join '').Trim()
-    if ($LASTEXITCODE -ne 0 -or $scratchNetwork -ne 'none' -or $scratchPorts -ne '{}') {
-        throw 'Scratch PostgreSQL has unexpected network or host-port access.'
-    }
-
-    $ready = $false
-    for ($attempt = 0; $attempt -lt 45; $attempt++) {
-        # The postgres entrypoint temporarily starts PostgreSQL during initdb,
-        # then stops it before launching the final PID 1 postgres daemon.
-        # pg_isready alone can yield a false-positive during this transition.
-        $daemon = ((& docker exec $scratch cat /proc/1/comm 2>$null) -join '').Trim()
-        if ($LASTEXITCODE -eq 0 -and $daemon -eq 'postgres') {
-            $probe = ((& docker exec $scratch psql -X --quiet --tuples-only --no-align -U keycloak -d keycloak -c 'SELECT 1' 2>$null) -join '').Trim()
-            if ($LASTEXITCODE -eq 0 -and $probe -eq '1') {
-                $ready = $true
-                break
-            }
-        }
-        Start-Sleep -Seconds 1
-    }
-    if (-not $ready) {
-        throw 'Disposable PostgreSQL did not become ready.'
-    }
-    Invoke-DockerChecked -Arguments @('cp', $localDump, "${scratch}:$targetDump")
-    Invoke-DockerChecked -Arguments @('exec', $scratch, 'pg_restore', '--list', $targetDump)
-    Invoke-DockerChecked -Arguments @('exec', $scratch, 'pg_restore', '--exit-on-error', '--single-transaction',
-        '--no-owner', '--no-acl', '-U', 'keycloak', '-d', 'keycloak', $targetDump)
-
-    # Compare narrow aggregate evidence only; never print OIDC subjects, account names or data.
-    $sourceRealms = Get-PostgresCount $sourceId 'SELECT COUNT(*) FROM realm'
-    $scratchRealms = Get-PostgresCount $scratch 'SELECT COUNT(*) FROM realm'
-    $sourceTables = Get-PostgresCount $sourceId "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"
-    $scratchTables = Get-PostgresCount $scratch "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"
-    if ($sourceRealms -lt 1 -or $sourceRealms -ne $scratchRealms -or
-        $sourceTables -lt 1 -or $sourceTables -ne $scratchTables) {
-        throw 'Disposable restore diverges from the local source database.'
-    }
-
-    $verified = $true
-    Write-Output 'KEYCLOAK_POSTGRES_DISPOSABLE_RESTORE_PASSED'
-    Write-Output ("REALM_COUNT_MATCH=$scratchRealms TABLE_COUNT_MATCH=$scratchTables")
-    Write-Output ("ARCHIVE_SHA256=$digest")
-    Write-Output 'SOURCE_DB_UNMODIFIED_BY_DRILL; NO_EXTERNAL_PORT; SCRATCH_CONTAINER_REMOVED_IN_FINALLY'
-} finally {
-    if ($scratchStarted) {
-        & docker rm --force $scratch | Out-Null
-        if ($LASTEXITCODE -ne 0) { Write-Warning 'Scratch container cleanup requires manual investigation.' }
-    }
-    if ($sourceDumpCreated) {
-        & docker exec $sourceId rm -f -- $sourceDump | Out-Null
-        if ($LASTEXITCODE -ne 0) { Write-Warning 'Temporary archive inside source container requires manual cleanup.' }
-    }
-    if ((Test-Path -LiteralPath $localDump) -and (-not $KeepBackup -or -not $verified)) {
-        Remove-Item -LiteralPath $localDump -Force
-    }
-    [Environment]::SetEnvironmentVariable('POSTGRES_PASSWORD', $priorPgPassword, 'Process')
-}
-if ($KeepBackup) {
-    Write-Warning 'A sensitive unencrypted local backup was retained under user ACLs. Encrypt it or remove it immediately after review.'
-}
-)
-# Exact Windows-only local rehearsal fallback for a previously verified image
-# installed via the legacy tag. This is an approved image *ID*, not a
-# derivation from the pinned registry manifest digest.
+$pinnedAvailable = ($pinnedInspectExitCode -eq 0 -and $resolvedPinnedImageId -match '^sha256:[0-9a-f]{64}$')
+# Explicit historical, immutable IMAGE CONFIG ID from this isolated Windows
+# laboratory; not derived from the pinned registry manifest digest. It is
+# accepted only if the actual running container has exactly this ID AND was
+# started via the known old local tag. Never use the tag to launch scratch.
 $approvedLegacyImageId = 'sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb'
 if ($pinnedAvailable) {
     if ($sourceImageId -ne $resolvedPinnedImageId) {
