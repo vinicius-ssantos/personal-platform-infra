@@ -46,6 +46,14 @@ class RecoveryDrillContract(unittest.TestCase):
         self.assertIn("vagadeck-oidc-private_postgres-data", self.script)
         self.assertIn("/var/lib/postgresql/data", self.script)
 
+    def test_checks_immutable_running_image_id_even_for_legacy_tag(self):
+        self.assertIn("$sourceImageId = ((& docker inspect --format '{{.Image}}'", self.script)
+        self.assertIn("$sourceImageId -ne $expectedImageId", self.script)
+        self.assertIn("$sourceImage -notin @($expectedImage, 'postgres:17-alpine')", self.script)
+        self.assertIn("docker image inspect $expectedImageId", self.script)
+        self.assertIn("refusing any image pull", self.script)
+        self.assertIn("$expectedImageId)", self.script)
+
     def test_fails_closed_if_source_exposes_a_port(self):
         self.assertIn(".HostConfig.PortBindings", self.script)
         self.assertIn("$bindings -ne '{}'", self.script)
