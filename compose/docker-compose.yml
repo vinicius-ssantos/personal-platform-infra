@@ -618,7 +618,6 @@ services:
       GATEWAY_OAUTH_DEFAULT_SCOPES: ${GATEWAY_OAUTH_DEFAULT_SCOPES:-gateway:read github:read github:write deploy:read social:write sandbox:run repo:read repo-research:read vos:read vos:write}
       GATEWAY_WORKSPACE_OWNER_TOOLS_ENABLED: ${GATEWAY_WORKSPACE_OWNER_TOOLS_ENABLED:-false}
       GATEWAY_TOOL_ALLOWLIST: ${GATEWAY_TOOL_ALLOWLIST:-gateway.status,gateway.delivery_status,gateway.upstream_capabilities,gateway.search_discovered_tools,gateway.get_discovered_tool,gateway.invoke_discovered_tool,gateway.propose_catalog_entry,gateway.explain_authorization,github.search_issues,github.milestone_list,github.milestone_get,github.milestone_create,github.milestone_update,github.pr_merge,github.ruleset_upsert,deploy.get_status,social.create_draft,social.publish_post,social.get_post_status,social.get_post_metrics,social.list_scheduled_posts,social.cancel_scheduled_post,social.update_post_caption,social.get_account_health,vos.get_studio_status,sandbox.run_code,sandbox.run_file,sandbox.run_command,repo.search,repo.fetch,repo.repository_overview,repo.list_files,higgsfield.catalog,higgsfield.models_explore,higgsfield.show_generations,higgsfield.balance,higgsfield.job_display,higgsfield.animation_actions,higgsfield.presets_show,higgsfield.show_medias,higgsfield.list_voices,higgsfield.transactions,higgsfield.list_workspaces,higgsfield.show_marketing_studio_generations}
-      GATEWAY_UPSTREAM_WORKSPACE_URL:
       GATEWAY_UPSTREAM_GITHUB_URL: http://github-unified-mcp:8765/mcp
       GATEWAY_UPSTREAM_DEPLOY_URL: http://deploy-orchestrator-mcp:8000/mcp
       GATEWAY_UPSTREAM_SOCIAL_URL: http://mcp-social:8080/mcp/
@@ -630,7 +629,6 @@ services:
       GATEWAY_UPSTREAM_HIGGSFIELD_URL: http://higgsfield-facade:8080/mcp
       GATEWAY_UPSTREAM_LIFECYCLE: ${GATEWAY_UPSTREAM_LIFECYCLE:-github:required,repo-research:required,sandbox:optional-enabled,deploy:disabled,social:disabled,vos:disabled,higgsfield:disabled}
       GATEWAY_MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
-      GATEWAY_WORKSPACE_MCP_BEARER_TOKEN:
       GATEWAY_GITHUB_TOKEN: ${GITHUB_TOKEN}
       GATEWAY_DEPLOY_API_KEY: ${MCP_SERVER_API_KEY}
       GATEWAY_SOCIAL_ACCESS_TOKEN: ${SOCIAL_MCP_ACCESS_TOKEN}
