@@ -65,8 +65,19 @@ if ($LASTEXITCODE -ne 0 -or
     throw 'Refusing an unrecognized PostgreSQL container.'
 }
 $sourceImage = ((& docker inspect --format '{{.Config.Image}}' $sourceId) -join '').Trim()
-if ($LASTEXITCODE -ne 0 -or $sourceImage -ne $expectedImage) {
-    throw 'Refusing a PostgreSQL container using an unexpected image.'
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect source PostgreSQL image reference.' }
+$sourceImageId = ((& docker inspect --format '{{.Image}}' $sourceId) -join '').Trim()
+# Legacy local compose launches the verified image under the mutable tag.
+# Accept that spelling only if the running image ID matches the fixed digest.
+$expectedImageId = 'sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb'
+if ($LASTEXITCODE -ne 0 -or
+    $sourceImage -notin @($expectedImage, 'postgres:17-alpine') -or
+    $sourceImageId -ne $expectedImageId) {
+    throw 'Refusing a PostgreSQL container with an unexpected immutable image ID.'
+}
+$localImageId = ((& docker image inspect $expectedImageId --format '{{.Id}}') -join '').Trim()
+if ($LASTEXITCODE -ne 0 -or $localImageId -ne $expectedImageId) {
+    throw 'Pinned PostgreSQL image ID is unavailable locally; refusing any image pull.'
 }
 $bindings = ((& docker inspect --format '{{json .HostConfig.PortBindings}}' $sourceId) -join '').Trim()
 if ($LASTEXITCODE -ne 0 -or $bindings -ne '{}') {
@@ -141,7 +152,7 @@ try {
     $env:POSTGRES_PASSWORD = [Convert]::ToBase64String($randomBytes)
     Invoke-DockerChecked -Arguments @('run', '--detach', '--rm', '--network', 'none', '--name', $scratch,
         '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_DB=keycloak', '--env', 'POSTGRES_USER=keycloak',
-        $expectedImage)
+        $expectedImageId)
     $scratchStarted = $true
     $scratchNetwork = ((& docker inspect --format '{{.HostConfig.NetworkMode}}' $scratch) -join '').Trim()
     $scratchPorts = ((& docker inspect --format '{{json .HostConfig.PortBindings}}' $scratch) -join '').Trim()
