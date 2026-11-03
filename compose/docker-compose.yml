@@ -505,7 +505,11 @@ services:
   # The bind-mounted source tree is intentionally limited to the configured local
   # workspace; the Java PathGuard/SecretGuard remains authoritative.
   mcp-dev-workspace:
-    image: ${MCP_DEV_WORKSPACE_JAVA_IMAGE:-eclipse-temurin:25-jre}
+    # Git must be present inside the Java container, not only on the Windows host.
+    image: ${MCP_DEV_WORKSPACE_JAVA_IMAGE:-mcp-dev-workspace-java:25-git}
+    build:
+      context: .
+      dockerfile: mcp-dev-workspace-git.Dockerfile
     profiles: ["workspace"]
     networks:
       - workspace-private
@@ -516,9 +520,14 @@ services:
       - -XX:MaxRAMPercentage=75.0
       - -jar
       - /app/workspace.jar
+      # Keep broad project discovery read-only; Git operations require a repository root.
       - --mcp-dev-workspace.workspaces[0].id=dev
       - --mcp-dev-workspace.workspaces[0].root=/projects
-      - --mcp-dev-workspace.workspaces[0].trust=TRUSTED
+      - --mcp-dev-workspace.workspaces[0].trust=READ_ONLY
+      # Explicitly trusted repository: do not grant write/execute to all of /projects.
+      - --mcp-dev-workspace.workspaces[1].id=mcp-dev-workspace
+      - --mcp-dev-workspace.workspaces[1].root=/projects/mcp-dev-workspace
+      - --mcp-dev-workspace.workspaces[1].trust=TRUSTED
     environment:
       WORKSPACE_API_KEY: ${GATEWAY_WORKSPACE_MCP_BEARER_TOKEN:-}
       WORKSPACE_SERVER_ADDRESS: 0.0.0.0
