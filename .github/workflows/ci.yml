@@ -39,6 +39,9 @@ jobs:
       - name: Validate Docker Compose config
         run: docker compose -f compose/docker-compose.yml config --quiet
 
+      - name: Verify OAuth scope-split startup policy with dummy environment
+        run: python -m unittest discover -s tests -p 'test_compose_oauth_scope_split.py' -v
+
       - name: Enforce gateway-only private Java workspace network
         run: |
           # Do not print rendered config: it can contain environment secrets.
