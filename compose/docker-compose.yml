@@ -579,6 +579,11 @@ services:
           *) export GATEWAY_OAUTH_DEFAULT_SCOPES="$GATEWAY_OAUTH_DEFAULT_SCOPES workspace:read" ;;
         esac
         # Scope separation is operator opt-in, requiring a reviewed v0.46+ image.
+        # Reject typos rather than silently falling back to broad legacy grants.
+        case "$GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED" in
+          true|false) ;;
+          *) echo >&2 "OAuth scope split flag must be true or false"; exit 1 ;;
+        esac
         # When off, preserve the old defaults and omit ALLOWED_SCOPES entirely:
         # an explicitly empty allowlist would make new Gateway versions fail startup.
         if [ "$GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED" = "true" ]; then
