@@ -47,6 +47,39 @@ def validate(config: dict) -> None:
     require("WORKSPACE_API_KEY" in java.get("environment", {}),
             "workspace requires a dedicated credential binding")
 
+    # Lock in the intended repo boundary independently of the actual host mount.
+    # Do not allow the broad /projects aggregate to silently regain write access.
+    require(str(java.get("user")) == "10001:10001",
+            "workspace process must use its dedicated unprivileged user")
+    require("ALL" in java.get("cap_drop", []),
+            "workspace process must drop Linux capabilities")
+    require(any("no-new-privileges" in str(value)
+                for value in java.get("security_opt", [])),
+            "workspace process must not gain new privileges")
+    build = java.get("build", {})
+    require(isinstance(build, dict) and
+            str(build.get("dockerfile", "")).endswith("mcp-dev-workspace-git.Dockerfile"),
+            "workspace must use its reviewed Git-capable Java runtime")
+
+    command = java.get("command")
+    require(isinstance(command, list), "workspace startup command must be an argv list")
+    registration_args = [
+        arg for arg in command
+        if isinstance(arg, str) and
+        arg.startswith("--mcp-dev-workspace.workspaces[")
+    ]
+    expected_registrations = {
+        "--mcp-dev-workspace.workspaces[0].id=dev",
+        "--mcp-dev-workspace.workspaces[0].root=/projects",
+        "--mcp-dev-workspace.workspaces[0].trust=READ_ONLY",
+        "--mcp-dev-workspace.workspaces[1].id=mcp-dev-workspace",
+        "--mcp-dev-workspace.workspaces[1].root=/projects/mcp-dev-workspace",
+        "--mcp-dev-workspace.workspaces[1].trust=TRUSTED",
+    }
+    require(len(registration_args) == len(expected_registrations) and
+            set(registration_args) == expected_registrations,
+            "workspace registrations must preserve the scoped read/write trust boundary")
+
     gateways = ("central-mcp-gateway", "central-mcp-gateway-blue", "central-mcp-gateway-green")
     for name in gateways:
         service = services.get(name)
