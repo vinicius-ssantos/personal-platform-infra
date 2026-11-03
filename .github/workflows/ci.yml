@@ -262,3 +262,37 @@ jobs:
             kubectl kustomize "k8s/overlays/$overlay" | kube-score score - --ignore-test "$IGNORE"
             echo "OK kube-score k8s/overlays/$overlay"
           done
+
+  workspace-git-runtime:
+    name: Validate workspace Git runtime (disposable fixture)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Build Git-capable Java 25 image
+        run: docker build --pull=false -t mcp-dev-workspace-ci:git-smoke -f compose/mcp-dev-workspace-git.Dockerfile compose
+
+      - name: Prove scoped Git read in unprivileged, networkless container
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Synthetic repository only. Never mount a developer or runner checkout.
+          fixture="$(mktemp -d)"
+          trap 'rm -rf "$fixture"' EXIT
+          chmod 0755 "$fixture"
+          git -C "$fixture" init -q
+          printf 'synthetic fixture\n' > "$fixture/fixture.txt"
+          git -C "$fixture" add fixture.txt
+
+          result="$(docker run --rm --network=none --read-only \
+            --cap-drop=ALL --security-opt=no-new-privileges \
+            --user 10001:10001 \
+            --mount "type=bind,source=$fixture,target=/workspace,readonly" \
+            --entrypoint git mcp-dev-workspace-ci:git-smoke \
+            --no-optional-locks -c safe.directory=/workspace \
+            -C /workspace status --porcelain=v1 -uno)"
+
+          test "$result" = "A  fixture.txt"
+          echo "PASS: scoped Git status against isolated synthetic repository"
