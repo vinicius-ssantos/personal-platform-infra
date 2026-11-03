@@ -32,7 +32,7 @@ def entrypoint_script() -> str:
     return script.replace("exec central-mcp-gateway", probe).replace("$$", "$")
 
 
-def run_fixture(*, split: bool, owner: bool, defaults: str, allowed: str) -> subprocess.CompletedProcess[str]:
+def run_fixture(*, split: bool | str, owner: bool, defaults: str, allowed: str) -> subprocess.CompletedProcess[str]:
     env = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "GATEWAY_OAUTH_DEFAULT_SCOPES": defaults,
@@ -81,6 +81,14 @@ class OAuthScopeSplitComposeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("DEFAULT=gateway:read workspace:read", result.stdout)
         self.assertIn("ALLOWED_PRESENT=yes", result.stdout)
+
+    def test_invalid_scope_split_toggle_fails_closed(self) -> None:
+        result = run_fixture(
+            split="ture", owner=True,
+            defaults="gateway:read", allowed="gateway:read workspace:read",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("flag must be true or false", result.stderr)
 
     def test_split_requires_explicit_allowed_scope_list(self) -> None:
         result = run_fixture(split=True, owner=False, defaults="gateway:read", allowed="")
