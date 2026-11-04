@@ -587,15 +587,48 @@ services:
           *" workspace:read "*) ;;
           *) export GATEWAY_OAUTH_DEFAULT_SCOPES="$$GATEWAY_OAUTH_DEFAULT_SCOPES workspace:read" ;;
         esac
-        # Write/execute requires an explicit local opt-in plus the gateway's owner check.
-        # These scopes also reach the public bearer: never use this opt-in on a shared endpoint.
+        # Scope separation is operator opt-in, requiring a reviewed v0.46+ image.
+        # Reject typos rather than silently falling back to broad legacy grants.
+        case "$$GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED" in
+          true|false) ;;
+          *) echo >&2 "OAuth scope split flag must be true or false"; exit 1 ;;
+        esac
+        # When off, preserve the old defaults and omit ALLOWED_SCOPES entirely:
+        # an explicitly empty allowlist would make new Gateway versions fail startup.
+        if [ "$$GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED" = "true" ]; then
+          if [ -z "$$GATEWAY_OAUTH_ALLOWED_SCOPES" ]; then
+            echo >&2 "OAuth scope split requires an explicit allowed-scope list"
+            exit 1
+          fi
+          case " $$GATEWAY_OAUTH_ALLOWED_SCOPES " in
+            *" workspace:read "*) ;;
+            *) echo >&2 "OAuth allowed scopes must include workspace:read"; exit 1 ;;
+          esac
+          for scope in workspace:write workspace:execute; do
+            case " $$GATEWAY_OAUTH_DEFAULT_SCOPES " in
+              *" $$scope "*) echo >&2 "OAuth defaults cannot grant workspace write/execute in split mode"; exit 1 ;;
+            esac
+          done
+        else
+          unset GATEWAY_OAUTH_ALLOWED_SCOPES
+        fi
+        # Write/execute requires a local opt-in plus the owner's runtime policy.
+        # In split mode, permission must be explicitly requested via OAuth, not
+        # injected into defaults. Legacy mode keeps its existing behavior.
         if [ "$$GATEWAY_WORKSPACE_OWNER_TOOLS_ENABLED" = "true" ]; then
           export GATEWAY_TOOL_ALLOWLIST="$$GATEWAY_TOOL_ALLOWLIST,workspace.file_create,workspace.file_apply_edits,workspace.task_run,workspace.process_start,workspace.process_output,workspace.process_stop,workspace.validate"
           for scope in workspace:write workspace:execute; do
-            case " $$GATEWAY_OAUTH_DEFAULT_SCOPES " in
-              *" $$scope "*) ;;
-              *) export GATEWAY_OAUTH_DEFAULT_SCOPES="$$GATEWAY_OAUTH_DEFAULT_SCOPES $$scope" ;;
-            esac
+            if [ "$$GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED" = "true" ]; then
+              case " $$GATEWAY_OAUTH_ALLOWED_SCOPES " in
+                *" $$scope "*) ;;
+                *) echo >&2 "OAuth allowed scopes missing owner workspace capability"; exit 1 ;;
+              esac
+            else
+              case " $$GATEWAY_OAUTH_DEFAULT_SCOPES " in
+                *" $$scope "*) ;;
+                *) export GATEWAY_OAUTH_DEFAULT_SCOPES="$$GATEWAY_OAUTH_DEFAULT_SCOPES $$scope" ;;
+              esac
+            fi
           done
         fi
         exec central-mcp-gateway
@@ -634,6 +667,10 @@ services:
       GATEWAY_DYNAMIC_UPSTREAMS_ENABLED: ${CENTRAL_MCP_GATEWAY_DYNAMIC_UPSTREAMS_ENABLED}
       GATEWAY_ADMIN_TOKEN: ${CENTRAL_MCP_GATEWAY_ADMIN_TOKEN}
       GATEWAY_OAUTH_DEFAULT_SCOPES: ${GATEWAY_OAUTH_DEFAULT_SCOPES:-gateway:read github:read github:write deploy:read social:write sandbox:run repo:read repo-research:read vos:read vos:write}
+      # Scope split is disabled by default; the shell removes ALLOWED_SCOPES
+      # entirely when disabled, preserving legacy OAuth behavior.
+      GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED: ${GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED:-false}
+      GATEWAY_OAUTH_ALLOWED_SCOPES: ${GATEWAY_OAUTH_ALLOWED_SCOPES:-}
       # Opt-in rotating OAuth refresh tokens (Gateway #408). Requires Redis and
       # a reviewed Gateway image; do not enable as part of an ordinary deploy.
       GATEWAY_OAUTH_REFRESH_ENABLED: ${GATEWAY_OAUTH_REFRESH_ENABLED:-false}
