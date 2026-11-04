@@ -7,6 +7,7 @@ Compose file is evaluated with dummy environment variables.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -53,6 +54,13 @@ def run_fixture(*, split: bool | str, owner: bool, defaults: str, allowed: str) 
 
 
 class OAuthScopeSplitComposeTests(unittest.TestCase):
+    def test_compose_interpolation_keeps_all_shell_variables_for_runtime(self) -> None:
+        compose = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
+        command = compose["services"]["central-mcp-gateway"]["command"][0]
+        # A single dollar sign is a Compose variable, not a shell variable.
+        # Tests using raw YAML do not catch premature Compose interpolation.
+        self.assertIsNone(re.search(r"(?<!\$)\$(?!\$)", command))
+
     def test_legacy_owner_mode_preserves_defaults_and_unsets_allowed(self) -> None:
         result = run_fixture(
             split=False, owner=True,
