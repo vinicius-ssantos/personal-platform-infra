@@ -42,6 +42,8 @@ def run_fixture(*, split: bool | str, owner: bool, defaults: str, allowed: str) 
         "GATEWAY_WORKSPACE_OWNER_TOOLS_ENABLED": str(owner).lower(),
         "GATEWAY_TOOL_ALLOWLIST": "gateway.status",
         "GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS": "",
+        "GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED": "false",
+        "GATEWAY_OWNER_SUBJECTS": "",
     }
     return subprocess.run(
         ["sh", "-ec", entrypoint_script()],
