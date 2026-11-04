@@ -11,9 +11,12 @@ by Compose. This change makes forwarding possible, but **disabled by default**.
 - `GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED=false` (default): the entrypoint
   **unsets** `GATEWAY_OWNER_SUBJECTS` before invoking the Gateway, even when
   a local `.env` contains a value. This preserves current OAuth privileges.
-- `GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED=true`: the entrypoint requires a
-  non-empty `GATEWAY_OWNER_SUBJECTS` and forwards it unchanged to the Gateway.
-  An empty value or invalid toggle fails **before** the app starts.
+- `GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED=true`: the entrypoint requires
+  **both** `GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED=true` and a non-empty
+  `GATEWAY_OWNER_SUBJECTS`, then forwards the subject list unchanged to the
+  Gateway. An empty value, invalid toggle **or legacy scope mode** fails
+  **before** startup. This avoids introducing owner elevation with broad
+  scopes granted merely because a client omitted `scope`.
 - Compose escapes shell references as `$$` so variables are interpreted in
   the container, not interpolated by Docker Compose.
 - The feature does **not** alter `GATEWAY_OAUTH_DEFAULT_SCOPES`,
@@ -33,7 +36,10 @@ No one should enable the flag by merely assuming that the OAuth client
 ID (for example `chatgpt`) identifies an owner.
 
 Other controls remain independent: token scope, tool allowlist, tenant
-policy, idempotency, Java workspace trust and task policy. For the
+policy, idempotency, Java workspace trust and task policy. The new guard
+does **not** retroactively narrow previously issued access tokens: review
+existing OAuth grants before promoting owner-subject elevation, and arrange
+user-approved reauthorization if any grant must change. For the
 `mcp-dev-workspace` stack, never make the aggregate `dev` workspace
 writable to test authorization.
 

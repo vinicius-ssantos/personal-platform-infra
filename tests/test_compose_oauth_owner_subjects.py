@@ -24,7 +24,7 @@ def gateway_command() -> str:
     return command
 
 
-def run_fixture(*, enabled: str, subjects: str) -> subprocess.CompletedProcess[str]:
+def run_fixture(*, enabled: str, subjects: str, split: str = "false") -> subprocess.CompletedProcess[str]:
     probe = (
         'if env | grep -q "^GATEWAY_OWNER_SUBJECTS="; then '
         'echo "OWNER_SUBJECTS_PRESENT=yes"; else echo "OWNER_SUBJECTS_PRESENT=no"; fi; '
@@ -41,8 +41,8 @@ def run_fixture(*, enabled: str, subjects: str) -> subprocess.CompletedProcess[s
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "GATEWAY_TOOL_ALLOWLIST": "gateway.status",
         "GATEWAY_OAUTH_DEFAULT_SCOPES": "gateway:read",
-        "GATEWAY_OAUTH_ALLOWED_SCOPES": "",
-        "GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED": "false",
+        "GATEWAY_OAUTH_ALLOWED_SCOPES": ("gateway:read workspace:read workspace:write workspace:execute" if split == "true" else ""),
+        "GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED": split,
         "GATEWAY_WORKSPACE_OWNER_TOOLS_ENABLED": "false",
         "GATEWAY_OAUTH_ALLOWED_REDIRECT_URIS": "",
         "GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED": enabled,
@@ -75,19 +75,23 @@ class GatewayOwnerSubjectsComposeTests(unittest.TestCase):
         self.assertIn("INTERNAL_FLAG_LEAKED=no", result.stdout)
 
     def test_enabled_mode_forwards_explicit_subject_only(self) -> None:
-        result = run_fixture(enabled="true", subjects="oauth:owner")
+        result = run_fixture(enabled="true", subjects="oauth:owner", split="true")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("OWNER_SUBJECTS_PRESENT=yes", result.stdout)
         self.assertIn("EXPECTED_SUBJECT_MATCH=yes", result.stdout)
         self.assertIn("INTERNAL_FLAG_LEAKED=no", result.stdout)
 
     def test_enabled_with_no_subject_fails_closed(self) -> None:
-        result = run_fixture(enabled="true", subjects="")
+        result = run_fixture(enabled="true", subjects="", split="true")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("needs an explicit subject", result.stderr)
 
+    def test_owner_subjects_cannot_be_enabled_with_legacy_default_scopes(self) -> None:
+        result = run_fixture(enabled="true", subjects="oauth:owner", split="false")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requires enabled scope split", result.stderr)
     def test_invalid_flag_fails_closed(self) -> None:
-        result = run_fixture(enabled="treu", subjects="oauth:owner")
+        result = run_fixture(enabled="treu", subjects="oauth:owner", split="true")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("flag must be true or false", result.stderr)
 

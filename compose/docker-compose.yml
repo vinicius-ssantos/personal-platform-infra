@@ -635,6 +635,10 @@ services:
         # Default off to preserve existing permissions until the operator opts in.
         case "$$GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED" in
           true)
+            if [ "$$GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED" != "true" ]; then
+              echo >&2 "OAuth owner subject forwarding requires enabled scope split"
+              exit 1
+            fi
             if [ -z "$$GATEWAY_OWNER_SUBJECTS" ]; then
               echo >&2 "OAuth owner subject forwarding needs an explicit subject"
               exit 1
