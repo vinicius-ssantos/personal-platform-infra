@@ -631,6 +631,23 @@ services:
             fi
           done
         fi
+        # Owner elevation for OAuth uses an authenticated subject, never a client ID.
+        # Default off to preserve existing permissions until the operator opts in.
+        case "$$GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED" in
+          true)
+            if [ "$$GATEWAY_OAUTH_SCOPE_SPLIT_ENABLED" != "true" ]; then
+              echo >&2 "OAuth owner subject forwarding requires enabled scope split"
+              exit 1
+            fi
+            if [ -z "$$GATEWAY_OWNER_SUBJECTS" ]; then
+              echo >&2 "OAuth owner subject forwarding needs an explicit subject"
+              exit 1
+            fi
+            ;;
+          false) unset GATEWAY_OWNER_SUBJECTS ;;
+          *) echo >&2 "OAuth owner subject forwarding flag must be true or false"; exit 1 ;;
+        esac
+        unset GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED
         exec central-mcp-gateway
     profiles: ["gateway", "tailscale", "all"]
     # Gateway alone bridges the existing service network and private Java MCP.
@@ -701,6 +718,8 @@ services:
       # --- Owner Mode (SOMENTE local/DEV) ---
       GATEWAY_OWNER_MODE_ENABLED: ${GATEWAY_OWNER_MODE_ENABLED:-true}
       GATEWAY_OWNER_BEARER_TOKEN: ${GATEWAY_OWNER_BEARER_TOKEN}
+      GATEWAY_OWNER_SUBJECTS: ${GATEWAY_OWNER_SUBJECTS:-}
+      GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED: ${GATEWAY_OWNER_SUBJECTS_FORWARD_ENABLED:-false}
       GATEWAY_OWNER_CLIENT_IDS: ${GATEWAY_OWNER_CLIENT_IDS:-chatgpt}
       GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES: ${GATEWAY_OWNER_ALLOW_DYNAMIC_WRITES:-true}
       GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION: ${GATEWAY_OWNER_ALLOW_EXTERNAL_PUBLICATION:-true}
