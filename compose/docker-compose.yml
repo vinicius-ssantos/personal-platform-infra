@@ -528,6 +528,15 @@ services:
       - --mcp-dev-workspace.workspaces[1].id=mcp-dev-workspace
       - --mcp-dev-workspace.workspaces[1].root=/projects/mcp-dev-workspace
       - --mcp-dev-workspace.workspaces[1].trust=TRUSTED
+      # One exact, server-owned diagnostic task. No shell, arguments, mutable
+      # environment or project-provided task definitions are authorized here.
+      # Running it still requires the Gateway owner and workspace:execute gates.
+      - --mcp-dev-workspace.workspaces[1].tasks.server[0].id=java-version
+      - --mcp-dev-workspace.workspaces[1].tasks.server[0].description=Read the installed Java runtime version
+      - --mcp-dev-workspace.workspaces[1].tasks.server[0].command[0]=/opt/java/openjdk/bin/java
+      - --mcp-dev-workspace.workspaces[1].tasks.server[0].command[1]=--version
+      - --mcp-dev-workspace.workspaces[1].tasks.server[0].timeout=10s
+      - --mcp-dev-workspace.workspaces[1].tasks.validation[0]=java-version
     environment:
       WORKSPACE_API_KEY: ${GATEWAY_WORKSPACE_MCP_BEARER_TOKEN:-}
       WORKSPACE_SERVER_ADDRESS: 0.0.0.0

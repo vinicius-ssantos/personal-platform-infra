@@ -63,11 +63,13 @@ def validate(config: dict) -> None:
 
     command = java.get("command")
     require(isinstance(command, list), "workspace startup command must be an argv list")
-    registration_args = [
+    workspace_args = [
         arg for arg in command
         if isinstance(arg, str) and
         arg.startswith("--mcp-dev-workspace.workspaces[")
     ]
+    registration_args = [arg for arg in workspace_args if ".tasks." not in arg]
+    task_args = [arg for arg in workspace_args if ".tasks." in arg]
     expected_registrations = {
         "--mcp-dev-workspace.workspaces[0].id=dev",
         "--mcp-dev-workspace.workspaces[0].root=/projects",
@@ -79,6 +81,20 @@ def validate(config: dict) -> None:
     require(len(registration_args) == len(expected_registrations) and
             set(registration_args) == expected_registrations,
             "workspace registrations must preserve the scoped read/write trust boundary")
+
+    # Limit live execution authority to the single operator-owned, literal
+    # diagnostic command in the trusted repository. The aggregate READ_ONLY
+    # workspace must never acquire tasks, and project/detected tasks stay off.
+    expected_tasks = {
+        "--mcp-dev-workspace.workspaces[1].tasks.server[0].id=java-version",
+        "--mcp-dev-workspace.workspaces[1].tasks.server[0].description=Read the installed Java runtime version",
+        "--mcp-dev-workspace.workspaces[1].tasks.server[0].command[0]=/opt/java/openjdk/bin/java",
+        "--mcp-dev-workspace.workspaces[1].tasks.server[0].command[1]=--version",
+        "--mcp-dev-workspace.workspaces[1].tasks.server[0].timeout=10s",
+        "--mcp-dev-workspace.workspaces[1].tasks.validation[0]=java-version",
+    }
+    require(len(task_args) == len(expected_tasks) and set(task_args) == expected_tasks,
+            "workspace may expose only the reviewed Java-version diagnostic task")
 
     gateways = ("central-mcp-gateway", "central-mcp-gateway-blue", "central-mcp-gateway-green")
     for name in gateways:
