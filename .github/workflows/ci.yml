@@ -67,6 +67,9 @@ jobs:
             Write-Host "OK $($_.FullName)"
           }
 
+      - name: Test Gateway blue-green preflight offline (no Docker or credentials)
+        run: python -m unittest discover -s tests -p 'test_gateway_bluegreen_preflight.py' -v
+
       - name: Run semantic policy checks
         run: bash scripts/check-policy.sh
 
