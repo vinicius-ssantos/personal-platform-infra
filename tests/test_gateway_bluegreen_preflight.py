@@ -57,6 +57,7 @@ function Invoke-RestMethod {
     throw 'UNEXPECTED_REMOTE_REQUEST'
 }
 & '__PREFLIGHT__' -InfraRoot '__ROOT__' -Target '__TARGET__' -ExpectedActive 'blue' -CandidateTag v0.47.0
+exit $LASTEXITCODE
 """
 
 
