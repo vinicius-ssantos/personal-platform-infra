@@ -133,6 +133,9 @@ class GatewayBlueGreenPreflightTests(unittest.TestCase):
             expected_reason="DEPLOYMENT_CONFIG_HAS_UNREVIEWED_LOCAL_CHANGES",
         )
 
+    def test_unhealthy_active_slot_blocks(self) -> None:
+        self.run_case(flag="M4_UNHEALTHY_BLUE", expected_reason="GATEWAY_BLUE_NOT_READY")
+
     def test_unhealthy_inactive_slot_blocks(self) -> None:
         self.run_case(flag="M4_UNHEALTHY_GREEN", expected_reason="GATEWAY_GREEN_NOT_READY")
 
