@@ -55,6 +55,7 @@ function git {
   if ($env:M4_DIRTY_COMPOSE -eq '1') {Write-Output ' M compose/docker-compose.yml'}
 }
 & $env:M4_PREFLIGHT_SCRIPT -InfraRoot $env:M4_TEST_ROOT -Target green -ExpectedActive blue -CandidateTag v0.47.0
+exit $LASTEXITCODE
 """
 
 
