@@ -67,6 +67,9 @@ jobs:
             Write-Host "OK $($_.FullName)"
           }
 
+      - name: Exercise read-only Gateway blue-green preflight safety gates
+        run: python3 -m unittest discover -s tests -p 'test_gateway_bluegreen_preflight.py' -v
+
       - name: Run semantic policy checks
         run: bash scripts/check-policy.sh
 
