@@ -407,6 +407,37 @@ in sequence or parallel, then synthesize) should be run by hand via the `Agent` 
 or turned into a `.claude/skills/<name>/SKILL.md` prompt if needed repeatedly. Reserve
 Dynamic Workflows for the cases in CLAUDE.md's "Quando usar Dynamic Workflows".
 
+**I. Alternatives considered — OpenSpec (evaluated, not adopted)**
+
+[OpenSpec](https://github.com/Fission-AI/openspec) (Fission-AI, MIT) was evaluated
+as a candidate spec-driven-development layer: per-change folders
+(`openspec/changes/<name>/{proposal.md,design.md,specs/,tasks.md}`) driven by
+slash commands (`/opsx:propose`, `/opsx:apply`, `/opsx:archive`), meant to keep
+AI agents aligned on requirements across sessions.
+
+Not adopted, for this repo specifically:
+
+- `proposal.md` (why/what/impact) duplicates the role ADRs already play here —
+  two parallel decision records risk diverging.
+- Its core unit (specs with requirement/scenario deltas, ADDED/MODIFIED/REMOVED)
+  is shaped for ambiguous product/UX requirements, not declarative infra config
+  (kustomize overlays, Ansible playbooks) that CI already validates structurally.
+- Most changes in this repo are small, single-PR, already covered by the
+  "Adicionar um novo serviço" checklist in `CLAUDE.md`; the tool's overhead
+  (global Node CLI, a new `openspec/` directory to keep in sync with
+  `.opencode/`, `.claude/`, `.codex/`) is disproportionate to that change size.
+- The problem OpenSpec targets — AI losing context across sessions on a
+  multi-step change — is already addressed here by this ADR's agent/skill
+  layer and by `CLAUDE.md`/`.AGENTS.md` project context.
+
+**Lightweight alternative kept instead:** for a backlog item that spans
+multiple sessions or subagents (e.g. the `VPS_KUBECONFIG` rollout, SOPS-based
+secrets instead of placeholders), use Claude Code's `EnterPlanMode` to produce
+a persisted plan for that session, or — only if the same multi-step shape
+recurs often enough to be worth templating — add a
+`.claude/skills/<name>/SKILL.md` checklist. Do not introduce a new per-change
+directory format; record the actual decision as an ADR once the work lands.
+
 **What Phase 1 does not include:**
 - No new services, no gateway changes, no infrastructure changes.
 - Codex CLI is not wired as a gateway upstream yet.
