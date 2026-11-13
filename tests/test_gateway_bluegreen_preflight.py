@@ -33,6 +33,16 @@ function Invoke-RestMethod {
 }
 function docker {
   $argsText = ($args -join ' ')
+  if ($argsText -eq 'buildx imagetools inspect ghcr.io/vinicius-ssantos/central-mcp-gateway:v0.47.0') {
+    if ($env:M4_MANIFEST_UNAVAILABLE -eq '1') {
+      $global:LASTEXITCODE=1
+      return
+    }
+    $global:LASTEXITCODE=0
+    if ($env:M4_MANIFEST_INVALID -eq '1') {return 'MediaType: application/vnd.oci.image.index.v1+json'}
+    $digest=if ($env:M4_MANIFEST_MISMATCH -eq '1') {'sha256:' + ('b' * 64)} else {'sha256:' + ('a' * 64)}
+    return @('Name: synthetic-image', 'MediaType: application/vnd.oci.image.index.v1+json', "Digest:    $digest")
+  }
   if ($argsText -notmatch 'config --format json') { throw 'FORBIDDEN DOCKER OPERATION' }
   $global:LASTEXITCODE=0
   $green='ghcr.io/vinicius-ssantos/central-mcp-gateway:v0.45.0'
@@ -57,7 +67,11 @@ function git {
   $global:LASTEXITCODE=0
   if ($env:M4_DIRTY_COMPOSE -eq '1') {Write-Output ' M compose/docker-compose.yml'}
 }
-& $env:M4_PREFLIGHT_SCRIPT -InfraRoot $env:M4_TEST_ROOT -Target $env:M4_TARGET_SLOT -ExpectedActive blue -CandidateTag v0.47.0
+$digestArgs = @{}
+if ($env:M4_VERIFY_MANIFEST -eq '1') {
+  $digestArgs['ExpectedManifestDigest'] = 'sha256:' + ('a' * 64)
+}
+& $env:M4_PREFLIGHT_SCRIPT -InfraRoot $env:M4_TEST_ROOT -Target $env:M4_TARGET_SLOT -ExpectedActive blue -CandidateTag v0.47.0 @digestArgs
 exit $LASTEXITCODE
 """
 
@@ -73,7 +87,7 @@ class GatewayBlueGreenPreflightTests(unittest.TestCase):
         self, *, flag: str | None = None, expected_exit: int = 2,
         expected_reason: str | None = None, active: str = "blue",
         missing_env: bool = False, missing_state: bool = False,
-        target: str = "green",
+        target: str = "green", verify_manifest: bool = False,
     ) -> str:
         with tempfile.TemporaryDirectory(prefix="m4-preflight-mock-") as tmp:
             root = Path(tmp)
@@ -104,6 +118,8 @@ class GatewayBlueGreenPreflightTests(unittest.TestCase):
             })
             if flag:
                 env[flag] = "1"
+            if verify_manifest:
+                env["M4_VERIFY_MANIFEST"] = "1"
             completed = subprocess.run(
                 [self.shell, "-NoProfile", "-File", str(harness)],
                 capture_output=True, text=True, timeout=25, check=False, env=env
@@ -164,6 +180,32 @@ class GatewayBlueGreenPreflightTests(unittest.TestCase):
 
     def test_missing_active_slot_state_blocks(self) -> None:
         self.run_case(missing_state=True, expected_reason="ACTIVE_SLOT_STATE_MISSING")
+
+    def test_registry_check_is_optional_and_does_not_call_registry_by_default(self) -> None:
+        output = self.run_case(expected_exit=0)
+        self.assertIn("CANDIDATE_MANIFEST_CHECK=NOT_REQUESTED", output)
+
+    def test_registry_manifest_digest_matches_without_pulling(self) -> None:
+        output = self.run_case(verify_manifest=True, expected_exit=0)
+        self.assertIn("CANDIDATE_MANIFEST_CHECK=VERIFIED", output)
+
+    def test_registry_manifest_mismatch_fails_closed(self) -> None:
+        self.run_case(
+            flag="M4_MANIFEST_MISMATCH", verify_manifest=True,
+            expected_reason="CANDIDATE_MANIFEST_MISMATCH",
+        )
+
+    def test_registry_manifest_unavailable_fails_closed(self) -> None:
+        self.run_case(
+            flag="M4_MANIFEST_UNAVAILABLE", verify_manifest=True,
+            expected_reason="CANDIDATE_MANIFEST_UNAVAILABLE",
+        )
+
+    def test_registry_manifest_invalid_fails_closed(self) -> None:
+        self.run_case(
+            flag="M4_MANIFEST_INVALID", verify_manifest=True,
+            expected_reason="CANDIDATE_MANIFEST_INVALID",
+        )
 
 
 if __name__ == "__main__":

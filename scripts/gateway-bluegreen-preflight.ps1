@@ -15,6 +15,10 @@ param(
     [ValidatePattern('^v[0-9]+\.[0-9]+\.[0-9]+$')]
     [string]$CandidateTag = "v0.47.0",
 
+    # Optional remote registry metadata check; does not download image layers.
+    [ValidatePattern("^sha256:[a-f0-9]{64}$")]
+    [string]$ExpectedManifestDigest,
+
     [ValidateSet("blue", "green")]
     [string]$ExpectedActive = "blue",
 
@@ -133,6 +137,27 @@ try {
         throw "ACTIVE_SLOT_WOULD_CHANGE"
     }
 
+    # Verify the remote OCI index digest only when explicitly requested.
+    # The tag may change later: this is a preflight check, not a digest-pinned deploy.
+    if ($ExpectedManifestDigest) {
+        $reference = $prefix + $CandidateTag
+        $manifest = & docker buildx imagetools inspect $reference 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $manifest) {
+            throw "CANDIDATE_MANIFEST_UNAVAILABLE"
+        }
+        $digestLines = @($manifest | Where-Object { $_ -match "^Digest:\s+sha256:[a-f0-9]{64}\s*$" })
+        if ($digestLines.Count -ne 1) {
+            throw "CANDIDATE_MANIFEST_INVALID"
+        }
+        $actualDigest = [regex]::Match([string]$digestLines[0], "sha256:[a-f0-9]{64}").Value
+        if ($actualDigest -ne $ExpectedManifestDigest) {
+            throw "CANDIDATE_MANIFEST_MISMATCH"
+        }
+        Write-Output "CANDIDATE_MANIFEST_CHECK=VERIFIED"
+    } else {
+        Write-Output "CANDIDATE_MANIFEST_CHECK=NOT_REQUESTED"
+    }
+
     Write-Output "CANDIDATE_TARGET=$Target"
     Write-Output "CANDIDATE_TAG=$CandidateTag"
     Write-Output "PREFLIGHT=PASS_READ_ONLY"
@@ -146,7 +171,9 @@ try {
         "GATEWAY_BLUE_NOT_READY", "GATEWAY_GREEN_NOT_READY",
         "COMPOSE_CONFIG_INVALID", "RUNNING_VERSION_AND_COMPOSE_IMAGE_MISMATCH",
         "DEPLOYMENT_CONFIG_HAS_UNREVIEWED_LOCAL_CHANGES",
-        "CANDIDATE_IMAGE_RESOLUTION_MISMATCH", "ACTIVE_SLOT_WOULD_CHANGE"
+        "CANDIDATE_IMAGE_RESOLUTION_MISMATCH", "ACTIVE_SLOT_WOULD_CHANGE",
+        "CANDIDATE_MANIFEST_UNAVAILABLE", "CANDIDATE_MANIFEST_INVALID",
+        "CANDIDATE_MANIFEST_MISMATCH"
     )
     $code = if ($_.Exception.Message -in $known) { $_.Exception.Message } else { "UNEXPECTED_PREFLIGHT_ERROR" }
     Write-Output "PREFLIGHT=BLOCKED"
