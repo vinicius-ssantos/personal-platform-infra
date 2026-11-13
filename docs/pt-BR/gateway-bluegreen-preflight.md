@@ -29,6 +29,37 @@ Retornos: `PREFLIGHT=PASS_READ_ONLY` com exit 0; `PREFLIGHT=BLOCKED` com código
 
 Com o arquivo Compose modificado localmente, o resultado esperado é `REASON=DEPLOYMENT_CONFIG_HAS_UNREVIEWED_LOCAL_CHANGES`. Não apague nem reverta as mudanças do outro trabalho para satisfazer o pré-flight; revise-as e use um fluxo de integração próprio.
 
+## Hibernação esperada do blue (não é necessariamente falha)
+
+A tarefa agendada `MCP Core Wake Proxy` utiliza
+`scripts/mcp-wake-proxy.py`. O valor padrão de
+`MCP_WAKE_PROXY_IDLE_SECONDS` é **900 segundos (15 minutos)**.
+Após esse período sem requisições MCP/OAuth ativas, o controlador executa
+`docker compose stop` no último slot utilizado e nos serviços de apoio.
+O arquivo de estado permanece selecionando `blue`, pois ele representa
+a **rota desejada**, não o estado de execução do container.
+
+Assim, `Exited (0)` sem OOM pode indicar **hibernação intencional**,
+e não crash. Em 13/11/2026, observou-se um intervalo de aproximadamente
+15 minutos entre iniciar e parar o blue, com a tarefa agendada ativa.
+Uma requisição MCP/OAuth pública válida passando pelo wake proxy reativa
+o slot selecionado. Consultar diretamente `/readyz` na porta 8041
+**não** realiza esse despertar.
+
+Essa regra **não dispensa o preflight**: se o blue estiver hibernando,
+a verificação somente leitura retorna `GATEWAY_BLUE_NOT_READY`. A
+aceitação de implantação deve ocorrer em janela acordada e controlada,
+com autorização operacional. Não reinicie automaticamente, não troque a
+rota e não trate o slot adormecido como saudável. Antes de afirmar que
+houve crash, confira o ciclo de vida do Docker, a tarefa agendada e
+o caminho da requisição. O green pode permanecer saudável durante a
+hibernação do blue.
+
+O CI possui testes sem Docker para o timeout de 900 segundos, proteção de
+requisições em andamento, seleção do slot e contabilidade de wake/release.
+Esses testes não atestam a disponibilidade do endpoint real nem aprovam
+uma implantação.
+
 ## Verificação opcional do digest do manifesto remoto
 
 Use `-ExpectedManifestDigest` com o SHA-256 previamente revisado do **índice OCI** para conferir o manifesto remoto da imagem candidata por `docker buildx imagetools inspect`, sem baixar suas camadas. A validação reprova digest incorreto, ausente ou resposta inválida. Sem o parâmetro, retorna `CANDIDATE_MANIFEST_CHECK=NOT_REQUESTED`; quando confere, retorna `CANDIDATE_MANIFEST_CHECK=VERIFIED`.

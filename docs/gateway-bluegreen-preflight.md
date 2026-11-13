@@ -22,6 +22,34 @@ Returns `PREFLIGHT=PASS_READ_ONLY` exit 0 or `PREFLIGHT=BLOCKED` exit 2 with a c
 
 The modified Compose file should produce `DEPLOYMENT_CONFIG_HAS_UNREVIEWED_LOCAL_CHANGES`. Do not discard or revert unrelated work to make it pass.
 
+## Expected blue idle hibernation (not a crash)
+
+The local scheduled task `MCP Core Wake Proxy` runs `scripts/mcp-wake-proxy.py`.
+Its `MCP_WAKE_PROXY_IDLE_SECONDS` default is **900 seconds (15 minutes)**.
+After no active MCP/OAuth requests for that period, its idle loop intentionally
+runs `docker compose stop` for the last selected Gateway slot and associated
+core services. The state file still says `blue` because it selects the desired
+route, **not** whether the container is currently running.
+
+Therefore, a blue container shown as `Exited (0)` with no OOM can be
+**expected idle hibernation** rather than a Gateway crash. The observed
+13-Nov-2026 interval was approximately 15 minutes between start and clean
+exit; the authorized `MCP Core Wake Proxy` Windows task was running. A valid
+public MCP/OAuth request through that loopback wake proxy will start the
+selected slot again. Direct `/readyz` checks on port 8041 **do not** wake it.
+
+This does not bypass preflight. If blue is sleeping, the read-only preflight
+will return `GATEWAY_BLUE_NOT_READY`. Run deployment acceptance only during
+an operator-authorized, controlled awake window; do not add automatic restarts,
+change the selected slot, or accept a sleeping slot as healthy. Verify the
+Docker lifecycle, task state and request path before attributing a stop to
+a crash. Green may remain healthy while blue is intentionally sleeping.
+
+The CI has isolated no-Docker regressions for the 900-second idle timeout,
+active-request protection, selected-slot-only stopping and wake/release
+bookkeeping. These tests are not proof of availability of a live public
+endpoint or approval of a release.
+
 ## Optional remote manifest digest verification
 
 Use `-ExpectedManifestDigest` to require the candidate's OCI manifest index digest to equal a **separately reviewed SHA-256 digest** from GHCR. The script uses `docker buildx imagetools inspect` (metadata only), without pulling image layers, and fails closed on unavailable, malformed or mismatched registry data. The flag is optional; without it the output reports `CANDIDATE_MANIFEST_CHECK=NOT_REQUESTED`. When supplied and validated, it reports `CANDIDATE_MANIFEST_CHECK=VERIFIED`.
