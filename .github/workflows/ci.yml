@@ -70,6 +70,9 @@ jobs:
       - name: Exercise read-only Gateway blue-green preflight safety gates
         run: python3 -m unittest discover -s tests -p 'test_gateway_bluegreen_preflight.py' -v
 
+      - name: Verify MCP wake-proxy idle lifecycle without Docker side effects
+        run: python3 -m unittest discover -s tests -p 'test_mcp_wake_proxy_idle.py' -v
+
       - name: Run semantic policy checks
         run: bash scripts/check-policy.sh
 
