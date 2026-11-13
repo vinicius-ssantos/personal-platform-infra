@@ -39,6 +39,22 @@ class GatewayWakeProxyIdleTests(unittest.TestCase):
                 self.lifecycle.idle_loop()
             return run
 
+    def test_initial_state_has_no_implicit_legacy_service(self) -> None:
+        self.assertIsNone(wake.Lifecycle().last_service)
+
+    def test_no_successful_wake_means_no_implicit_docker_stop(self) -> None:
+        self.lifecycle.last_service = None
+        run = self._one_idle_tick(now=100.0 + wake.IDLE_SECONDS + 100.0)
+        run.assert_not_called()
+
+    def test_failed_wake_does_not_mark_legacy_as_last_service(self) -> None:
+        fresh = wake.Lifecycle()
+        with patch.object(wake.subprocess, "run", side_effect=OSError("synthetic failure")):
+            with self.assertRaises(OSError):
+                fresh.wake(wake.SLOTS["blue"][0])
+        self.assertIsNone(fresh.last_service)
+        self.assertEqual(fresh.active, 0)
+
     def test_default_idle_interval_is_fifteen_minutes(self) -> None:
         self.assertEqual(wake.IDLE_SECONDS, 900)
 

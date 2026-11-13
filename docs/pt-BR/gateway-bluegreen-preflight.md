@@ -55,6 +55,12 @@ houve crash, confira o ciclo de vida do Docker, a tarefa agendada e
 o caminho da requisição. O green pode permanecer saudável durante a
 hibernação do blue.
 
+O controlador inicia sem marcar o Gateway legado como último serviço usado.
+Antes do primeiro despertar bem-sucedido, o ciclo de hibernação não deve
+parar nenhum Gateway nem serviço compartilhado. Uma tentativa de wake que
+falhar também não deve registrar um último serviço válido. Essa proteção
+é independente da seleção explícita da rota.
+
 O CI possui testes sem Docker para o timeout de 900 segundos, proteção de
 requisições em andamento, seleção do slot e contabilidade de wake/release.
 Esses testes não atestam a disponibilidade do endpoint real nem aprovam
