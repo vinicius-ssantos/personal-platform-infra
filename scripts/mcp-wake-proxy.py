@@ -30,12 +30,19 @@ def upstream_headers(headers: dict[str, str]) -> dict[str, str]:
     return {key: value for key, value in headers.items() if key.lower() != "connection"}
 
 
+class InvalidSlotState(Exception):
+    """A missing or invalid route must never silently select the legacy Gateway."""
+
+
 def active_slot() -> tuple[str, int]:
     try:
-        slot = json.loads(SLOT_STATE.read_text(encoding="ascii")).get("slot")
-    except (OSError, ValueError, AttributeError):
-        slot = "legacy"
-    return SLOTS.get(slot, SLOTS["legacy"])
+        state = json.loads(SLOT_STATE.read_text(encoding="ascii"))
+    except (OSError, UnicodeError, ValueError):
+        raise InvalidSlotState from None
+    slot = state.get("slot") if isinstance(state, dict) else None
+    if not isinstance(slot, str) or slot not in SLOTS:
+        raise InvalidSlotState
+    return SLOTS[slot]
 
 
 class Lifecycle:
@@ -68,7 +75,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None: self.proxy()
     def proxy(self) -> None:
         if not allowed(self.command, self.path): self.send_error(404); return
-        service, port = active_slot()
+        try:
+            service, port = active_slot()
+        except InvalidSlotState:
+            # Do not expose state file paths/values, nor run Docker on invalid state.
+            self.send_error(503, "mcp route unavailable")
+            return
         try: LIFECYCLE.wake(service)
         except (subprocess.SubprocessError, OSError): self.send_error(503, "mcp core unavailable"); return
         try:

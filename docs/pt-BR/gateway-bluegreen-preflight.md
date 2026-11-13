@@ -60,6 +60,27 @@ requisições em andamento, seleção do slot e contabilidade de wake/release.
 Esses testes não atestam a disponibilidade do endpoint real nem aprovam
 uma implantação.
 
+## Seleção de rota do wake proxy: falha segura
+
+O wake proxy aceita somente um slot **explicitamente selecionado** no
+`gateway-slot.json`: `blue`, `green` ou `legacy`. O modo `legacy`
+continua suportado em migração/rollback autorizado, **quando escolhido
+explicitamente**. Arquivo ausente, ilegível, JSON inválido ou nome
+desconhecido devem produzir HTTP **503** (`mcp route unavailable`)
+**antes de qualquer inicialização Docker**, sem encaminhar silenciosamente
+tráfego MCP/OAuth ao Gateway legado.
+
+**Pré-requisito de migração:** o operador precisa conferir o arquivo de
+seleção, validar seu slot e relacioná-lo à rota planejada antes de ativar a
+nova versão do proxy. Não criar/regravar o estado automaticamente no CI ou
+no preflight somente leitura. O fluxo existente de promoção continua
+sujeito à autorização separada. Conferir o bootstrap da primeira
+instalação e o rollback: sem arquivo válido, o serviço ficará indisponível
+em vez de escolher `legacy` implicitamente.
+
+Esta correção trata **somente o roteamento**, sem desabilitar a hibernação
+de 15 minutos nem autorizar a troca para o green.
+
 ## Verificação opcional do digest do manifesto remoto
 
 Use `-ExpectedManifestDigest` com o SHA-256 previamente revisado do **índice OCI** para conferir o manifesto remoto da imagem candidata por `docker buildx imagetools inspect`, sem baixar suas camadas. A validação reprova digest incorreto, ausente ou resposta inválida. Sem o parâmetro, retorna `CANDIDATE_MANIFEST_CHECK=NOT_REQUESTED`; quando confere, retorna `CANDIDATE_MANIFEST_CHECK=VERIFIED`.
