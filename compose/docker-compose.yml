@@ -604,6 +604,14 @@ services:
             *" workspace:read "*) ;;
             *) echo >&2 "OAuth allowed scopes must include workspace:read"; exit 1 ;;
           esac
+          # Reject an inconsistent grant contract before launching Gateway.
+          # Every implicit/default scope must be explicitly requestable.
+          for scope in $$GATEWAY_OAUTH_DEFAULT_SCOPES; do
+            case " $$GATEWAY_OAUTH_ALLOWED_SCOPES " in
+              *" $$scope "*) ;;
+              *) echo >&2 "OAuth default scopes must be a subset of allowed scopes"; exit 1 ;;
+            esac
+          done
           for scope in workspace:write workspace:execute; do
             case " $$GATEWAY_OAUTH_DEFAULT_SCOPES " in
               *" $$scope "*) echo >&2 "OAuth defaults cannot grant workspace write/execute in split mode"; exit 1 ;;

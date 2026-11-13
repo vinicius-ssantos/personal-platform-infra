@@ -20,6 +20,12 @@ change, and it does not alter the existing ChatGPT OAuth connection.
   `workspace:execute` must be explicitly present in allowed scopes, without
   being added automatically. Invalid configurations fail **before** the
   Gateway starts.
+- In split mode, the Compose entrypoint also rejects a default scope absent from
+  `GATEWAY_OAUTH_ALLOWED_SCOPES` **before** launching Gateway. This includes
+  non-workspace namespaces (for example `github:read`) and prevents invalid
+  combinations from reaching the runtime. It does not add privileges or adjust
+  existing grants. The allowed list must contain every existing default plus
+  any additional scopes the operator intends clients to request.
 - Gateway v0.46+ independently validates `DEFAULT ⊆ ALLOWED`. The split flag
   must **not** be enabled on an older v0.45.x image: older versions do not
   implement allowed-scope separation.

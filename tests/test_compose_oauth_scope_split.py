@@ -83,6 +83,27 @@ class OAuthScopeSplitComposeTests(unittest.TestCase):
         self.assertNotIn("DEFAULT=gateway:read workspace:read workspace:write", result.stdout)
         self.assertIn("ALLOWED_PRESENT=yes", result.stdout)
 
+    def test_split_rejects_default_scope_missing_from_allowlist(self) -> None:
+        result = run_fixture(
+            split=True, owner=False,
+            defaults="gateway:read github:read",
+            allowed="gateway:read workspace:read",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("default scopes must be a subset of allowed scopes", result.stderr)
+        self.assertNotIn("DEFAULT=", result.stdout)
+
+    def test_split_allows_extra_requestable_scopes_without_implicit_grant(self) -> None:
+        result = run_fixture(
+            split=True, owner=False,
+            defaults="gateway:read github:read",
+            allowed="gateway:read github:read workspace:read workspace:write",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("DEFAULT=gateway:read github:read workspace:read", result.stdout)
+        self.assertNotIn("DEFAULT=gateway:read github:read workspace:read workspace:write", result.stdout)
+        self.assertIn("ALLOWED_PRESENT=yes", result.stdout)
+
     def test_split_read_only_mode_without_owner_tools(self) -> None:
         result = run_fixture(
             split=True, owner=False,
