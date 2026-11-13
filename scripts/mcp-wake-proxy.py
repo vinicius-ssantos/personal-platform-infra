@@ -47,7 +47,7 @@ def active_slot() -> tuple[str, int]:
 
 class Lifecycle:
     def __init__(self) -> None:
-        self.lock = threading.Lock(); self.active = 0; self.last = time.monotonic(); self.last_service = SLOTS["legacy"][0]
+        self.lock = threading.Lock(); self.active = 0; self.last = time.monotonic(); self.last_service: str | None = None
     def wake(self, service: str) -> None:
         with self.lock:
             command = ["docker", "compose", "-f", str(COMPOSE), "--env-file", str(ENV_FILE)]
@@ -60,7 +60,7 @@ class Lifecycle:
         while True:
             time.sleep(1)
             with self.lock:
-                if self.active or time.monotonic() - self.last < IDLE_SECONDS: continue
+                if self.active or self.last_service is None or time.monotonic() - self.last < IDLE_SECONDS: continue
                 subprocess.run(["docker", "compose", "-f", str(COMPOSE), "--env-file", str(ENV_FILE), "stop", self.last_service, *CORE_SERVICES], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
                 self.last = time.monotonic()
 

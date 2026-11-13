@@ -45,6 +45,11 @@ change the selected slot, or accept a sleeping slot as healthy. Verify the
 Docker lifecycle, task state and request path before attributing a stop to
 a crash. Green may remain healthy while blue is intentionally sleeping.
 
+The controller initializes without an implicit legacy last-used service. Before the
+first successful wake, its idle loop must not stop any Gateway or shared service.
+A failed wake also must not mark a service as successfully used. This is a
+separate safety invariant from explicit route selection.
+
 The CI has isolated no-Docker regressions for the 900-second idle timeout,
 active-request protection, selected-slot-only stopping and wake/release
 bookkeeping. These tests are not proof of availability of a live public
