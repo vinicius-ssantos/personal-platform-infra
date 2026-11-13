@@ -50,6 +50,27 @@ active-request protection, selected-slot-only stopping and wake/release
 bookkeeping. These tests are not proof of availability of a live public
 endpoint or approval of a release.
 
+## Wake-proxy route selection: fail closed
+
+The wake proxy accepts only an **explicitly selected** `blue`, `green`,
+or `legacy` slot in `gateway-slot.json`. `legacy` remains supported for
+an approved migration/rollback when **explicitly selected**. An absent,
+unreadable, malformed or unknown selection must produce HTTP **503**
+(`mcp route unavailable`) before any Docker start, instead of silently
+routing public MCP/OAuth traffic to the older legacy Gateway.
+
+**Migration requirement:** the operator must first verify that the slot
+state exists, contains a valid selected slot, and agrees with the intended
+routing during a controlled deployment. Do not create or rewrite this file
+automatically in CI or during read-only preflight. The existing slot-state
+creation/promotion mechanism remains independently authorized. Before
+deploying this change to the running wake proxy, verify first-install
+bootstrapping and rollback compatibility; a missing file will now be
+unavailable rather than silently selecting legacy.
+
+This change affects **route selection only**; it does not disable the
+15-minute idle hibernation or authorize switching traffic to green.
+
 ## Optional remote manifest digest verification
 
 Use `-ExpectedManifestDigest` to require the candidate's OCI manifest index digest to equal a **separately reviewed SHA-256 digest** from GHCR. The script uses `docker buildx imagetools inspect` (metadata only), without pulling image layers, and fails closed on unavailable, malformed or mismatched registry data. The flag is optional; without it the output reports `CANDIDATE_MANIFEST_CHECK=NOT_REQUESTED`. When supplied and validated, it reports `CANDIDATE_MANIFEST_CHECK=VERIFIED`.
