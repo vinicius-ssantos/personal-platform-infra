@@ -1,6 +1,14 @@
 name: P1 dogfood image validation (isolated)
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'compose/mcp-dev-workspace-dogfood-*.Dockerfile'
+      - '.github/workflows/p1-dogfood-image.yml'
+      - 'docs/mcp-dev-workspace-dogfood-build.md'
+      - 'compose/mcp-dev-workspace-dogfood-canary.yml'
   pull_request:
     paths:
       - 'compose/mcp-dev-workspace-dogfood-*.Dockerfile'
