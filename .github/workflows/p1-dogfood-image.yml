@@ -33,7 +33,7 @@ jobs:
 
       - name: Build pinned Node/OpenSpec candidate
         run: |
-          docker build --pull --platform linux/amd64 \
+          docker build --platform linux/amd64 \
             --build-arg BASE_IMAGE=mcp-dev-workspace-dogfood:p1-ci-base \
             -f compose/mcp-dev-workspace-dogfood-full.Dockerfile \
             -t mcp-dev-workspace-dogfood:p1-ci-full .
