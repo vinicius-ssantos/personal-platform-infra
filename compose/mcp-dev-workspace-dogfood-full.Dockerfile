@@ -1,7 +1,6 @@
-# Local-only candidate. The Java/Python stage is built from the matching
-# reviewed base Dockerfile; this file does not change Compose or production.
-# Pin upstream image digests and complete vulnerability review before merge.
-FROM node:24-bookworm-slim AS node
+# Local-only candidate; NOT wired to Compose or production deployment.
+# OCI multi-platform manifest digest verified 2026-11-27 with imagetools.
+FROM node:24-bookworm-slim@sha256:873f586f3794f52281bd039bf02c048a0be08fde619338f9941bad1eb6b34530 AS node
 FROM mcp-dev-workspace-dogfood:java25-python
 
 USER root
