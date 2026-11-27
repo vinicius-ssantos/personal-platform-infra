@@ -10,10 +10,12 @@ This change versions a **local-only candidate** for the `mcp-dev-workspace` proj
 
 ```sh
 docker build -f compose/mcp-dev-workspace-dogfood-base.Dockerfile -t mcp-dev-workspace-dogfood:java25-python .
-docker build -f compose/mcp-dev-workspace-dogfood-full.Dockerfile -t mcp-dev-workspace-dogfood:full .
+docker build --build-arg BASE_IMAGE=mcp-dev-workspace-dogfood:java25-python -f compose/mcp-dev-workspace-dogfood-full.Dockerfile -t mcp-dev-workspace-dogfood:full .
 ```
 
-Before marking the PR ready, pin and independently verify base manifest digests, review supply-chain scans (including transitive npm dependencies), and preserve a known-good rollback image. Local tags here are not release references.
+The image bases are pinned to independently inspected multi-platform OCI index digests as of 2026-11-27: Maven `sha256:407c4423cec0cf2981055bc2c6c0dc211d9605b6669279b95997f2d1c7e91e2c`, Node `sha256:873f586f3794f52281bd039bf02c048a0be08fde619338f9941bad1eb6b34530`. Keep checking vulnerability advisories and transitive npm dependencies; digest pinning does not imply a passing security scan. Preserve the known-good original image; local tags are not releases.
+
+For an isolated evaluation **without replacing an existing local tag**, set an alternate base tag and pass it as the `BASE_IMAGE` build argument. The [P1 image CI workflow](../.github/workflows/p1-dogfood-image.yml) runs the same builds and a network-disabled, non-root runtime smoke test on a hosted runner, without secrets or deployment. It does **not** replace the full Java suite or vulnerability scanning.
 
 ## Reproducible acceptance
 
@@ -31,8 +33,12 @@ Use a disposable copy of the source checkout inside the container, mount the ori
 - Add targeted CI for the Dockerfiles, vulnerability/SBOM review, Java/Python/OpenSpec gates and negative network tests before merge.
 - Keep actual canary/rollback operations as **separately reviewed, explicit operator actions**, using existing infra preflight tooling. This PR does not start/stop any production container or promote any release.
 
+## Rollback and canary (local only)
+
+Do not connect this image to production Compose. Build the candidate under new local tags, leaving `mcp-dev-workspace-dogfood:full` untouched. Record `docker image inspect --format '{{.Id}}'` for candidate and known-good images. Run acceptance in disposable containers with no published ports and `--network none`; no process switch is required. If acceptance fails, stop only the candidate test container (if any) and return to the preserved known-good image tag. Avoid removing images used by existing containers. A real blue/green promotion or rollback needs a separate approved change and preflight, including monitored traffic and the configured Gateway policy.
+
 ## Observations from 26 November 2026
 
-The original local image reported Node 24.22.3, npm 11.19.1, OpenSpec 2.1.0 and `openspec validate --all --strict` **5/5 passed**. Maven dependency prefetch returned `BUILD SUCCESS`; an online compilation/packaging with tests skipped also passed, but a full offline test run still required additional Surefire provider artifacts at the time of drafting. These are **development observations**, not release acceptance.
+The original local image reported Node 24.22.3, npm 11.19.1, OpenSpec 2.1.0 and `openspec validate --all --strict` **5/5 passed**. Maven dependency prefetch returned `BUILD SUCCESS`; an online compilation/packaging with tests skipped also passed; later the full offline `mvn -o verify` passed with **454 tests, 0 failures/errors and 10 skipped** after controlled cache warmup, on the original local image. The pinned candidate must be independently tested. These are **development observations**, not release acceptance.
 
 Related: Gateway [#415](https://github.com/vinicius-ssantos/central-mcp-gateway/issues/415), infra [#329](https://github.com/vinicius-ssantos/personal-platform-infra/issues/329), workspace [#87](https://github.com/vinicius-ssantos/mcp-dev-workspace/issues/87) and [#132](https://github.com/vinicius-ssantos/mcp-dev-workspace/issues/132).
