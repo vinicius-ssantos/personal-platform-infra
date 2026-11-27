@@ -48,6 +48,20 @@ Use a disposable copy of the source checkout inside the container, mount the ori
 - Next security gate: run a trusted scanner with a Linux-native cache or operator-authenticated Docker Scout, capture dated HIGH/CRITICAL findings and SBOM, remediate or explicitly accept any exceptions, then add reproducible scan CI. Pin every third-party action or scanner by immutable digest/SHA; never attach the Docker socket to an unreviewed scanner container.
 - Independent review and the separate Gateway/ChatGPT catalog/E2E gates remain open. Do not mark P1 ready/merge or deploy based solely on green build/test jobs.
 
+## Versioned no-network canary (opt-in only)
+
+The fixture [`compose/mcp-dev-workspace-dogfood-canary.yml`](../compose/mcp-dev-workspace-dogfood-canary.yml) is a separate Docker Compose project (`p1-dogfood-validation`) with a gated `p1-dogfood` profile and **no ports, network, mounts, secrets or application processes**. It has read-only root, UID 10001, no Linux capabilities, no-new-privileges, resource limits, and a transient `/tmp`. It does **not** amend any production Compose file, Gateway routing or OAuth configuration.
+
+After explicitly building the candidate under a *separate* tag:
+
+```sh
+docker compose -f compose/mcp-dev-workspace-dogfood-canary.yml --profile p1-dogfood config --quiet
+P1_DOGFOOD_IMAGE=mcp-dev-workspace-dogfood:p1-full-20261127 \
+  docker compose -f compose/mcp-dev-workspace-dogfood-canary.yml --profile p1-dogfood run --rm candidate
+```
+
+On PowerShell, set `$env:P1_DOGFOOD_IMAGE='mcp-dev-workspace-dogfood:p1-full-20261127'` before the `docker compose` invocation. On 2026-11-27 this canary finished with `P1_CANARY_EXIT=0` in the local Docker Linux runtime. Its command only checks the runtime versions and effective UID; it is **not** the full Maven/Java suite or a Gateway E2E. The independent image CI also runs the same opt-in canary with a CI-only image tag.
+
 ## Rollback and canary (local only)
 
 Do not connect this image to production Compose. Build the candidate under new local tags, leaving `mcp-dev-workspace-dogfood:full` untouched. Record `docker image inspect --format '{{.Id}}'` for candidate and known-good images. Run acceptance in disposable containers with no published ports and `--network none`; no process switch is required. If acceptance fails, stop only the candidate test container (if any) and return to the preserved known-good image tag. Avoid removing images used by existing containers. A real blue/green promotion or rollback needs a separate approved change and preflight, including monitored traffic and the configured Gateway policy.
