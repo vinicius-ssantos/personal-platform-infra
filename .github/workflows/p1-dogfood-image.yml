@@ -1,0 +1,123 @@
+name: P1 dogfood image validation (isolated)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'compose/mcp-dev-workspace-dogfood-*.Dockerfile'
+      - '.github/workflows/p1-dogfood-image.yml'
+      - 'docs/mcp-dev-workspace-dogfood-build.md'
+      - 'compose/mcp-dev-workspace-dogfood-canary.yml'
+  pull_request:
+    paths:
+      - 'compose/mcp-dev-workspace-dogfood-*.Dockerfile'
+      - '.github/workflows/p1-dogfood-image.yml'
+      - 'docs/mcp-dev-workspace-dogfood-build.md'
+      - 'compose/mcp-dev-workspace-dogfood-canary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-dogfood-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout immutable PR commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2, verified tag-to-SHA
+        with:
+          persist-credentials: false
+
+      - name: Build pinned Java/Python candidate
+        run: |
+          docker build --pull --platform linux/amd64 \
+            -f compose/mcp-dev-workspace-dogfood-base.Dockerfile \
+            -t mcp-dev-workspace-dogfood:p1-ci-base .
+
+      - name: Build pinned Node/OpenSpec candidate
+        run: |
+          docker build --platform linux/amd64 \
+            --build-arg BASE_IMAGE=mcp-dev-workspace-dogfood:p1-ci-base \
+            -f compose/mcp-dev-workspace-dogfood-full.Dockerfile \
+            -t mcp-dev-workspace-dogfood:p1-ci-full .
+
+      - name: Verify non-root, runtimes and OpenSpec without network
+        run: |
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --pids-limit 128 --memory 768m --cpus 1 \
+            --tmpfs /tmp:rw,exec,nosuid,size=128m \
+            --entrypoint /bin/sh mcp-dev-workspace-dogfood:p1-ci-full \
+            -ec 'test "$(id -u)" = "10001"; java -version; mvn -version; python3 --version; node --version; npm --version; openspec --version'
+
+      - name: Verify opt-in disposable Compose canary
+        env:
+          P1_DOGFOOD_IMAGE: mcp-dev-workspace-dogfood:p1-ci-full
+        run: |
+          docker compose -f compose/mcp-dev-workspace-dogfood-canary.yml --profile p1-dogfood config --quiet
+          docker compose -f compose/mcp-dev-workspace-dogfood-canary.yml --profile p1-dogfood run --rm candidate
+
+      - name: Record local image metadata (no publish)
+        run: |
+          docker image inspect mcp-dev-workspace-dogfood:p1-ci-full \
+            --format 'image={{.Id}} user={{.Config.User}}'
+          docker history --no-trunc mcp-dev-workspace-dogfood:p1-ci-full | head -25
+
+      - name: Export isolated image archive
+        run: |
+          docker save mcp-dev-workspace-dogfood:p1-ci-full -o "$RUNNER_TEMP/p1-dogfood.tar"
+          # Docker save defaults to a restrictive mode on hosted runners; the scanner
+          # has no DAC override capability, so grant read access to this code-only archive.
+          chmod 0644 "$RUNNER_TEMP/p1-dogfood.tar"
+
+      - name: Generate SPDX SBOM (offline, no Docker socket)
+        run: |
+          docker volume create p1-syft-ci-cache > /dev/null
+          docker run --rm --network none --user 0:0 --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --pids-limit 128 --memory 1500m --cpus 1.5 \
+            -e HOME=/tmp -e SYFT_CHECK_FOR_APP_UPDATE=false \
+            -v p1-syft-ci-cache:/tmp \
+            -v "$RUNNER_TEMP/p1-dogfood.tar:/image.tar:ro" \
+            ghcr.io/anchore/syft@sha256:e97e20b6e6d1699c60296b66ab337941724f9bd06ac279d893eda89601fc4b2a \
+            docker-archive:/image.tar -o spdx-json > "$RUNNER_TEMP/p1-sbom.spdx.json"
+          jq -e '.spdxVersion == "SPDX-2.3" and (.packages | length > 0)' "$RUNNER_TEMP/p1-sbom.spdx.json"
+
+      - name: CVE security gate (deny HIGH/CRITICAL)
+        run: |
+          docker volume create p1-grype-ci-cache > /dev/null
+          docker run --rm --user 0:0 --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --pids-limit 128 --memory 1800m --cpus 2 \
+            -e HOME=/tmp -e GRYPE_CHECK_FOR_APP_UPDATE=false \
+            -e GRYPE_DB_CACHE_DIR=/tmp/grype-db \
+            -v p1-grype-ci-cache:/tmp \
+            -v "$RUNNER_TEMP/p1-dogfood.tar:/image.tar:ro" \
+            ghcr.io/anchore/grype@sha256:013e16ae96bd64108973e3e9fecec63f7ff276358d34c46c25d33e2aac96539f \
+            docker-archive:/image.tar -o json > "$RUNNER_TEMP/p1-grype.json"
+          jq -r '[.matches[].vulnerability.severity] | group_by(.) | map({severity: .[0], count: length})' "$RUNNER_TEMP/p1-grype.json"
+          high="$(jq '[.matches[] | select(.vulnerability.severity == "High" or .vulnerability.severity == "Critical")] | length' "$RUNNER_TEMP/p1-grype.json")"
+          echo "HIGH_CRITICAL_COUNT=$high" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$high" -eq 0
+
+      - name: Preserve machine-verifiable security evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2, tag-to-SHA verified
+        with:
+          name: p1-dogfood-security-evidence
+          path: |
+            ${{ runner.temp }}/p1-sbom.spdx.json
+            ${{ runner.temp }}/p1-grype.json
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Scope of this test
+        run: |
+          echo 'Candidate-only build + offline smoke + SBOM + CVE gate; no image push or deploy.'
+          echo 'Full Java suite is independently validated against the candidate on a disposable, network-disabled copy.'
