@@ -33,6 +33,21 @@ Use a disposable copy of the source checkout inside the container, mount the ori
 - Add targeted CI for the Dockerfiles, vulnerability/SBOM review, Java/Python/OpenSpec gates and negative network tests before merge.
 - Keep actual canary/rollback operations as **separately reviewed, explicit operator actions**, using existing infra preflight tooling. This PR does not start/stop any production container or promote any release.
 
+## Acceptance evidence — 27 November 2026
+
+- Pinned candidate digest (local image ID): `sha256:30ebc716243f58ba4cbdf101eaa42809eef924b63b1f850bddb6cfa60bcefe75`.
+- The candidate builds successfully, runs with UID 10001, has no system-level `git safe.directory` exception, and passed OpenSpec strict **5/5** in a read-only, network-disabled container.
+- Full Maven `-o verify` on Java source commit `b2c61b3`: **454 tests, 0 failures, 0 errors, 10 skipped, BUILD SUCCESS, exit 0**. Read-only source/cache, disposable copy, no network.
+- GitHub Actions: [image build/smoke](https://github.com/vinicius-ssantos/personal-platform-infra/actions/runs/45993398275) and [regular CI](https://github.com/vinicius-ssantos/personal-platform-infra/actions/runs/45993398362) both SUCCESS at the earlier checkout-tag-pin commit. No image push/deploy.
+
+## Vulnerability scan status — NOT ACCEPTED
+
+- Docker Scout `cves` requires a Docker ID login on the authorized machine and returned exit 1. No credentials were requested, created or changed.
+- An isolated, non-root Grype 0.122.0 scanner with pinned OCI index `sha256:013e16ae96bd64108973e3e9fecec63f7ff276358d34c46c25d33e2aac96539f` was tested against a **Docker archive**, with no Docker socket and no source checkout access.
+- The first attempt failed because the tmpfs database exceeded its quota. The second, Windows-bind-mounted attempt expanded a database of approximately 2.86 GB but did not complete a CVE report in a reasonable controlled run; it was explicitly stopped (exit 143), and its dedicated temporary artifacts were removed. **This is an inconclusive scan, not proof of no vulnerabilities.**
+- Next security gate: run a trusted scanner with a Linux-native cache or operator-authenticated Docker Scout, capture dated HIGH/CRITICAL findings and SBOM, remediate or explicitly accept any exceptions, then add reproducible scan CI. Pin every third-party action or scanner by immutable digest/SHA; never attach the Docker socket to an unreviewed scanner container.
+- Independent review and the separate Gateway/ChatGPT catalog/E2E gates remain open. Do not mark P1 ready/merge or deploy based solely on green build/test jobs.
+
 ## Rollback and canary (local only)
 
 Do not connect this image to production Compose. Build the candidate under new local tags, leaving `mcp-dev-workspace-dogfood:full` untouched. Record `docker image inspect --format '{{.Id}}'` for candidate and known-good images. Run acceptance in disposable containers with no published ports and `--network none`; no process switch is required. If acceptance fails, stop only the candidate test container (if any) and return to the preserved known-good image tag. Avoid removing images used by existing containers. A real blue/green promotion or rollback needs a separate approved change and preflight, including monitored traffic and the configured Gateway policy.
