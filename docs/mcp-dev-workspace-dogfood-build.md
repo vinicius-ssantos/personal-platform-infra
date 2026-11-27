@@ -1,73 +1,77 @@
-# P1 — isolated Java/Node/OpenSpec dogfood image (candidate)
+# P1 — disposable, security-reviewed Java/Node/OpenSpec dogfood image
 
-This change versions a **local-only candidate** for the `mcp-dev-workspace` project. It does not wire a service, publish a port, rotate OAuth credentials, register a GitHub runner, change the Gateway, or deploy anything. Track acceptance in [workspace #132](https://github.com/vinicius-ssantos/mcp-dev-workspace/issues/132), with M4 closure separately in #87 of that repository.
+**Scope:** An opt-in, **local-only candidate** for `mcp-dev-workspace`. This PR does not modify production Compose, Gateway routing, Java workspace endpoints, OAuth scopes, credentials, runner registration or deployment. No new ports or host-wide Git trust are granted.
 
-## Source and build order
+Tracking: [workspace #132](https://github.com/vinicius-ssantos/mcp-dev-workspace/issues/132), [M4 closure #87](https://github.com/vinicius-ssantos/mcp-dev-workspace/issues/87), [Gateway static write #415](https://github.com/vinicius-ssantos/central-mcp-gateway/issues/415).
 
-- `compose/mcp-dev-workspace-dogfood-base.Dockerfile`: Maven 3.9.11, Java 25, Python and Git, non-root runtime.
-- `compose/mcp-dev-workspace-dogfood-full.Dockerfile`: Node.js 24 and OpenSpec 2.1.0 layered on the previous local image. Telemetry disabled.
-- Build using this repository as Docker context, with a dedicated local tag. These files are **not** part of `compose/docker-compose.yml` and must not be used as an automatic deployment override.
+## Immutable upstream inputs (verified 27 November 2026)
+
+| Purpose | Version | OCI index digest |
+|---|---|---|
+| Maven distribution only (copied as a stage) | Maven 3.9.14 | `sha256:304ea1e9675d07612c36d5d70d8bd1dbd8aac64c307253bbde4e488857f90faa` |
+| Actual base JDK | Temurin Java **25.0.5.1** | `sha256:4ddc1a8bdaf283421df5487411aff10b797ccf1e06a339041005114c8f489b5c` |
+| Node runtime | Node 24.22.3 | `sha256:873f586f3794f52281bd039bf02c048a0be08fde619338f9941bad1eb6b34530` |
+| CVE scanner | Grype 0.122.0 | `sha256:013e16ae96bd64108973e3e9fecec63f7ff276358d34c46c25d33e2aac96539f` |
+| SBOM generator | Syft pinned image | `sha256:e97e20b6e6d1699c60296b66ab337941724f9bd06ac279d893eda89601fc4b2a` |
+
+The Maven stage alone still ships Java 25.0.2 and vulnerable libraries; it is **never the final runtime base**. The final image uses the separate Temurin 25.0.5.1 stage and copies only Maven's distribution. Replace Maven's two vulnerable bundled JARs with HTTPS-fetched artifacts whose SHA-256 is verified inside the Docker build:
+
+- `plexus-utils-3.6.1.jar` SHA-256 `05a63effd67e2d6b9d610cc82e2bd7473289d34802e57a529b28110f28af5679`
+- `guava-33.7.2-jre.jar` SHA-256 `b530942257fb935f8b2cfaa5f8eb5bd59c555fd8e8d01b8ce98912e077ea606c`
+
+The Node stage is multi-stage and carries npm **12.2.3** plus OpenSpec **2.1.0**. Builds run an Ubuntu security package upgrade before installing Python and Git. A pinned base digest does **not** fix apt or npm transitive resolutions at the byte level: evaluate the actual produced image digest and CVE/SBOM evidence on every build.
+
+## Local build (do not replace the known-good tags)
+
+Run from the **infra repository root**. These tags are separate from `mcp-dev-workspace-dogfood:full` and `:java25-python`, which may be used by existing containers.
 
 ```sh
-docker build -f compose/mcp-dev-workspace-dogfood-base.Dockerfile -t mcp-dev-workspace-dogfood:java25-python .
-docker build --build-arg BASE_IMAGE=mcp-dev-workspace-dogfood:java25-python -f compose/mcp-dev-workspace-dogfood-full.Dockerfile -t mcp-dev-workspace-dogfood:full .
+docker build --platform linux/amd64 -f compose/mcp-dev-workspace-dogfood-base.Dockerfile -t mcp-dev-workspace-dogfood:p1-secfix-base-20261127 .
+docker build --platform linux/amd64 --build-arg BASE_IMAGE=mcp-dev-workspace-dogfood:p1-secfix-base-20261127 -f compose/mcp-dev-workspace-dogfood-full.Dockerfile -t mcp-dev-workspace-dogfood:p1-secfix-full-20261127 .
+docker image inspect mcp-dev-workspace-dogfood:p1-secfix-full-20261127 --format '{{.Id}} {{.Config.User}}'
 ```
 
-The image bases are pinned to independently inspected multi-platform OCI index digests as of 2026-11-27: Maven `sha256:407c4423cec0cf2981055bc2c6c0dc211d9605b6669279b95997f2d1c7e91e2c`, Node `sha256:873f586f3794f52281bd039bf02c048a0be08fde619338f9941bad1eb6b34530`. Keep checking vulnerability advisories and transitive npm dependencies; digest pinning does not imply a passing security scan. Preserve the known-good original image; local tags are not releases.
+The second Dockerfile's default `BASE_IMAGE` is only a convenience; always override it to point at the **newly built** corresponding base tag. **Never** use `docker compose up` against the production stack to validate this candidate.
 
-For an isolated evaluation **without replacing an existing local tag**, set an alternate base tag and pass it as the `BASE_IMAGE` build argument. The [P1 image CI workflow](../.github/workflows/p1-dogfood-image.yml) runs the same builds and a network-disabled, non-root runtime smoke test on a hosted runner, without secrets or deployment. It does **not** replace the full Java suite or vulnerability scanning.
+## Versioned isolated canary
 
-## Reproducible acceptance
-
-Use a disposable copy of the source checkout inside the container, mount the original checkout **read-only**, and run as non-root with read-only root filesystem, dropped capabilities, bounded memory/CPU/PIDs and no published ports.
-
-1. Confirm `node --version`, `npm --version` and `openspec --version`. Use `OPENSPEC_TELEMETRY=0`, then `openspec validate --all --strict` with network disabled.
-2. Populate a **dedicated, non-secret Maven cache** through a controlled network-enabled dependency resolution step. `dependency:go-offline` alone is not enough for Spotless and Surefire dynamic providers. Resolve explicitly reported artifacts; never disable format or test gates to claim acceptance.
-3. Run a **new** offline `mvn -o -B -ntp -Dmaven.repo.local=/cache verify` in the copied project with `--network none` and cache mounted read-only. Record the final exit code, test totals and skipped tests, plus the source commit and image digest. Do not call an online build with `-DskipTests` an accepted test run.
-4. Validate the exact registered tasks over the Gateway and ensure `dev=READ_ONLY` continues to reject execution. The ChatGPT static-tool catalog `confirmation_token` refresh is a separate client gate, not a reason to relax the Java/Gateway policies.
-
-## Security and rollout gates
-
-- Do not add global `git safe.directory` exceptions or a wildcard. Restrict Git trust to a command's configured canonical workspace root.
-- No shell-unrestricted MCP capability, public Java workspace port, production overrides, `.env` material, OAuth scope change or secret in logs.
-- Add targeted CI for the Dockerfiles, vulnerability/SBOM review, Java/Python/OpenSpec gates and negative network tests before merge.
-- Keep actual canary/rollback operations as **separately reviewed, explicit operator actions**, using existing infra preflight tooling. This PR does not start/stop any production container or promote any release.
-
-## Acceptance evidence — 27 November 2026
-
-- Pinned candidate digest (local image ID): `sha256:30ebc716243f58ba4cbdf101eaa42809eef924b63b1f850bddb6cfa60bcefe75`.
-- The candidate builds successfully, runs with UID 10001, has no system-level `git safe.directory` exception, and passed OpenSpec strict **5/5** in a read-only, network-disabled container.
-- Full Maven `-o verify` on Java source commit `b2c61b3`: **454 tests, 0 failures, 0 errors, 10 skipped, BUILD SUCCESS, exit 0**. Read-only source/cache, disposable copy, no network.
-- GitHub Actions: [image build/smoke](https://github.com/vinicius-ssantos/personal-platform-infra/actions/runs/45993398275) and [regular CI](https://github.com/vinicius-ssantos/personal-platform-infra/actions/runs/45993398362) both SUCCESS at the earlier checkout-tag-pin commit. No image push/deploy.
-
-## Vulnerability scan status — NOT ACCEPTED
-
-- Docker Scout `cves` requires a Docker ID login on the authorized machine and returned exit 1. No credentials were requested, created or changed.
-- An isolated, non-root Grype 0.122.0 scanner with pinned OCI index `sha256:013e16ae96bd64108973e3e9fecec63f7ff276358d34c46c25d33e2aac96539f` was tested against a **Docker archive**, with no Docker socket and no source checkout access.
-- The first attempt failed because the tmpfs database exceeded its quota. The second, Windows-bind-mounted attempt expanded a database of approximately 2.86 GB but did not complete a CVE report in a reasonable controlled run; it was explicitly stopped (exit 143), and its dedicated temporary artifacts were removed. **This is an inconclusive scan, not proof of no vulnerabilities.**
-- Next security gate: run a trusted scanner with a Linux-native cache or operator-authenticated Docker Scout, capture dated HIGH/CRITICAL findings and SBOM, remediate or explicitly accept any exceptions, then add reproducible scan CI. Pin every third-party action or scanner by immutable digest/SHA; never attach the Docker socket to an unreviewed scanner container.
-- Independent review and the separate Gateway/ChatGPT catalog/E2E gates remain open. Do not mark P1 ready/merge or deploy based solely on green build/test jobs.
-
-## Versioned no-network canary (opt-in only)
-
-The fixture [`compose/mcp-dev-workspace-dogfood-canary.yml`](../compose/mcp-dev-workspace-dogfood-canary.yml) is a separate Docker Compose project (`p1-dogfood-validation`) with a gated `p1-dogfood` profile and **no ports, network, mounts, secrets or application processes**. It has read-only root, UID 10001, no Linux capabilities, no-new-privileges, resource limits, and a transient `/tmp`. It does **not** amend any production Compose file, Gateway routing or OAuth configuration.
-
-After explicitly building the candidate under a *separate* tag:
+[`compose/mcp-dev-workspace-dogfood-canary.yml`](../compose/mcp-dev-workspace-dogfood-canary.yml) is a different Compose project, gated by the `p1-dogfood` profile. It runs **only** the version/UID smoke command with no network, ports, source mounts, secrets, process services, writable root or Linux capabilities.
 
 ```sh
-docker compose -f compose/mcp-dev-workspace-dogfood-canary.yml --profile p1-dogfood config --quiet
-P1_DOGFOOD_IMAGE=mcp-dev-workspace-dogfood:p1-full-20261127 \
+P1_DOGFOOD_IMAGE=mcp-dev-workspace-dogfood:p1-secfix-full-20261127 \
   docker compose -f compose/mcp-dev-workspace-dogfood-canary.yml --profile p1-dogfood run --rm candidate
 ```
 
-On PowerShell, set `$env:P1_DOGFOOD_IMAGE='mcp-dev-workspace-dogfood:p1-full-20261127'` before the `docker compose` invocation. On 2026-11-27 this canary finished with `P1_CANARY_EXIT=0` in the local Docker Linux runtime. Its command only checks the runtime versions and effective UID; it is **not** the full Maven/Java suite or a Gateway E2E. The independent image CI also runs the same opt-in canary with a CI-only image tag.
+In PowerShell, set `$env:P1_DOGFOOD_IMAGE='mcp-dev-workspace-dogfood:p1-secfix-full-20261127'` before the `docker compose` command. Candidate canary ran locally with `exit 0`.
 
-## Rollback and canary (local only)
+## Functional regression acceptance
 
-Do not connect this image to production Compose. Build the candidate under new local tags, leaving `mcp-dev-workspace-dogfood:full` untouched. Record `docker image inspect --format '{{.Id}}'` for candidate and known-good images. Run acceptance in disposable containers with no published ports and `--network none`; no process switch is required. If acceptance fails, stop only the candidate test container (if any) and return to the preserved known-good image tag. Avoid removing images used by existing containers. A real blue/green promotion or rollback needs a separate approved change and preflight, including monitored traffic and the configured Gateway policy.
+Mount the source checkout and **dedicated, non-secret** Maven cache read-only into a disposable container. Copy source into temporary container storage, drop all caps, enable `no-new-privileges`, cap memory/CPU/PIDs, use a read-only root and `--network none`. Use an executable `/tmp` tmpfs for Maven Jansi/format dependencies. Run `mvn -o -B -ntp -Dmaven.repo.local=/cache verify` with tests enabled. A prior online `-DskipTests` warm-up is **not** an acceptable test result; `dependency:go-offline` alone may not fetch Surefire dynamic providers.
 
-## Observations from 26 November 2026
+| Verification on 27/11/2026, Java source commit `b2c61b3` | Result |
+|---|---|
+| Maven offline `verify`, **corrected** image | **454 tests; 0 failures, 0 errors, 10 skipped; BUILD SUCCESS; exit 0** |
+| OpenSpec `validate --all --strict`, corrected image | **5/5 passed; exit 0** |
+| Docker Compose opt-in canary, corrected image | **exit 0**, UID 10001, no network |
+| Final local candidate image ID | `sha256:def540bcac4a4ec800fc7ce8da3dad7a4cd99e5bcc31f15aab99bb7454ca30ab` |
+| Global Git `safe.directory` exception | Absent by design; do not add one |
 
-The original local image reported Node 24.22.3, npm 11.19.1, OpenSpec 2.1.0 and `openspec validate --all --strict` **5/5 passed**. Maven dependency prefetch returned `BUILD SUCCESS`; an online compilation/packaging with tests skipped also passed; later the full offline `mvn -o verify` passed with **454 tests, 0 failures/errors and 10 skipped** after controlled cache warmup, on the original local image. The pinned candidate must be independently tested. These are **development observations**, not release acceptance.
+## Security scan and machine-readable evidence
 
-Related: Gateway [#415](https://github.com/vinicius-ssantos/central-mcp-gateway/issues/415), infra [#329](https://github.com/vinicius-ssantos/personal-platform-infra/issues/329), workspace [#87](https://github.com/vinicius-ssantos/mcp-dev-workspace/issues/87) and [#132](https://github.com/vinicius-ssantos/mcp-dev-workspace/issues/132).
+The **original** candidate (ID `sha256:30ebc716243f58ba4cbdf101eaa42809eef924b63b1f850bddb6cfa60bcefe75`) scanned with **1,257 findings, 29 HIGH, 0 CRITICAL**. HIGH findings were in old OpenJDK, Ubuntu/OpenSSL, npm, Guava and Plexus.
+
+After remediation, Grype 0.122.0 used its Linux-native vulnerability database to scan the **corrected candidate** via a Docker image archive, **without Docker socket, repository access or secrets**:
+
+- **509 total findings; 0 HIGH, 0 CRITICAL, 489 MEDIUM, 17 LOW, 3 NEGLIGIBLE; exit 0.**
+- Syft produced **SPDX 2.3 SBOM with 425 packages; exit 0**.
+- MEDIUM/LOW residual findings are **not** proof of a vulnerability-free image; follow the organization's severity/exception policy and re-evaluate on each build.
+- The security workflow is [`.github/workflows/p1-dogfood-image.yml`](../.github/workflows/p1-dogfood-image.yml). It **must fail** if a CI-built candidate contains HIGH/CRITICAL issues, and attach its Grype JSON plus SPDX SBOM as GitHub Actions artifacts. An externally reachable vulnerability DB is needed for the first scanner run; the scan container has **no Docker socket or credentials**.
+
+Independent review and CI for the **exact final PR HEAD** are mandatory before lifting draft status or merging. GitHub checks are not substitutes for actual Gateway read/write E2E, which is tracked under #87 and Gateway #415.
+
+## Rollback and separation of concerns
+
+- No production image switch/deploy/release in this change. Preserve the existing known-good local image and its container. Candidate tags never replace existing tags.
+- For a failed candidate test, stop/remove **only** its disposable test container and return to the known-good tag. This is an **isolated canary**, not a production blue/green cutover or proof of production rollback.
+- Keep Java workspace policy authoritative: `dev=READ_ONLY` must deny mutations. The ChatGPT static `confirmation_token` is a **technical retry token, not human consent** (ADR 0020). A positive write test needs a separately registered TRUSTED **disposable fixture**; do not write to real repositories.
+- M5 browser isolation and optional UI/UX console work are separate milestones. This PR does not authorize web browsing in the Java process or start UI prototypes.
