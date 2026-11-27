@@ -6,6 +6,7 @@ on:
       - 'compose/mcp-dev-workspace-dogfood-*.Dockerfile'
       - '.github/workflows/p1-dogfood-image.yml'
       - 'docs/mcp-dev-workspace-dogfood-build.md'
+      - 'compose/mcp-dev-workspace-dogfood-canary.yml'
   workflow_dispatch:
 
 permissions:
@@ -46,6 +47,13 @@ jobs:
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --entrypoint /bin/sh mcp-dev-workspace-dogfood:p1-ci-full \
             -ec 'test "$(id -u)" = "10001"; java -version; mvn -version; python3 --version; node --version; npm --version; openspec --version'
+
+      - name: Verify opt-in disposable Compose canary
+        env:
+          P1_DOGFOOD_IMAGE: mcp-dev-workspace-dogfood:p1-ci-full
+        run: |
+          docker compose -f compose/mcp-dev-workspace-dogfood-canary.yml --profile p1-dogfood config --quiet
+          docker compose -f compose/mcp-dev-workspace-dogfood-canary.yml --profile p1-dogfood run --rm candidate
 
       - name: Record local image metadata (no publish)
         run: |
