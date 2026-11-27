@@ -1,6 +1,6 @@
 # P1 disposable developer image, NOT the production workspace runtime.
-# Review/pin base image digest and scan before any promotion.
-FROM maven:3.9.11-eclipse-temurin-25
+# OCI multi-platform manifest digest verified 2026-11-27 via docker buildx imagetools inspect.
+FROM maven:3.9.11-eclipse-temurin-25@sha256:407c4423cec0cf2981055bc2c6c0dc211d9605b6669279b95997f2d1c7e91e2c
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git python3 ca-certificates \
